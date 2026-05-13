@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Eye, EyeOff, ArrowRight, Shield, Users, BarChart3, Lock } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { supabase } from '../../lib/supabase'
 
 const FEATURES = [
   { icon: Users, text: 'Gestão completa de diaristas' },
@@ -12,8 +13,9 @@ const FEATURES = [
 const DEMO_EMAIL = 'admin@diariapro.com'
 const DEMO_PASSWORD = 'admin123'
 
-export default function LoginScreen({ onLogin }) {
+export default function LoginScreen() {
   const isMobile = useIsMobile()
+  const [view, setView] = useState('login') // 'login' | 'forgot' | 'forgot-sent'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -32,14 +34,43 @@ export default function LoginScreen({ onLogin }) {
 
     setIsLoading(true)
 
-    await new Promise(r => setTimeout(r, 1400))
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      onLogin()
-    } else {
-      setIsLoading(false)
-      setError('E-mail ou senha incorretos. Use as credenciais de demonstração.')
+    if (signInErr) {
+      // Auto-register on first access (demo / development)
+      if (signInErr.message.toLowerCase().includes('invalid login credentials')) {
+        const { error: signUpErr } = await supabase.auth.signUp({ email, password })
+        if (signUpErr) {
+          setIsLoading(false)
+          setError('Erro ao criar conta: ' + signUpErr.message)
+          return
+        }
+        const { error: signInErr2 } = await supabase.auth.signInWithPassword({ email, password })
+        if (signInErr2) {
+          setIsLoading(false)
+          setError('Conta criada! Verifique seu e-mail para confirmar o cadastro.')
+          return
+        }
+      } else {
+        setIsLoading(false)
+        setError(signInErr.message)
+        return
+      }
     }
+    // Auth state change in App.jsx handles the rest — no need to call onLogin()
+  }
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (!email) { setError('Digite seu e-mail.'); return }
+    setIsLoading(true)
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    })
+    setIsLoading(false)
+    if (err) { setError(err.message); return }
+    setView('forgot-sent')
   }
 
   const fillDemo = () => {
@@ -253,6 +284,63 @@ export default function LoginScreen({ onLogin }) {
               </motion.div>
             )}
 
+            {/* ── Forgot password views ── */}
+            {view === 'forgot' && (
+              <AnimatePresence mode="wait">
+                <motion.div key="forgot" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+                  <div style={{ marginBottom: 28 }}>
+                    <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 22 : 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 8px' }}>
+                      Redefinir senha
+                    </h2>
+                    <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>
+                      Enviaremos um link para seu e-mail.
+                    </p>
+                  </div>
+                  <form onSubmit={handleForgotPassword}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>E-mail</label>
+                    <input
+                      type="email" value={email}
+                      onChange={e => { setEmail(e.target.value); setError('') }}
+                      placeholder="seu@email.com" autoComplete="email"
+                      className="input-premium"
+                      style={{ width: '100%', padding: '14px 16px', borderRadius: 13, fontSize: 15, marginBottom: 14 }}
+                    />
+                    {error && (
+                      <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 14, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', fontSize: 13, color: '#fb7185', fontWeight: 500 }}>{error}</div>
+                    )}
+                    <motion.button type="submit" disabled={isLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      style={{ width: '100%', padding: '14px', borderRadius: 13, fontSize: 14, fontWeight: 700, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', background: isLoading ? 'rgba(99,102,241,0.4)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white', fontFamily: 'Inter, sans-serif', marginBottom: 12 }}>
+                      {isLoading ? 'Enviando...' : 'Enviar link de redefinição'}
+                    </motion.button>
+                    <button type="button" onClick={() => { setView('login'); setError('') }}
+                      style={{ width: '100%', padding: '12px', borderRadius: 13, fontSize: 14, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                      Voltar ao login
+                    </button>
+                  </form>
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {view === 'forgot-sent' && (
+              <AnimatePresence mode="wait">
+                <motion.div key="sent" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }} style={{ textAlign: 'center', padding: '20px 0' }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                    <span style={{ fontSize: 26 }}>📬</span>
+                  </div>
+                  <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, color: '#f1f5f9', margin: '0 0 10px' }}>Link enviado!</h2>
+                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, margin: '0 0 24px' }}>
+                    Verifique sua caixa de entrada em <strong style={{ color: 'rgba(255,255,255,0.6)' }}>{email}</strong> e clique no link para redefinir sua senha.
+                  </p>
+                  <button onClick={() => { setView('login'); setError('') }}
+                    style={{ padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    Voltar ao login
+                  </button>
+                </motion.div>
+              </AnimatePresence>
+            )}
+
+            {/* ── Normal login ── */}
+            {view === 'login' && <>
             {/* Card header */}
             <motion.div
               initial={{ opacity: 0, y: 8 }}
@@ -324,6 +412,7 @@ export default function LoginScreen({ onLogin }) {
                   </label>
                   <button
                     type="button"
+                    onClick={() => { setView('forgot'); setError('') }}
                     style={{
                       background: 'none', border: 'none', fontSize: 12,
                       color: '#818cf8', cursor: 'pointer', fontWeight: 600,
@@ -500,6 +589,7 @@ export default function LoginScreen({ onLogin }) {
                 </div>
               </div>
             </motion.div>
+            </>}
           </div>
 
           {/* Below-card note */}

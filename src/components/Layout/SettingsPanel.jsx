@@ -634,6 +634,82 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                       </div>
                     </div>
 
+                    {/* Diarista illustration */}
+                    <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 20px' }}>
+                      <svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <radialGradient id="bgGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.12"/>
+                            <stop offset="100%" stopColor="#6366f1" stopOpacity="0"/>
+                          </radialGradient>
+                          <linearGradient id="bodyGrad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stopColor="#6366f1"/>
+                            <stop offset="100%" stopColor="#4f46e5"/>
+                          </linearGradient>
+                          <linearGradient id="skinGrad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stopColor="#a78bfa"/>
+                            <stop offset="100%" stopColor="#818cf8"/>
+                          </linearGradient>
+                        </defs>
+
+                        {/* Background glow */}
+                        <circle cx="80" cy="80" r="78" fill="url(#bgGlow)" stroke="rgba(99,102,241,0.12)" strokeWidth="1"/>
+
+                        {/* Mop handle (behind body) */}
+                        <rect x="114" y="22" width="5" height="96" rx="2.5" fill="#a5b4fc" transform="rotate(8 114 22)"/>
+
+                        {/* Right hand on handle */}
+                        <circle cx="119" cy="58" r="7" fill="url(#skinGrad)"/>
+
+                        {/* Head */}
+                        <circle cx="74" cy="42" r="19" fill="url(#skinGrad)"/>
+                        {/* Hair */}
+                        <path d="M55 40 Q55 23 74 23 Q93 23 93 40 Q88 30 74 30 Q60 30 55 40Z" fill="#4338ca"/>
+                        {/* Eyes */}
+                        <circle cx="68" cy="40" r="3" fill="white"/>
+                        <circle cx="80" cy="40" r="3" fill="white"/>
+                        <circle cx="69" cy="41" r="1.5" fill="#312e81"/>
+                        <circle cx="81" cy="41" r="1.5" fill="#312e81"/>
+                        {/* Smile */}
+                        <path d="M67 49 Q74 55 81 49" stroke="white" strokeWidth="1.8" strokeLinecap="round" fill="none"/>
+
+                        {/* Uniform top */}
+                        <path d="M50 68 Q50 62 74 62 Q98 62 98 68 L100 104 Q100 108 96 108 L52 108 Q48 108 48 104 Z" fill="url(#bodyGrad)"/>
+                        {/* Apron/bib */}
+                        <path d="M68 62 L74 80 L80 62" fill="rgba(129,140,248,0.5)"/>
+                        {/* Pocket */}
+                        <rect x="55" y="74" width="14" height="11" rx="3" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.18)" strokeWidth="1"/>
+
+                        {/* Left arm (hanging) */}
+                        <path d="M50 70 Q38 78 36 92" stroke="#818cf8" strokeWidth="11" strokeLinecap="round" fill="none"/>
+                        <circle cx="36" cy="96" r="7.5" fill="url(#skinGrad)"/>
+
+                        {/* Right arm (raised, holding mop) */}
+                        <path d="M98 70 Q108 64 114 56" stroke="#818cf8" strokeWidth="11" strokeLinecap="round" fill="none"/>
+
+                        {/* Pants */}
+                        <path d="M48 108 L52 138 Q52 142 58 142 L68 142 Q74 142 74 138 L74 108" fill="#4338ca"/>
+                        <path d="M100 108 L96 138 Q96 142 90 142 L80 142 Q74 142 74 138 L74 108" fill="#4338ca"/>
+                        {/* Shoes */}
+                        <rect x="46" y="137" width="22" height="10" rx="5" fill="#312e81"/>
+                        <rect x="80" y="137" width="22" height="10" rx="5" fill="#312e81"/>
+
+                        {/* Mop head */}
+                        <rect x="108" y="116" width="36" height="14" rx="7" fill="#c7d2fe" opacity="0.75"/>
+                        <line x1="110" y1="120" x2="107" y2="132" stroke="#c7d2fe" strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="117" y1="122" x2="115" y2="134" stroke="#c7d2fe" strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="124" y1="123" x2="123" y2="135" stroke="#c7d2fe" strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="131" y1="122" x2="131" y2="134" stroke="#c7d2fe" strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="138" y1="120" x2="140" y2="132" stroke="#c7d2fe" strokeWidth="2" strokeLinecap="round"/>
+
+                        {/* Sparkle accents */}
+                        <circle cx="30" cy="50" r="2.5" fill="#818cf8" opacity="0.4"/>
+                        <circle cx="140" cy="42" r="1.8" fill="#a5b4fc" opacity="0.5"/>
+                        <circle cx="25" cy="110" r="1.5" fill="#6366f1" opacity="0.4"/>
+                        <circle cx="148" cy="100" r="2" fill="#c7d2fe" opacity="0.4"/>
+                      </svg>
+                    </div>
+
                     <SectionTitle>{t.system}</SectionTitle>
                     {[
                       { label: 'Versão', value: '2.1.0' },
