@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, User, Bell, Shield, Info, CalendarDays, Plus, Trash2,
@@ -7,7 +8,7 @@ import {
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { format, parseISO, isValid } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { HOLIDAYS_2025 } from '../../data/mockData'
+import { HOLIDAYS_2026 } from '../../data/mockData'
 
 const UI = {
   pt: {
@@ -108,7 +109,7 @@ const LANG_OPTIONS = [
   { value: 'es', label: 'Español' },
 ]
 
-function Toggle({ checked, onChange }) {
+function Toggle({ checked, onChange, offBg }) {
   return (
     <motion.button
       type="button"
@@ -117,7 +118,7 @@ function Toggle({ checked, onChange }) {
         width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
         background: checked
           ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-          : 'rgba(255,255,255,0.1)',
+          : offBg ?? 'rgba(255,255,255,0.1)',
         position: 'relative', flexShrink: 0,
         boxShadow: checked ? '0 0 12px rgba(99,102,241,0.4)' : 'none',
         transition: 'background 0.25s, box-shadow 0.25s',
@@ -136,25 +137,25 @@ function Toggle({ checked, onChange }) {
   )
 }
 
-function Row({ label, sub, children }) {
+function Row({ label, sub, children, rowBorder, rowLabel, rowSub }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.04)',
+      padding: '14px 0', borderBottom: `1px solid ${rowBorder ?? 'rgba(255,255,255,0.04)'}`,
     }}>
       <div>
-        <div style={{ fontSize: 14, fontWeight: 500, color: '#e2e8f0' }}>{label}</div>
-        {sub && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{sub}</div>}
+        <div style={{ fontSize: 14, fontWeight: 500, color: rowLabel ?? '#e2e8f0' }}>{label}</div>
+        {sub && <div style={{ fontSize: 12, color: rowSub ?? 'rgba(255,255,255,0.3)', marginTop: 2 }}>{sub}</div>}
       </div>
       {children}
     </div>
   )
 }
 
-function SectionTitle({ children }) {
+function SectionTitle({ children, color }) {
   return (
     <div style={{
-      fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.25)',
+      fontSize: 10, fontWeight: 700, color: color ?? 'rgba(255,255,255,0.25)',
       textTransform: 'uppercase', letterSpacing: '0.1em',
       marginBottom: 4, marginTop: 8,
     }}>
@@ -163,7 +164,7 @@ function SectionTitle({ children }) {
   )
 }
 
-export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang = 'pt', setLang, holidays = [], setHolidays }) {
+export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang = 'pt', setLang, holidays = [], setHolidays, currentUser }) {
   const isMobile = useIsMobile()
   const [tab, setTab] = useState('profile')
   const [newHolidayDate, setNewHolidayDate] = useState('')
@@ -172,10 +173,85 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
     email: true, push: false, payments: true, newWorkers: true, reports: false,
   })
   const [profile, setProfile] = useState({
-    name: 'Administrador', email: 'admin@diariapro.com', role: 'Administrador',
+    name: currentUser?.user_metadata?.name ?? currentUser?.email?.split('@')[0] ?? 'Usuário',
+    email: currentUser?.email ?? '',
+    role: 'Administrador',
   })
   const [draftLang, setDraftLang] = useState(lang)
   const [draftTheme, setDraftTheme] = useState(theme)
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+  const [pwdForm, setPwdForm] = useState({ current: '', newPwd: '', confirm: '' })
+  const [pwdMsg, setPwdMsg] = useState({ text: '', error: false })
+  const [pwdLoading, setPwdLoading] = useState(false)
+
+  const isLight = theme === 'light'
+  const sp = {
+    bg:               isLight ? 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(135deg, #131325 0%, #0f0f1e 100%)',
+    border:           isLight ? 'rgba(0,0,0,0.08)'        : 'rgba(255,255,255,0.08)',
+    shadow:           isLight ? '0 24px 64px rgba(0,0,0,0.15)' : '0 24px 64px rgba(0,0,0,0.8)',
+    headerBorder:     isLight ? 'rgba(0,0,0,0.07)'        : 'rgba(255,255,255,0.06)',
+    title:            isLight ? '#1e293b'                  : '#f1f5f9',
+    sub:              isLight ? 'rgba(0,0,0,0.35)'         : 'rgba(255,255,255,0.3)',
+    closeBg:          isLight ? 'rgba(0,0,0,0.04)'         : 'rgba(255,255,255,0.04)',
+    closeBorder:      isLight ? 'rgba(0,0,0,0.08)'         : 'rgba(255,255,255,0.08)',
+    closeColor:       isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.4)',
+    tabBorder:        isLight ? 'rgba(0,0,0,0.07)'         : 'rgba(255,255,255,0.05)',
+    tabActiveBg:      isLight ? 'rgba(99,102,241,0.1)'     : 'rgba(99,102,241,0.15)',
+    tabIcon:          isLight ? 'rgba(0,0,0,0.3)'          : 'rgba(255,255,255,0.3)',
+    tabText:          isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.4)',
+    tabActiveText:    isLight ? '#4f46e5'                  : '#e0e7ff',
+    profileName:      isLight ? '#1e293b'                  : '#f1f5f9',
+    profileSub:       isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.35)',
+    labelColor:       isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.35)',
+    rowBorder:        isLight ? 'rgba(0,0,0,0.06)'         : 'rgba(255,255,255,0.04)',
+    rowLabel:         isLight ? '#1e293b'                  : '#e2e8f0',
+    rowSub:           isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.3)',
+    sectionTitle:     isLight ? 'rgba(0,0,0,0.3)'          : 'rgba(255,255,255,0.25)',
+    holidayItemBg:    isLight ? 'rgba(0,0,0,0.02)'         : 'rgba(255,255,255,0.03)',
+    holidayItemBorder:isLight ? 'rgba(0,0,0,0.07)'         : 'rgba(255,255,255,0.06)',
+    holidayLabel:     isLight ? '#1e293b'                  : '#e2e8f0',
+    holidayDate:      isLight ? 'rgba(0,0,0,0.3)'          : 'rgba(255,255,255,0.25)',
+    emptyBorder:      isLight ? 'rgba(0,0,0,0.1)'          : 'rgba(255,255,255,0.08)',
+    emptyColor:       isLight ? 'rgba(0,0,0,0.25)'         : 'rgba(255,255,255,0.25)',
+    aboutCardBorder:  isLight ? 'rgba(99,102,241,0.2)'     : 'rgba(99,102,241,0.15)',
+    aboutTitle:       isLight ? '#1e293b'                  : '#f1f5f9',
+    aboutSub:         isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.35)',
+    rowValue:         isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.4)',
+    supportBorder:    isLight ? 'rgba(0,0,0,0.1)'          : 'rgba(255,255,255,0.08)',
+    supportBg:        isLight ? 'rgba(0,0,0,0.03)'         : 'rgba(255,255,255,0.03)',
+    toggleOffBg:      isLight ? 'rgba(0,0,0,0.1)'          : 'rgba(255,255,255,0.1)',
+    holidayDescColor: isLight ? 'rgba(0,0,0,0.4)'          : 'rgba(255,255,255,0.3)',
+    holidayTitleColor:isLight ? '#1e293b'                  : '#e2e8f0',
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!pwdForm.newPwd) return setPwdMsg({ text: 'Digite a nova senha.', error: true })
+    if (pwdForm.newPwd.length < 6) return setPwdMsg({ text: 'A senha deve ter pelo menos 6 caracteres.', error: true })
+    if (pwdForm.newPwd !== pwdForm.confirm) return setPwdMsg({ text: 'As senhas não coincidem.', error: true })
+    setPwdLoading(true)
+    setPwdMsg({ text: '', error: false })
+    const { error } = await supabase.auth.updateUser({ password: pwdForm.newPwd })
+    setPwdLoading(false)
+    if (error) {
+      setPwdMsg({ text: error.message, error: true })
+    } else {
+      setPwdMsg({ text: 'Senha atualizada com sucesso!', error: false })
+      setPwdForm({ current: '', newPwd: '', confirm: '' })
+      setTimeout(() => setPwdMsg({ text: '', error: false }), 3000)
+    }
+  }
+
+  const handleSaveProfile = async () => {
+    setSaving(true)
+    setSaveMsg('')
+    await supabase.auth.updateUser({ data: { name: profile.name } })
+    setLang(draftLang)
+    setTheme(draftTheme)
+    setSaving(false)
+    setSaveMsg('Salvo!')
+    setTimeout(() => setSaveMsg(''), 2000)
+  }
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -217,17 +293,17 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
           width: isMobile ? '100%' : 680,
           maxWidth: isMobile ? undefined : 'calc(100vw - 296px)',
           maxHeight: 'calc(100vh - 48px)',
-          background: 'linear-gradient(135deg, #131325 0%, #0f0f1e 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: sp.bg,
+          border: `1px solid ${sp.border}`,
           borderRadius: 24, overflow: 'hidden',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+          boxShadow: sp.shadow,
           display: 'flex', flexDirection: 'column',
         }}
       >
         {/* Modal header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '22px 28px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: '22px 28px', borderBottom: `1px solid ${sp.headerBorder}`,
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -239,22 +315,22 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
               <Zap size={15} color="#818cf8" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
+              <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 800, color: sp.title, letterSpacing: '-0.02em' }}>
                 {t.title}
               </h2>
-              <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>Diária Pro</p>
+              <p style={{ margin: 0, fontSize: 11, color: sp.sub }}>Diária Pro</p>
             </div>
           </div>
           <motion.button
-            whileHover={{ scale: 1.1, background: 'rgba(255,255,255,0.08)' }}
+            whileHover={{ scale: 1.1, background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}
             whileTap={{ scale: 0.9 }}
             onClick={onClose}
             style={{
               width: 32, height: 32, borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.08)',
-              background: 'rgba(255,255,255,0.04)',
+              border: `1px solid ${sp.closeBorder}`,
+              background: sp.closeBg,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: 'rgba(255,255,255,0.4)',
+              cursor: 'pointer', color: sp.closeColor,
             }}
           >
             <X size={15} />
@@ -266,12 +342,12 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
           {/* Tabs — sidebar on desktop, horizontal strip on mobile */}
           <div style={isMobile ? {
             flexShrink: 0, padding: '8px 12px',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
+            borderBottom: `1px solid ${sp.tabBorder}`,
             display: 'flex', flexDirection: 'row', gap: 4,
             overflowX: 'auto',
           } : {
             width: 180, flexShrink: 0, padding: '16px 10px',
-            borderRight: '1px solid rgba(255,255,255,0.05)',
+            borderRight: `1px solid ${sp.tabBorder}`,
             display: 'flex', flexDirection: 'column', gap: 2,
           }}>
             {TABS.map(tabItem => {
@@ -285,12 +361,12 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                     display: 'flex', alignItems: 'center', gap: isMobile ? 6 : 10,
                     padding: isMobile ? '8px 12px' : '10px 12px',
                     borderRadius: 10, border: 'none', cursor: 'pointer',
-                    background: active ? 'rgba(99,102,241,0.15)' : 'transparent',
+                    background: active ? sp.tabActiveBg : 'transparent',
                     transition: 'all 0.18s', flexShrink: 0,
                   }}
                 >
-                  <tabItem.icon size={15} color={active ? '#818cf8' : 'rgba(255,255,255,0.3)'} />
-                  <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? '#e0e7ff' : 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>
+                  <tabItem.icon size={15} color={active ? '#818cf8' : sp.tabIcon} />
+                  <span style={{ fontSize: 13, fontWeight: active ? 600 : 400, color: active ? sp.tabActiveText : sp.tabText, whiteSpace: 'nowrap' }}>
                     {tabItem.label}
                   </span>
                 </motion.button>
@@ -324,23 +400,23 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                         AD
                       </div>
                       <div>
-                        <div style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9' }}>
+                        <div style={{ fontSize: 17, fontWeight: 700, color: sp.profileName }}>
                           {profile.name}
                         </div>
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 3 }}>
+                        <div style={{ fontSize: 12, color: sp.profileSub, marginTop: 3 }}>
                           {profile.role} · {profile.email}
                         </div>
                       </div>
                     </div>
 
-                    <SectionTitle>{t.accountInfo}</SectionTitle>
+                    <SectionTitle color={sp.sectionTitle}>{t.accountInfo}</SectionTitle>
                     <div style={{ marginBottom: 20 }}>
                       {[
                         { label: 'Nome', key: 'name', type: 'text' },
                         { label: 'E-mail', key: 'email', type: 'email' },
                       ].map(f => (
                         <div key={f.key} style={{ marginBottom: 12 }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.35)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: sp.labelColor, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                             {f.label}
                           </label>
                           <input
@@ -354,8 +430,8 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                       ))}
                     </div>
 
-                    <SectionTitle>{t.displayPrefs}</SectionTitle>
-                    <Row label={t.language} sub={t.languageSub}>
+                    <SectionTitle color={sp.sectionTitle}>{t.displayPrefs}</SectionTitle>
+                    <Row label={t.language} sub={t.languageSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
                       <select
                         value={draftLang}
                         onChange={e => setDraftLang(e.target.value)}
@@ -367,14 +443,14 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                         ))}
                       </select>
                     </Row>
-                    <Row label={t.dateFormat} sub={t.dateFormatSub}>
+                    <Row label={t.dateFormat} sub={t.dateFormatSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
                       <select className="input-premium" style={{ padding: '8px 12px', borderRadius: 9, fontSize: 13, cursor: 'pointer' }}>
                         <option>DD/MM/AAAA</option>
                         <option>MM/DD/AAAA</option>
                         <option>AAAA-MM-DD</option>
                       </select>
                     </Row>
-                    <Row label={t.appearance} sub={t.appearanceSub}>
+                    <Row label={t.appearance} sub={t.appearanceSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => setDraftTheme(draftTheme === 'dark' ? 'light' : 'dark')}
@@ -408,11 +484,12 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => { setLang(draftLang); setTheme(draftTheme) }}
+                        onClick={handleSaveProfile}
+                        disabled={saving}
                         className="btn-primary"
-                        style={{ padding: '12px 28px', borderRadius: 12, fontSize: 14, fontWeight: 700 }}
+                        style={{ padding: '12px 28px', borderRadius: 12, fontSize: 14, fontWeight: 700, opacity: saving ? 0.7 : 1 }}
                       >
-                        {t.save}
+                        {saving ? 'Salvando...' : saveMsg || t.save}
                       </motion.button>
                     </div>
                   </div>
@@ -421,23 +498,23 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                 {/* ── NOTIFICATIONS ── */}
                 {tab === 'notifs' && (
                   <div>
-                    <SectionTitle>{t.notifChannels}</SectionTitle>
-                    <Row label={t.emailNotif} sub={t.emailSub}>
-                      <Toggle checked={notifSettings.email} onChange={v => setNotif('email', v)} />
+                    <SectionTitle color={sp.sectionTitle}>{t.notifChannels}</SectionTitle>
+                    <Row label={t.emailNotif} sub={t.emailSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
+                      <Toggle checked={notifSettings.email} onChange={v => setNotif('email', v)} offBg={sp.toggleOffBg} />
                     </Row>
-                    <Row label={t.pushNotif} sub={t.pushSub}>
-                      <Toggle checked={notifSettings.push} onChange={v => setNotif('push', v)} />
+                    <Row label={t.pushNotif} sub={t.pushSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
+                      <Toggle checked={notifSettings.push} onChange={v => setNotif('push', v)} offBg={sp.toggleOffBg} />
                     </Row>
 
-                    <SectionTitle style={{ marginTop: 24 }}>{t.notifTypes}</SectionTitle>
-                    <Row label={t.payments} sub={t.paymentsSub}>
-                      <Toggle checked={notifSettings.payments} onChange={v => setNotif('payments', v)} />
+                    <SectionTitle color={sp.sectionTitle} style={{ marginTop: 24 }}>{t.notifTypes}</SectionTitle>
+                    <Row label={t.payments} sub={t.paymentsSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
+                      <Toggle checked={notifSettings.payments} onChange={v => setNotif('payments', v)} offBg={sp.toggleOffBg} />
                     </Row>
-                    <Row label={t.newWorkers} sub={t.newWorkersSub}>
-                      <Toggle checked={notifSettings.newWorkers} onChange={v => setNotif('newWorkers', v)} />
+                    <Row label={t.newWorkers} sub={t.newWorkersSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
+                      <Toggle checked={notifSettings.newWorkers} onChange={v => setNotif('newWorkers', v)} offBg={sp.toggleOffBg} />
                     </Row>
-                    <Row label={t.reports} sub={t.reportsSub}>
-                      <Toggle checked={notifSettings.reports} onChange={v => setNotif('reports', v)} />
+                    <Row label={t.reports} sub={t.reportsSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
+                      <Toggle checked={notifSettings.reports} onChange={v => setNotif('reports', v)} offBg={sp.toggleOffBg} />
                     </Row>
                   </div>
                 )}
@@ -445,33 +522,46 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                 {/* ── SECURITY ── */}
                 {tab === 'security' && (
                   <div>
-                    <SectionTitle>{t.auth}</SectionTitle>
+                    <SectionTitle color={sp.sectionTitle}>{t.auth}</SectionTitle>
                     <div style={{ marginBottom: 16 }}>
-                      {[t.currentPwd, t.newPwd, t.confirmPwd].map((label, i) => (
-                        <div key={i} style={{ marginBottom: 12 }}>
-                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.35)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            {label}
+                      {[
+                        { label: t.currentPwd, key: 'current' },
+                        { label: t.newPwd,     key: 'newPwd' },
+                        { label: t.confirmPwd, key: 'confirm' },
+                      ].map(f => (
+                        <div key={f.key} style={{ marginBottom: 12 }}>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: sp.labelColor, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            {f.label}
                           </label>
                           <input
                             type="password"
                             placeholder="••••••••"
+                            value={pwdForm[f.key]}
+                            onChange={e => setPwdForm(p => ({ ...p, [f.key]: e.target.value }))}
                             className="input-premium"
                             style={{ width: '100%', padding: '11px 14px', borderRadius: 11, fontSize: 14 }}
                           />
                         </div>
                       ))}
+                      {pwdMsg.text && (
+                        <div style={{ fontSize: 12, marginBottom: 8, color: pwdMsg.error ? '#f43f5e' : '#10b981', fontWeight: 500 }}>
+                          {pwdMsg.text}
+                        </div>
+                      )}
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
+                        onClick={handleUpdatePassword}
+                        disabled={pwdLoading}
                         className="btn-primary"
-                        style={{ marginTop: 8, padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 700 }}
+                        style={{ marginTop: 8, padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 700, opacity: pwdLoading ? 0.7 : 1 }}
                       >
-                        {t.updatePwd}
+                        {pwdLoading ? 'Atualizando...' : t.updatePwd}
                       </motion.button>
                     </div>
 
-                    <SectionTitle>{t.session}</SectionTitle>
-                    <Row label={t.session} sub={t.sessionInfo}>
+                    <SectionTitle color={sp.sectionTitle}>{t.session}</SectionTitle>
+                    <Row label={t.session} sub={t.sessionInfo} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
                       <span style={{
                         padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700,
                         background: 'rgba(16,185,129,0.1)', color: '#10b981',
@@ -480,8 +570,8 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                         {t.active}
                       </span>
                     </Row>
-                    <Row label={t.twoFA} sub={t.twoFASub}>
-                      <Toggle checked={false} onChange={() => {}} />
+                    <Row label={t.twoFA} sub={t.twoFASub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
+                      <Toggle checked={false} onChange={() => {}} offBg={sp.toggleOffBg} />
                     </Row>
                   </div>
                 )}
@@ -490,8 +580,8 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                 {tab === 'holidays' && (
                   <div>
                     <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', marginBottom: 4 }}>{t.holidaysRegistered}</div>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>{t.holidaysDesc}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: sp.holidayTitleColor, marginBottom: 4 }}>{t.holidaysRegistered}</div>
+                      <div style={{ fontSize: 12, color: sp.holidayDescColor }}>{t.holidaysDesc}</div>
                     </div>
 
                     {/* Add new holiday */}
@@ -502,7 +592,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                           value={newHolidayDate}
                           onChange={e => { setNewHolidayDate(e.target.value); setHolidayError('') }}
                           className="input-premium"
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: 11, fontSize: 14, colorScheme: 'dark' }}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: 11, fontSize: 14, colorScheme: isLight ? 'light' : 'dark' }}
                         />
                         {holidayError && (
                           <div style={{ fontSize: 11, color: '#f43f5e', marginTop: 4 }}>{holidayError}</div>
@@ -537,8 +627,8 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                       {holidays.length === 0 ? (
                         <div style={{
                           padding: '24px', borderRadius: 14, textAlign: 'center',
-                          border: '1px dashed rgba(255,255,255,0.08)',
-                          color: 'rgba(255,255,255,0.25)', fontSize: 13,
+                          border: `1px dashed ${sp.emptyBorder}`,
+                          color: sp.emptyColor, fontSize: 13,
                         }}>
                           {t.noHolidays}
                         </div>
@@ -547,7 +637,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                         const label = isValid(parsed)
                           ? format(parsed, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
                           : dateStr
-                        const isDefault = HOLIDAYS_2025.includes(dateStr)
+                        const isDefault = HOLIDAYS_2026.includes(dateStr)
                         return (
                           <motion.div
                             key={dateStr}
@@ -557,8 +647,8 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                             style={{
                               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                               padding: '11px 14px', borderRadius: 12,
-                              background: 'rgba(255,255,255,0.03)',
-                              border: '1px solid rgba(255,255,255,0.06)',
+                              background: sp.holidayItemBg,
+                              border: `1px solid ${sp.holidayItemBorder}`,
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -567,8 +657,8 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                                 background: isDefault ? '#f59e0b' : '#6366f1',
                               }} />
                               <div>
-                                <div style={{ fontSize: 13, fontWeight: 500, color: '#e2e8f0' }}>{label}</div>
-                                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 1, fontFamily: 'monospace' }}>{dateStr}</div>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: sp.holidayLabel }}>{label}</div>
+                                <div style={{ fontSize: 10, color: sp.holidayDate, marginTop: 1, fontFamily: 'monospace' }}>{dateStr}</div>
                               </div>
                             </div>
                             <motion.button
@@ -593,7 +683,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => { setHolidays([...HOLIDAYS_2025]); setHolidayError('') }}
+                      onClick={() => { setHolidays([...HOLIDAYS_2026]); setHolidayError('') }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 8,
                         padding: '10px 16px', borderRadius: 11, border: '1px solid rgba(245,158,11,0.2)',
@@ -613,7 +703,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                     {/* Logo card */}
                     <div style={{
                       padding: '24px', borderRadius: 16, marginBottom: 20,
-                      background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)',
+                      background: 'rgba(99,102,241,0.06)', border: `1px solid ${sp.aboutCardBorder}`,
                       display: 'flex', alignItems: 'center', gap: 16,
                     }}>
                       <div style={{
@@ -625,10 +715,10 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                         <Zap size={22} color="white" fill="white" />
                       </div>
                       <div>
-                        <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, color: '#f1f5f9' }}>
+                        <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, color: sp.aboutTitle }}>
                           Diária Pro
                         </div>
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: sp.aboutSub, marginTop: 2 }}>
                           Versão 2.1.0 · Build 2025.05
                         </div>
                       </div>
@@ -710,33 +800,33 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                       </svg>
                     </div>
 
-                    <SectionTitle>{t.system}</SectionTitle>
+                    <SectionTitle color={sp.sectionTitle}>{t.system}</SectionTitle>
                     {[
                       { label: 'Versão', value: '2.1.0' },
                       { label: 'Ambiente', value: 'Produção' },
                       { label: 'Licença', value: 'Empresarial' },
                       { label: 'Última atualização', value: '05/05/2025' },
                     ].map((r, i) => (
-                      <Row key={i} label={r.label}>
-                        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontWeight: 500 }}>
+                      <Row key={i} label={r.label} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
+                        <span style={{ fontSize: 13, color: sp.rowValue, fontWeight: 500 }}>
                           {r.value}
                         </span>
                       </Row>
                     ))}
 
-                    <SectionTitle>{t.support}</SectionTitle>
+                    <SectionTitle color={sp.sectionTitle}>{t.support}</SectionTitle>
                     {[
                       { label: t.docs,   icon: ExternalLink },
                       { label: t.ticket, icon: ExternalLink },
                     ].map((r, i) => (
-                      <Row key={i} label={r.label}>
+                      <Row key={i} label={r.label} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)',
-                            background: 'rgba(255,255,255,0.03)', color: '#818cf8',
+                            padding: '6px 12px', borderRadius: 8, border: `1px solid ${sp.supportBorder}`,
+                            background: sp.supportBg, color: '#818cf8',
                             cursor: 'pointer', fontSize: 12, fontWeight: 600,
                           }}
                         >

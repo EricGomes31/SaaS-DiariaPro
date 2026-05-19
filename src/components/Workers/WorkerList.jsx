@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Search, Clock, Check, X } from 'lucide-react'
-import { DEPARTMENTS, JOB_TITLES, getWorkerStats, isWeekendOrHoliday } from '../../data/mockData'
+import { DEPARTMENTS, JOB_TITLES, getWorkerStats, isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
 import { format } from 'date-fns'
 import WorkerModal from './WorkerModal'
 import WorkerProfile from './WorkerProfile'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
+import { upsertWorkDays } from '../../lib/db'
 
 const TODAY = format(new Date(), 'yyyy-MM-dd')
 
@@ -21,15 +22,31 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
   const [editWorker, setEditWorker] = useState(null)
   const [selectedWorker, setSelectedWorker] = useState(null)
   const [registeringWorker, setRegisteringWorker] = useState(null)
+  const [overtimeWorker, setOvertimeWorker] = useState(null)
+  const [overtimeValue, setOvertimeValue] = useState('')
 
-  const filtered = workers.filter(w => {
+  const filtered = useMemo(() => workers.filter(w => {
     const matchSearch = w.name.toLowerCase().includes(search.toLowerCase()) ||
       w.jobTitle.toLowerCase().includes(search.toLowerCase())
     const matchDept = filterDept === 'all' || w.department === filterDept
     const matchStatus = filterStatus === 'all' || w.status === filterStatus
     const matchLocation = filterLocation === 'all' || w.locations.includes(filterLocation)
     return matchSearch && matchDept && matchStatus && matchLocation
-  })
+  }), [workers, search, filterDept, filterStatus, filterLocation])
+
+  const getOvertimeHourlyRate = (worker) => worker.department === 'Total' ? 15 : 10
+
+  const handleAddOvertime = (worker, hours) => {
+    const hourlyRate = getOvertimeHourlyRate(worker)
+    const amount = (parseFloat(hours) || 0) * hourlyRate
+    const todayWD = workDays.find(d => d.workerId === worker.id && d.date === TODAY)
+    if (!todayWD) return
+    const updatedWD = { ...todayWD, overtime: amount, earnings: todayWD.rate + amount }
+    setWorkDays(prev => prev.map(d => d.id === updatedWD.id ? updatedWD : d))
+    upsertWorkDays([updatedWD]).catch(() => {})
+    setOvertimeWorker(null)
+    setOvertimeValue('')
+  }
 
   const handleAddWorkDay = (day) => setWorkDays(prev => [...prev, day])
   const handleDeleteWorkDay = (dayId) => setWorkDays(prev => prev.filter(d => d.id !== dayId))
@@ -43,7 +60,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
 
   const confirmAttendance = (worker, locationId) => {
     const isSpecial = isWeekendOrHoliday(TODAY, holidays)
-    const rate = isSpecial ? worker.weekendRate : worker.weekdayRate
+    const rate = getWorkerDayRate(worker, TODAY, holidays)
     handleAddWorkDay({
       id: `${worker.id}-${TODAY}-${Date.now()}`,
       workerId: worker.id,
@@ -102,7 +119,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
   }
 
   return (
-    <div onClick={() => setRegisteringWorker(null)}>
+    <div onClick={() => { setRegisteringWorker(null); setOvertimeWorker(null); setOvertimeValue('') }}>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', flexWrap: 'wrap', gap: isMobile ? 16 : 0 }}>
@@ -200,8 +217,11 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
           {filtered.map((worker, i) => {
             const stats = getWorkerStats(worker.id, workDays)
             const workerLocations = locations.filter(l => worker.locations.includes(l.id))
-            const registeredToday = workDays.some(d => d.workerId === worker.id && d.date === TODAY)
+            const todayWorkDay = workDays.find(d => d.workerId === worker.id && d.date === TODAY)
+            const registeredToday = !!todayWorkDay
+            const currentOvertime = todayWorkDay?.overtime || 0
             const isPickingLocation = registeringWorker === worker.id
+            const isAddingOvertime = overtimeWorker === worker.id
 
             return (
               <motion.div
@@ -210,7 +230,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ delay: i * 0.04, duration: 0.3 }}
+                transition={{ duration: 0.2 }}
                 className="card-hover"
                 onClick={() => { setRegisteringWorker(null); setSelectedWorker(worker) }}
                 style={{
@@ -275,8 +295,8 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                     <div style={{ fontSize: 10, color: 'var(--card-dim)' }}>{t.perDay}</div>
                   </div>
                   <div style={{ background: 'rgba(245,158,11,0.05)', borderRadius: 10, padding: '12px', border: '1px solid rgba(245,158,11,0.1)' }}>
-                    <div style={{ fontSize: 11, color: 'rgba(245,158,11,0.6)', marginBottom: 4 }}>{t.weekendLabel}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#f59e0b' }}>R$ {worker.weekendRate}</div>
+                    <div style={{ fontSize: 11, color: 'rgba(245,158,11,0.6)', marginBottom: 4 }}>Sábado</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#f59e0b' }}>R$ {worker.saturdayRate}</div>
                     <div style={{ fontSize: 10, color: 'rgba(245,158,11,0.4)' }}>{t.perDay}</div>
                   </div>
                 </div>
@@ -318,13 +338,91 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                     <>
                       {/* Attendance */}
                       {registeredToday ? (
-                        <div style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                          padding: '9px 14px', borderRadius: 10,
-                          background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
-                        }}>
-                          <Check size={14} color="#10b981" />
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#10b981' }}>{t.registeredToday}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                            padding: '9px 14px', borderRadius: 10,
+                            background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
+                          }}>
+                            <Check size={14} color="#10b981" />
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#10b981' }}>{t.registeredToday}</span>
+                          </div>
+
+                          {/* Overtime section */}
+                          {isAddingOvertime ? (
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.15 }}
+                              onClick={e => e.stopPropagation()}
+                              style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                            >
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <span style={{ fontSize: 11, color: 'var(--card-muted)', whiteSpace: 'nowrap' }}>Horas:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={overtimeValue}
+                                  onChange={e => setOvertimeValue(e.target.value)}
+                                  placeholder="0"
+                                  autoFocus
+                                  onClick={e => e.stopPropagation()}
+                                  style={{
+                                    flex: 1, padding: '6px 10px', borderRadius: 8,
+                                    border: '1px solid rgba(99,102,241,0.3)',
+                                    background: 'var(--inner-bg)', color: 'var(--card-heading)',
+                                    fontSize: 13, outline: 'none', minWidth: 0,
+                                  }}
+                                />
+                                <button
+                                  onClick={() => handleAddOvertime(worker, overtimeValue)}
+                                  style={{
+                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
+                                    background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
+                                    color: '#10b981', display: 'flex', alignItems: 'center',
+                                  }}
+                                >
+                                  <Check size={13} />
+                                </button>
+                                <button
+                                  onClick={() => { setOvertimeWorker(null); setOvertimeValue('') }}
+                                  style={{
+                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
+                                    background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)',
+                                    color: 'var(--card-dim)', display: 'flex', alignItems: 'center',
+                                  }}
+                                >
+                                  <X size={13} />
+                                </button>
+                              </div>
+                              {parseFloat(overtimeValue) > 0 && (
+                                <div style={{ fontSize: 11, color: '#10b981', paddingLeft: 2 }}>
+                                  {overtimeValue}h × R${getOvertimeHourlyRate(worker)}/h = R$ {((parseFloat(overtimeValue) || 0) * getOvertimeHourlyRate(worker)).toFixed(2)}
+                                </div>
+                              )}
+                            </motion.div>
+                          ) : (
+                            <motion.button
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={e => { e.stopPropagation(); setOvertimeWorker(worker.id); setOvertimeValue('') }}
+                              style={{
+                                width: '100%', padding: '7px 14px', borderRadius: 9, cursor: 'pointer',
+                                fontSize: 12, fontWeight: 600,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                background: currentOvertime > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.06)',
+                                border: `1px solid ${currentOvertime > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(99,102,241,0.2)'}`,
+                                color: currentOvertime > 0 ? '#f59e0b' : 'var(--card-sub)',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              <Clock size={12} />
+                              {currentOvertime > 0
+                                ? `${t.overtimeRegistered}: R$ ${currentOvertime.toLocaleString('pt-BR')}`
+                                : t.addOvertime}
+                            </motion.button>
+                          )}
                         </div>
                       ) : isPickingLocation ? (
                         <motion.div

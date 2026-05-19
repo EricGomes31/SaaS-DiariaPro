@@ -5,13 +5,6 @@ import { DEPARTMENTS, JOB_TITLES, PIX_KEY_TYPES } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
 
-const SCHEDULES = [
-  'Turno A (06h–14h)',
-  'Turno B (14h–22h)',
-  'Turno C (22h–06h)',
-  'Comercial (08h–17h)',
-  'Turno A (06h–18h)',
-]
 
 const Field = ({ label, children }) => (
   <div style={{ marginBottom: 18 }}>
@@ -29,9 +22,10 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
     name: worker?.name || '',
     department: worker?.department || DEPARTMENTS[0],
     jobTitle: worker?.jobTitle || JOB_TITLES[0],
-    schedule: worker?.schedule || SCHEDULES[0],
+    schedule: worker?.schedule || '',
     weekdayRate: worker?.weekdayRate || 150,
-    weekendRate: worker?.weekendRate || 220,
+    saturdayRate: worker?.saturdayRate || 220,
+    sundayRate: worker?.sundayRate || 220,
     locations: worker?.locations || [],
     status: worker?.status || 'active',
     phone: worker?.phone || '',
@@ -157,14 +151,13 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
               <Field label={t.scheduleLabel}>
-                <select
+                <input
                   value={form.schedule}
                   onChange={e => setForm(p => ({ ...p, schedule: e.target.value }))}
+                  placeholder="Ex: 06h–14h"
                   className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14, cursor: 'pointer' }}
-                >
-                  {SCHEDULES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                />
               </Field>
               <Field label={t.phoneLabel}>
                 <input
@@ -186,7 +179,7 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>{t.remunerationSection}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>
                   {t.weekdayRateLabel}
@@ -202,12 +195,25 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.7)', marginBottom: 6 }}>
-                  {t.weekendRateLabel}
+                  Sábado (R$)
                 </label>
                 <input
                   type="number"
-                  value={form.weekendRate}
-                  onChange={e => setForm(p => ({ ...p, weekendRate: +e.target.value }))}
+                  value={form.saturdayRate}
+                  onChange={e => setForm(p => ({ ...p, saturdayRate: +e.target.value }))}
+                  min="0"
+                  className="input-premium"
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 16, fontWeight: 700, borderColor: 'rgba(245,158,11,0.2)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.7)', marginBottom: 6 }}>
+                  Domingo (R$)
+                </label>
+                <input
+                  type="number"
+                  value={form.sundayRate}
+                  onChange={e => setForm(p => ({ ...p, sundayRate: +e.target.value }))}
                   min="0"
                   className="input-premium"
                   style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 16, fontWeight: 700, borderColor: 'rgba(245,158,11,0.2)' }}

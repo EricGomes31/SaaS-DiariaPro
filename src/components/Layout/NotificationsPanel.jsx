@@ -50,9 +50,35 @@ const INITIAL_NOTIFICATIONS = [
   },
 ]
 
-export default function NotificationsPanel({ onClose }) {
+export default function NotificationsPanel({ onClose, theme }) {
   const isMobile = useIsMobile()
   const [notes, setNotes] = useState(INITIAL_NOTIFICATIONS)
+
+  const isLight = theme === 'light'
+  const np = {
+    bg:           isLight ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(180deg, #111122 0%, #0d0d1a 100%)',
+    border:       isLight ? 'rgba(0,0,0,0.08)'   : 'rgba(255,255,255,0.07)',
+    shadow:       isLight ? '8px 0 40px rgba(0,0,0,0.12)' : '8px 0 40px rgba(0,0,0,0.5)',
+    headerBorder: isLight ? 'rgba(0,0,0,0.07)'   : 'rgba(255,255,255,0.06)',
+    title:        isLight ? '#1e293b'             : '#f1f5f9',
+    sub:          isLight ? 'rgba(0,0,0,0.35)'   : 'rgba(255,255,255,0.3)',
+    closeBg:      isLight ? 'rgba(0,0,0,0.04)'   : 'rgba(255,255,255,0.04)',
+    closeBorder:  isLight ? 'rgba(0,0,0,0.08)'   : 'rgba(255,255,255,0.08)',
+    closeColor:   isLight ? 'rgba(0,0,0,0.4)'    : 'rgba(255,255,255,0.4)',
+    emptyColor:   isLight ? 'rgba(0,0,0,0.2)'    : 'rgba(255,255,255,0.2)',
+    itemReadBg:   isLight ? 'rgba(0,0,0,0.02)'   : 'rgba(255,255,255,0.02)',
+    itemUnreadBg: isLight ? '#ffffff'             : 'rgba(22,22,40,0.9)',
+    itemReadBorder:   isLight ? 'rgba(0,0,0,0.05)'  : 'rgba(255,255,255,0.04)',
+    itemUnreadBorder: isLight ? 'rgba(0,0,0,0.1)'   : 'rgba(255,255,255,0.08)',
+    notifTitle:   isLight ? '#1e293b'             : '#f1f5f9',
+    notifTitleRead: isLight ? 'rgba(0,0,0,0.4)'  : 'rgba(255,255,255,0.45)',
+    notifBody:    isLight ? 'rgba(0,0,0,0.45)'   : 'rgba(255,255,255,0.35)',
+    notifTime:    isLight ? 'rgba(0,0,0,0.3)'    : 'rgba(255,255,255,0.2)',
+    deleteBg:     isLight ? 'rgba(0,0,0,0.04)'   : 'rgba(255,255,255,0.04)',
+    deleteIcon:   isLight ? 'rgba(0,0,0,0.2)'    : 'rgba(255,255,255,0.2)',
+    footerBorder: isLight ? 'rgba(0,0,0,0.07)'   : 'rgba(255,255,255,0.05)',
+    footerText:   isLight ? 'rgba(0,0,0,0.3)'    : 'rgba(255,255,255,0.2)',
+  }
 
   const unreadCount = notes.filter(n => !n.read).length
 
@@ -90,16 +116,16 @@ export default function NotificationsPanel({ onClose }) {
         style={{
           position: 'fixed', top: 0, left: isMobile ? 0 : 260,
           width: isMobile ? '100%' : 360, height: '100vh',
-          background: 'linear-gradient(180deg, #111122 0%, #0d0d1a 100%)',
-          borderRight: '1px solid rgba(255,255,255,0.07)',
+          background: np.bg,
+          borderRight: `1px solid ${np.border}`,
           zIndex: 201, display: 'flex', flexDirection: 'column',
-          boxShadow: '8px 0 40px rgba(0,0,0,0.5)',
+          boxShadow: np.shadow,
         }}
       >
         {/* Header */}
         <div style={{
           padding: '24px 20px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: `1px solid ${np.headerBorder}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -111,10 +137,10 @@ export default function NotificationsPanel({ onClose }) {
                 <Bell size={15} color="#f43f5e" />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
+                <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, color: np.title, letterSpacing: '-0.02em' }}>
                   Notificações
                 </h2>
-                <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+                <p style={{ margin: 0, fontSize: 11, color: np.sub }}>
                   {unreadCount > 0 ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}` : 'Tudo em dia'}
                 </p>
               </div>
@@ -125,10 +151,10 @@ export default function NotificationsPanel({ onClose }) {
               onClick={onClose}
               style={{
                 width: 32, height: 32, borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'rgba(255,255,255,0.04)',
+                border: `1px solid ${np.closeBorder}`,
+                background: np.closeBg,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: 'rgba(255,255,255,0.4)',
+                cursor: 'pointer', color: np.closeColor,
               }}
             >
               <X size={15} />
@@ -162,7 +188,7 @@ export default function NotificationsPanel({ onClose }) {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                style={{ textAlign: 'center', padding: '60px 0', color: 'rgba(255,255,255,0.2)' }}
+                style={{ textAlign: 'center', padding: '60px 0', color: np.emptyColor }}
               >
                 <div style={{ fontSize: 36, marginBottom: 12 }}>🔔</div>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>Nenhuma notificação</div>
@@ -181,8 +207,8 @@ export default function NotificationsPanel({ onClose }) {
                     onClick={() => markRead(n.id)}
                     style={{
                       position: 'relative', padding: '14px', borderRadius: 13, marginBottom: 8,
-                      background: n.read ? 'rgba(255,255,255,0.02)' : 'rgba(22,22,40,0.9)',
-                      border: `1px solid ${n.read ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.08)'}`,
+                      background: n.read ? np.itemReadBg : np.itemUnreadBg,
+                      border: `1px solid ${n.read ? np.itemReadBorder : np.itemUnreadBorder}`,
                       cursor: n.read ? 'default' : 'pointer',
                       transition: 'all 0.2s',
                     }}
@@ -208,18 +234,18 @@ export default function NotificationsPanel({ onClose }) {
                       <div style={{ flex: 1, overflow: 'hidden', paddingRight: n.read ? 0 : 16 }}>
                         <div style={{
                           fontSize: 13, fontWeight: n.read ? 500 : 700,
-                          color: n.read ? 'rgba(255,255,255,0.45)' : '#f1f5f9',
+                          color: n.read ? np.notifTitleRead : np.notifTitle,
                           marginBottom: 3,
                         }}>
                           {n.title}
                         </div>
                         <div style={{
-                          fontSize: 12, color: 'rgba(255,255,255,0.35)',
+                          fontSize: 12, color: np.notifBody,
                           lineHeight: 1.5, marginBottom: 6,
                         }}>
                           {n.body}
                         </div>
-                        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>
+                        <div style={{ fontSize: 11, color: np.notifTime, fontWeight: 500 }}>
                           {n.time}
                         </div>
                       </div>
@@ -233,12 +259,12 @@ export default function NotificationsPanel({ onClose }) {
                       style={{
                         position: 'absolute', bottom: 12, right: 12,
                         width: 24, height: 24, borderRadius: 6, border: 'none',
-                        background: 'rgba(255,255,255,0.04)',
+                        background: np.deleteBg,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer', transition: 'all 0.2s',
                       }}
                     >
-                      <Trash2 size={12} color="rgba(255,255,255,0.2)" />
+                      <Trash2 size={12} color={np.deleteIcon} />
                     </motion.button>
                   </motion.div>
                 )
@@ -250,8 +276,8 @@ export default function NotificationsPanel({ onClose }) {
         {/* Footer */}
         <div style={{
           padding: '14px 20px',
-          borderTop: '1px solid rgba(255,255,255,0.05)',
-          fontSize: 12, color: 'rgba(255,255,255,0.2)', textAlign: 'center',
+          borderTop: `1px solid ${np.footerBorder}`,
+          fontSize: 12, color: np.footerText, textAlign: 'center',
         }}>
           Clique em uma notificação para marcá-la como lida
         </div>

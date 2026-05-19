@@ -23,7 +23,7 @@ const NAV_LABELS = {
   es: { dashboard: 'Dashboard', workers: 'Trabajadores', tracking: 'Control de Días', payments: 'Pagos', locations: 'Lugares', reports: 'Informes', notifications: 'Notificaciones', settings: 'Configuración' },
 }
 
-export default function Sidebar({ activePage, setActivePage, onLogout, theme, setTheme, lang = 'pt', setLang, holidays = [], setHolidays, isMobile = false, sidebarOpen = false, setSidebarOpen }) {
+export default function Sidebar({ activePage, setActivePage, onLogout, theme, setTheme, lang = 'pt', setLang, holidays = [], setHolidays, isMobile = false, sidebarOpen = false, setSidebarOpen, currentUser }) {
   const t = i18n[lang] ?? i18n.pt
   const [showNotifications, setShowNotifications] = useState(false)
   const [showSettings, setShowSettings]           = useState(false)
@@ -33,6 +33,31 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
   const handleLogout = () => {
     setConfirmLogout(false)
     onLogout()
+  }
+
+  const isLight = theme === 'light'
+  const sb = {
+    bg:              isLight ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%)',
+    border:          isLight ? 'rgba(0,0,0,0.08)'  : 'rgba(255,255,255,0.05)',
+    divider:         isLight ? 'rgba(0,0,0,0.07)'  : 'rgba(255,255,255,0.05)',
+    logoText:        isLight ? '#1e293b'            : '#f1f5f9',
+    logoSub:         isLight ? 'rgba(0,0,0,0.35)'  : 'rgba(255,255,255,0.3)',
+    sectionLabel:    isLight ? 'rgba(0,0,0,0.3)'   : 'rgba(255,255,255,0.2)',
+    navIcon:         isLight ? 'rgba(0,0,0,0.4)'   : 'rgba(255,255,255,0.35)',
+    navText:         isLight ? 'rgba(0,0,0,0.5)'   : 'rgba(255,255,255,0.45)',
+    navActiveText:   isLight ? '#4f46e5'            : '#e0e7ff',
+    closeBtnBg:      isLight ? 'rgba(0,0,0,0.06)'  : 'rgba(255,255,255,0.05)',
+    closeBtnBorder:  isLight ? 'rgba(0,0,0,0.1)'   : 'rgba(255,255,255,0.08)',
+    closeBtnIcon:    isLight ? 'rgba(0,0,0,0.4)'   : 'rgba(255,255,255,0.5)',
+    badgeBorder:     isLight ? '#f1f5f9'            : '#0d0d1a',
+    cancelBg:        isLight ? 'rgba(0,0,0,0.04)'  : 'rgba(255,255,255,0.04)',
+    cancelBorder:    isLight ? 'rgba(0,0,0,0.08)'  : 'rgba(255,255,255,0.08)',
+    cancelText:      isLight ? 'rgba(0,0,0,0.4)'   : 'rgba(255,255,255,0.4)',
+    confirmText:     isLight ? 'rgba(0,0,0,0.6)'   : 'rgba(255,255,255,0.6)',
+    userText:        isLight ? '#1e293b'            : '#e2e8f0',
+    userEmail:       isLight ? 'rgba(0,0,0,0.35)'  : 'rgba(255,255,255,0.3)',
+    logoutIcon:      isLight ? 'rgba(0,0,0,0.25)'  : 'rgba(255,255,255,0.25)',
+    hoverBg:         isLight ? 'rgba(0,0,0,0.04)'  : 'rgba(255,255,255,0.03)',
   }
 
   const handleNavClick = (id) => {
@@ -71,8 +96,8 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
         transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         style={{
           position: 'fixed', top: 0, left: 0, height: '100vh', width: 260,
-          background: 'linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%)',
-          borderRight: '1px solid rgba(255,255,255,0.05)',
+          background: sb.bg,
+          borderRight: `1px solid ${sb.border}`,
           display: 'flex', flexDirection: 'column',
           zIndex: isMobile ? 200 : 100,
           overflow: 'hidden',
@@ -94,10 +119,10 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 <Zap size={18} color="white" fill="white" />
               </div>
               <div>
-                <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
+                <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: sb.logoText, letterSpacing: '-0.02em' }}>
                   Diária Pro
                 </div>
-                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 10, color: sb.logoSub, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                   {t.brandSubtitle}
                 </div>
               </div>
@@ -109,22 +134,22 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 onClick={closeSidebar}
                 style={{
                   width: 32, height: 32, borderRadius: 8,
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: sb.closeBtnBg,
+                  border: `1px solid ${sb.closeBtnBorder}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer',
                 }}
               >
-                <X size={16} color="rgba(255,255,255,0.5)" />
+                <X size={16} color={sb.closeBtnIcon} />
               </button>
             )}
           </div>
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginTop: 24 }} />
+          <div style={{ height: 1, background: sb.divider, marginTop: 24 }} />
         </div>
 
         {/* ── Section label ── */}
         <div style={{ padding: '0 24px 12px' }}>
-          <span style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ fontSize: 10, fontWeight: 600, color: sb.sectionLabel, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {t.menuPrincipal}
           </span>
         </div>
@@ -174,12 +199,12 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 )}
                 <Icon
                   size={18}
-                  color={isActive ? '#818cf8' : 'rgba(255,255,255,0.35)'}
+                  color={isActive ? '#818cf8' : sb.navIcon}
                   style={{ transition: 'color 0.2s ease', flexShrink: 0 }}
                 />
                 <span style={{
                   fontSize: 14, fontWeight: isActive ? 600 : 400,
-                  color: isActive ? '#e0e7ff' : 'rgba(255,255,255,0.45)',
+                  color: isActive ? sb.navActiveText : sb.navText,
                   transition: 'color 0.2s ease',
                   fontFamily: 'Inter, sans-serif',
                 }}>
@@ -192,11 +217,11 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
 
         {/* ── Bottom section ── */}
         <div style={{ padding: '16px 12px 24px' }}>
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', marginBottom: 16 }} />
+          <div style={{ height: 1, background: sb.divider, marginBottom: 16 }} />
 
           {/* Notifications */}
           <motion.button
-            whileHover={{ x: 2, background: 'rgba(255,255,255,0.03)' }}
+            whileHover={{ x: 2, background: sb.hoverBg }}
             whileTap={{ scale: 0.98 }}
             onClick={() => { setShowNotifications(true); setConfirmLogout(false) }}
             style={{
@@ -207,16 +232,16 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
             }}
           >
             <div style={{ position: 'relative' }}>
-              <Bell size={18} color={showNotifications ? '#818cf8' : 'rgba(255,255,255,0.35)'} />
+              <Bell size={18} color={showNotifications ? '#818cf8' : sb.navIcon} />
               {unreadCount > 0 && (
                 <div style={{
                   position: 'absolute', top: -2, right: -2, width: 8, height: 8,
                   borderRadius: '50%', background: '#f43f5e',
-                  border: '1.5px solid #0d0d1a',
+                  border: `1.5px solid ${sb.badgeBorder}`,
                 }} />
               )}
             </div>
-            <span style={{ fontSize: 14, color: showNotifications ? '#818cf8' : 'rgba(255,255,255,0.45)', fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' }}>
+            <span style={{ fontSize: 14, color: showNotifications ? '#818cf8' : sb.navText, fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' }}>
               {NAV_LABELS[lang]?.notifications ?? 'Notificações'}
             </span>
             {unreadCount > 0 && (
@@ -232,7 +257,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
 
           {/* Settings */}
           <motion.button
-            whileHover={{ x: 2, background: 'rgba(255,255,255,0.03)' }}
+            whileHover={{ x: 2, background: sb.hoverBg }}
             whileTap={{ scale: 0.98 }}
             onClick={() => { setShowSettings(true); setConfirmLogout(false) }}
             style={{
@@ -242,8 +267,8 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
               transition: 'all 0.2s',
             }}
           >
-            <Settings size={18} color={showSettings ? '#818cf8' : 'rgba(255,255,255,0.35)'} />
-            <span style={{ fontSize: 14, color: showSettings ? '#818cf8' : 'rgba(255,255,255,0.45)', fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' }}>
+            <Settings size={18} color={showSettings ? '#818cf8' : sb.navIcon} />
+            <span style={{ fontSize: 14, color: showSettings ? '#818cf8' : sb.navText, fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' }}>
               {NAV_LABELS[lang]?.settings ?? 'Configurações'}
             </span>
           </motion.button>
@@ -265,7 +290,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
                     <AlertTriangle size={13} color="#f43f5e" />
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                    <span style={{ fontSize: 12, color: sb.confirmText, fontWeight: 500 }}>
                       {t.logoutConfirm}
                     </span>
                   </div>
@@ -274,8 +299,8 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                       onClick={() => setConfirmLogout(false)}
                       style={{
                         flex: 1, padding: '7px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)',
-                        color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
+                        border: `1px solid ${sb.cancelBorder}`, background: sb.cancelBg,
+                        color: sb.cancelText, cursor: 'pointer',
                       }}
                     >
                       {t.cancel}
@@ -300,7 +325,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
 
           {/* ── User profile + logout trigger ── */}
           <motion.div
-            whileHover={{ background: 'rgba(255,255,255,0.03)' }}
+            whileHover={{ background: sb.hoverBg }}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 14px', borderRadius: 10,
@@ -314,14 +339,14 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
               fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0,
               boxShadow: '0 0 12px rgba(99,102,241,0.3)',
             }}>
-              AD
+              {(currentUser?.email ?? 'AD').slice(0, 2).toUpperCase()}
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Administrador
+              <div style={{ fontSize: 13, fontWeight: 600, color: sb.userText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentUser?.user_metadata?.name ?? currentUser?.email?.split('@')[0] ?? 'Usuário'}
               </div>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
-                admin@diariapro.com
+              <div style={{ fontSize: 11, color: sb.userEmail, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {currentUser?.email ?? ''}
               </div>
             </div>
             <motion.button
@@ -336,7 +361,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
-              <LogOut size={15} color={confirmLogout ? '#f43f5e' : 'rgba(255,255,255,0.25)'} />
+              <LogOut size={15} color={confirmLogout ? '#f43f5e' : sb.logoutIcon} />
             </motion.button>
           </motion.div>
         </div>
@@ -348,6 +373,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           <NotificationsPanel
             onClose={() => setShowNotifications(false)}
             onRead={() => setUnreadCount(0)}
+            theme={theme}
           />
         )}
       </AnimatePresence>
@@ -362,6 +388,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
             setLang={setLang}
             holidays={holidays}
             setHolidays={setHolidays}
+            currentUser={currentUser}
           />
         )}
       </AnimatePresence>

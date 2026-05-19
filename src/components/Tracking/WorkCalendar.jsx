@@ -5,8 +5,9 @@ import {
   getDay, subMonths, addMonths, isSameDay, parseISO, isToday
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, X, MapPin, Users } from 'lucide-react'
-import { isWeekendOrHoliday } from '../../data/mockData'
+import { ChevronLeft, ChevronRight, Plus, X, MapPin, Users, Clock, Check } from 'lucide-react'
+import { isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
+import { upsertWorkDays } from '../../lib/db'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
 
@@ -18,6 +19,24 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
   const [showAddPanel, setShowAddPanel] = useState(false)
   const [addForm, setAddForm] = useState({ workerId: workers[0]?.id, locationId: locations[0]?.id })
   const [filterWorker, setFilterWorker] = useState('all')
+  const [workerSearch, setWorkerSearch] = useState('')
+  const [showWorkerDropdown, setShowWorkerDropdown] = useState(false)
+  const [overtimeEntry, setOvertimeEntry] = useState(null)
+  const [overtimeHours, setOvertimeHours] = useState('')
+  const [confirmDeleteEntry, setConfirmDeleteEntry] = useState(null)
+
+  const getOvertimeHourlyRate = (worker) => worker?.department === 'Total' ? 15 : 10
+
+  const handleSaveOvertime = (entry) => {
+    const worker = workers.find(w => w.id === entry.workerId)
+    const hourlyRate = getOvertimeHourlyRate(worker)
+    const amount = (parseFloat(overtimeHours) || 0) * hourlyRate
+    const updated = { ...entry, overtime: amount, earnings: entry.rate + amount }
+    setWorkDays(prev => prev.map(d => d.id === updated.id ? updated : d))
+    upsertWorkDays([updated]).catch(() => {})
+    setOvertimeEntry(null)
+    setOvertimeHours('')
+  }
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -38,7 +57,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
     const dateStr = format(selectedDay, 'yyyy-MM-dd')
     const worker = workers.find(w => w.id === addForm.workerId)
     const isSpecial = isWeekendOrHoliday(dateStr, holidays)
-    const rate = isSpecial ? worker.weekendRate : worker.weekdayRate
+    const rate = getWorkerDayRate(worker, dateStr, holidays)
 
     const exists = workDays.some(d => d.workerId === addForm.workerId && d.date === dateStr)
     if (exists) return
@@ -54,6 +73,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
     }
     setWorkDays(prev => [...prev, newEntry])
     setShowAddPanel(false)
+    setWorkerSearch('')
   }
 
   const removeEntry = (entryId) => {
@@ -305,10 +325,17 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                           position: 'relative',
                         }}
                       >
+                        {confirmDeleteEntry === entry.id ? (
+                          <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <span style={{ fontSize: 10, color: '#f43f5e', fontWeight: 600, whiteSpace: 'nowrap' }}>Excluir?</span>
+                            <button onClick={() => { removeEntry(entry.id); setConfirmDeleteEntry(null) }} style={{ padding: '3px 7px', borderRadius: 5, cursor: 'pointer', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.35)', color: '#f43f5e', fontSize: 10, fontWeight: 700 }}>Sim</button>
+                            <button onClick={() => setConfirmDeleteEntry(null)} style={{ padding: '3px 7px', borderRadius: 5, cursor: 'pointer', background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)', color: 'var(--card-dim)', fontSize: 10, fontWeight: 700 }}>Não</button>
+                          </div>
+                        ) : (
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => removeEntry(entry.id)}
+                          onClick={() => setConfirmDeleteEntry(entry.id)}
                           style={{
                             position: 'absolute', top: 10, right: 10,
                             width: 22, height: 22, borderRadius: 6, border: 'none',
@@ -319,6 +346,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                         >
                           <X size={11} />
                         </motion.button>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                           <div style={{
                             width: 28, height: 28, borderRadius: 8,
@@ -333,15 +361,71 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                             <div style={{ fontSize: 10, color: 'var(--card-muted)' }}>{worker?.jobTitle}</div>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: loc?.color }} />
                             <span style={{ fontSize: 11, color: loc?.color, fontWeight: 600 }}>{loc?.shortName}</span>
                           </div>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: entry.isWeekend ? '#f59e0b' : '#818cf8' }}>
-                            R$ {entry.earnings}
-                          </span>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: 15, fontWeight: 800, color: entry.isWeekend ? '#f59e0b' : '#818cf8' }}>
+                              R$ {entry.earnings}
+                            </span>
+                            {(entry.overtime || 0) > 0 && (
+                              <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>
+                                +R$ {entry.overtime.toFixed(2)} HE
+                              </div>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Overtime */}
+                        {overtimeEntry === entry.id ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: 4, alignItems: 'center' }}>
+                              <span style={{ fontSize: 10, color: 'var(--card-muted)', whiteSpace: 'nowrap' }}>Horas:</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={overtimeHours}
+                                onChange={e => setOvertimeHours(e.target.value)}
+                                placeholder="0"
+                                autoFocus
+                                style={{
+                                  width: '100%', padding: '5px 6px', borderRadius: 7, fontSize: 12,
+                                  border: '1px solid rgba(99,102,241,0.3)',
+                                  background: 'var(--card-bg)', color: 'var(--card-heading)', outline: 'none',
+                                  boxSizing: 'border-box',
+                                }}
+                              />
+                              <button onClick={() => handleSaveOvertime(entry)} style={{ padding: '5px 6px', borderRadius: 6, cursor: 'pointer', background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                                <Check size={12} />
+                              </button>
+                              <button onClick={() => { setOvertimeEntry(null); setOvertimeHours('') }} style={{ padding: '5px 6px', borderRadius: 6, cursor: 'pointer', background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)', color: 'var(--card-dim)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                                <X size={12} />
+                              </button>
+                            </div>
+                            {parseFloat(overtimeHours) > 0 && (
+                              <div style={{ fontSize: 10, color: '#10b981' }}>
+                                {overtimeHours}h × R${getOvertimeHourlyRate(workers.find(w => w.id === entry.workerId))}/h = R$ {((parseFloat(overtimeHours) || 0) * getOvertimeHourlyRate(workers.find(w => w.id === entry.workerId))).toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setOvertimeEntry(entry.id); setOvertimeHours('') }}
+                            style={{
+                              width: '100%', padding: '5px 10px', borderRadius: 7, cursor: 'pointer',
+                              fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                              background: (entry.overtime || 0) > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.06)',
+                              border: `1px solid ${(entry.overtime || 0) > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(99,102,241,0.15)'}`,
+                              color: (entry.overtime || 0) > 0 ? '#f59e0b' : 'var(--card-sub)',
+                            }}
+                          >
+                            <Clock size={11} />
+                            {(entry.overtime || 0) > 0 ? `HE: R$ ${entry.overtime.toFixed(2)}` : '+ Hora Extra'}
+                          </button>
+                        )}
                       </motion.div>
                     )
                   })}
@@ -381,18 +465,55 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#818cf8', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         {t.registerWork}
                       </div>
-                      <div style={{ marginBottom: 10 }}>
+                      <div style={{ marginBottom: 10, position: 'relative' }}>
                         <label style={{ fontSize: 11, color: 'var(--card-muted)', display: 'block', marginBottom: 5 }}>{t.workerLabel}</label>
-                        <select
-                          value={addForm.workerId}
-                          onChange={e => setAddForm(p => ({ ...p, workerId: e.target.value }))}
+                        <input
+                          type="text"
+                          value={workerSearch}
+                          onChange={e => {
+                            setWorkerSearch(e.target.value)
+                            setShowWorkerDropdown(true)
+                            if (!e.target.value) setAddForm(p => ({ ...p, workerId: '' }))
+                          }}
+                          onFocus={() => setShowWorkerDropdown(true)}
+                          placeholder="Digite o nome..."
                           className="input-premium"
-                          style={{ width: '100%', padding: '9px 12px', borderRadius: 10, fontSize: 13, cursor: 'pointer' }}
-                        >
-                          {workers.filter(w => w.status === 'active').map(w => (
-                            <option key={w.id} value={w.id}>{w.name.split(' ')[0]} {w.name.split(' ').slice(-1)}</option>
-                          ))}
-                        </select>
+                          style={{ width: '100%', padding: '9px 12px', borderRadius: 10, fontSize: 13, boxSizing: 'border-box' }}
+                          autoComplete="off"
+                        />
+                        {showWorkerDropdown && workerSearch.length > 0 && (() => {
+                          const matches = workers
+                            .filter(w => w.status === 'active' && w.name.toLowerCase().includes(workerSearch.toLowerCase()))
+                          return matches.length > 0 ? (
+                            <div style={{
+                              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                              background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                              borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                              maxHeight: 180, overflowY: 'auto', marginTop: 4,
+                            }}>
+                              {matches.map(w => (
+                                <div
+                                  key={w.id}
+                                  onMouseDown={() => {
+                                    setAddForm(p => ({ ...p, workerId: w.id }))
+                                    setWorkerSearch(w.name)
+                                    setShowWorkerDropdown(false)
+                                  }}
+                                  style={{
+                                    padding: '9px 12px', fontSize: 13, cursor: 'pointer',
+                                    color: 'var(--card-heading)',
+                                    borderBottom: '1px solid var(--inner-border)',
+                                    transition: 'background 0.15s',
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.background = 'var(--inner-bg)'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  {w.name}
+                                </div>
+                              ))}
+                            </div>
+                          ) : null
+                        })()}
                       </div>
                       <div style={{ marginBottom: 14 }}>
                         <label style={{ fontSize: 11, color: 'var(--card-muted)', display: 'block', marginBottom: 5 }}>{t.locationLabel}</label>
@@ -407,7 +528,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                       </div>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button
-                          onClick={() => setShowAddPanel(false)}
+                          onClick={() => { setShowAddPanel(false); setWorkerSearch('') }}
                           style={{
                             flex: 1, padding: '9px', borderRadius: 10, fontSize: 13, fontWeight: 500,
                             border: '1px solid var(--card-border)', background: 'var(--inner-bg)',
@@ -431,7 +552,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                     animate={{ opacity: 1 }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => setShowAddPanel(true)}
+                    onClick={() => { setShowAddPanel(true); setWorkerSearch(''); setAddForm({ workerId: '', locationId: locations[0]?.id }) }}
                     style={{
                       width: '100%', padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 600,
                       border: '1px dashed rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.05)',

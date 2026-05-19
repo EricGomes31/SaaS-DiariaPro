@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis,
@@ -7,7 +7,7 @@ import {
 import { Download, Filter, TrendingUp, CalendarDays, BarChart3, Users, ChevronDown, FileText, FileSpreadsheet, CheckCircle2, Loader2, X } from 'lucide-react'
 import { getDashboardStats, getWorkerStats } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { format, subDays, parseISO, getDay } from 'date-fns'
+import { format, subDays, parseISO, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import i18n from '../../i18n'
 
@@ -151,15 +151,160 @@ function exportPDF({ topEarners, byLocation, monthlyData, period, stats }) {
   win.document.close()
 }
 
+// ── CSV por dia (Reports) ──────────────────────────────────
+function exportDayCSV(dayRows) {
+  const BOM = '﻿'
+  const headers = ['Data', 'Dia da Semana', 'Trabalhador', 'Cargo', 'Departamento', 'Local', 'Tipo', 'Valor (R$)']
+  const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+  const rows = dayRows.map(d => {
+    const date = parseISO(d.date)
+    const dow = DAYS[date.getDay()]
+    const tipo = d.isWeekend ? (date.getDay() === 6 ? 'Sábado' : 'Dom/Feriado') : 'Semana'
+    return [format(date, 'dd/MM/yyyy'), dow, d.workerName, d.jobTitle, d.department, d.locationName || '—', tipo, d.earnings.toFixed(2).replace('.', ',')]
+  })
+  const total = dayRows.reduce((s, d) => s + d.earnings, 0)
+  const csv = [
+    `Relatório por Dia — Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+    '', headers.join(';'), ...rows.map(r => r.join(';')), '',
+    `TOTAL GERAL;;;;;;;${total.toFixed(2).replace('.', ',')}`,
+  ].join('\n')
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url
+  a.download = `diaria-pro-por-dia-${format(new Date(), 'yyyy-MM-dd')}.csv`
+  a.click(); URL.revokeObjectURL(url)
+}
+
+function exportDayPDF(dayRows) {
+  const dateStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+  const total = dayRows.reduce((s, d) => s + d.earnings, 0)
+  const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+  const rows = dayRows.map(d => {
+    const date = parseISO(d.date)
+    const dow = DAYS[date.getDay()]
+    const isWkd = d.isWeekend
+    const isSun = date.getDay() === 0
+    const color = isWkd ? (isSun ? '#ef4444' : '#f59e0b') : '#6366f1'
+    const tipo = isWkd ? (date.getDay() === 6 ? 'Sábado' : 'Dom/Feriado') : 'Semana'
+    return `<tr><td><strong>${format(date, 'dd/MM/yyyy')}</strong><br/><small>${dow}</small></td><td>${d.workerName}<br/><small>${d.jobTitle}</small></td><td>${d.locationName || '—'}</td><td style="color:${color};font-weight:600">${tipo}</td><td class="num" style="color:${color};font-weight:700">R$ ${d.earnings.toLocaleString('pt-BR')}</td></tr>`
+  }).join('')
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório por Dia</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Inter',sans-serif;padding:40px;color:#1e1e2e}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #f1f5f9}.logo{display:flex;align-items:center;gap:12px}.logo-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px}.logo-text h1{font-size:20px;font-weight:800}.logo-text p{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em}.meta{text-align:right}.meta h2{font-size:16px;font-weight:700;color:#6366f1}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}.kpi{padding:14px 18px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc}.kpi label{display:block;font-size:10px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.kpi span{font-size:20px;font-weight:800}.green span{color:#10b981}.indigo span{color:#6366f1}.gold span{color:#f59e0b}table{width:100%;border-collapse:collapse;font-size:13px}thead tr{background:#6366f1;color:#fff}thead th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}th.num,td.num{text-align:right}tbody tr:nth-child(even){background:#f8fafc}td{padding:11px 14px;border-bottom:1px solid #f1f5f9;vertical-align:middle}td small{color:#94a3b8;font-size:11px;display:block;margin-top:2px}.total-row{background:#f0fdf4!important;border-top:2px solid #10b981}.total-row td{font-weight:700;padding:14px}.footer{margin-top:28px;padding-top:14px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:11px;color:#94a3b8}@media print{body{padding:20px}@page{margin:1cm}}</style></head>
+  <body><div class="header"><div class="logo"><div class="logo-icon">D</div><div class="logo-text"><h1>Diária Pro</h1><p>Gestão de Diaristas</p></div></div><div class="meta"><h2>Relatório por Dia</h2><p>${dateStr}</p></div></div>
+  <div class="kpis"><div class="kpi green"><label>Total</label><span>R$ ${total.toLocaleString('pt-BR')}</span></div><div class="kpi indigo"><label>Registros</label><span>${dayRows.length} dias</span></div><div class="kpi gold"><label>Fins de Semana</label><span>${dayRows.filter(d => d.isWeekend).length} dias</span></div></div>
+  <table><thead><tr><th>Data</th><th>Trabalhador</th><th>Local</th><th>Tipo</th><th class="num">Valor</th></tr></thead><tbody>${rows}<tr class="total-row"><td colspan="4">TOTAL GERAL</td><td class="num" style="color:#10b981;font-size:15px">R$ ${total.toLocaleString('pt-BR')}</td></tr></tbody></table>
+  <div class="footer"><span>Diária Pro — Relatório gerado automaticamente</span><span>${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span></div>
+  <script>window.onload=()=>window.print()</script></body></html>`
+  const win = window.open('', '_blank'); win.document.write(html); win.document.close()
+}
+
+// ── Mini date picker ───────────────────────────────────────
+function MiniDatePicker({ value, onChange, label }) {
+  const [open, setOpen]   = useState(false)
+  const [month, setMonth] = useState(() => value ? parseISO(value) : new Date())
+  const [pos, setPos]     = useState({ top: 0, left: 0, width: 0 })
+  const btnRef            = useRef(null)
+  const calRef            = useRef(null)
+
+  const selected = value ? parseISO(value) : null
+  const firstDay = startOfMonth(month)
+  const days     = eachDayOfInterval({ start: firstDay, end: endOfMonth(month) })
+  const startPad = getDay(firstDay)
+  const WEEK     = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 6, left: r.left, width: Math.max(r.width, 240) })
+    }
+    setOpen(o => !o)
+  }
+
+  const handleSelect = (day) => { onChange(format(day, 'yyyy-MM-dd')); setOpen(false) }
+  const handleClear  = (e)   => { e.stopPropagation(); onChange('') }
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => {
+      if (btnRef.current?.contains(e.target)) return
+      if (calRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
+      <motion.button ref={btnRef} type="button" whileTap={{ scale: 0.97 }} onClick={handleOpen}
+        style={{ width: '100%', padding: '9px 12px', borderRadius: 10, cursor: 'pointer', background: open ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)', border: `1.5px solid ${open ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)'}`, color: selected ? '#f1f5f9' : 'rgba(255,255,255,0.3)', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'all 0.2s' }}>
+        <span>{selected ? format(selected, 'dd/MM/yyyy') : 'dd/mm/aaaa'}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {selected && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} onClick={handleClear} style={{ color: 'rgba(239,68,68,0.6)', lineHeight: 1, fontSize: 16, padding: '0 2px' }}>×</motion.span>}
+          <span style={{ fontSize: 12, opacity: 0.4 }}>▾</span>
+        </span>
+      </motion.button>
+      <AnimatePresence>
+        {open && (
+          <motion.div ref={calRef} initial={{ opacity: 0, y: -8, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.96 }} transition={{ duration: 0.18 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 99999, background: 'linear-gradient(135deg, #1c1c32 0%, #14141f 100%)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: '14px 12px', boxShadow: '0 24px 60px rgba(0,0,0,0.7)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => setMonth(m => subMonths(m, 1))} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, width: 28, height: 28, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</motion.button>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', textTransform: 'capitalize' }}>{format(month, 'MMMM yyyy', { locale: ptBR })}</span>
+              <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => setMonth(m => addMonths(m, 1))} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, width: 28, height: 28, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</motion.button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+              {WEEK.map((d, i) => <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.22)', paddingBottom: 4 }}>{d}</div>)}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+              {Array(startPad).fill(null).map((_, i) => <div key={`p${i}`} />)}
+              {days.map(day => {
+                const isSel = selected && isSameDay(day, selected)
+                const isTod = isToday(day)
+                const isWkd = getDay(day) === 0 || getDay(day) === 6
+                return (
+                  <motion.button key={day.toISOString()} type="button" whileHover={{ background: isSel ? '#6366f1' : 'rgba(99,102,241,0.15)' }} whileTap={{ scale: 0.85 }} onClick={() => handleSelect(day)}
+                    style={{ padding: '6px 0', borderRadius: 7, border: isTod && !isSel ? '1.5px solid rgba(99,102,241,0.45)' : '1.5px solid transparent', background: isSel ? '#6366f1' : 'transparent', color: isSel ? '#fff' : isWkd ? 'rgba(245,158,11,0.75)' : 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: isSel || isTod ? 700 : 400, cursor: 'pointer', textAlign: 'center' }}>
+                    {format(day, 'd')}
+                  </motion.button>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 // ── Export Modal ───────────────────────────────────────────
-function ExportModal({ onClose, exportData, t }) {
+function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
   const [selected, setSelected] = useState('csv')
+  const [groupBy, setGroupBy]   = useState('worker')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo]     = useState('')
   const [status, setStatus]     = useState('idle')
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = '' }
   }, [])
+
+  const activeDayRows = (() => {
+    return [...(workDays || [])]
+      .filter(d => (!dateFrom || d.date >= dateFrom) && (!dateTo || d.date <= dateTo))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(d => {
+        const w = (workers || []).find(x => x.id === d.workerId) || {}
+        const l = (locations || []).find(x => x.id === d.locationId) || {}
+        return { ...d, workerName: w.name || '—', jobTitle: w.jobTitle || '—', department: w.department || '—', locationName: l.name || '—' }
+      })
+  })()
+
+  const previewTotal   = groupBy === 'day' ? activeDayRows.reduce((s, d) => s + d.earnings, 0) : exportData.stats.totalEarnings
+  const previewDays    = groupBy === 'day' ? activeDayRows.length : exportData.stats.totalDays
+  const previewWorkers = groupBy === 'day' ? new Set(activeDayRows.map(d => d.workerId)).size : exportData.stats.activeWorkers
 
   const FORMATS = [
     { id: 'csv', label: t.reportsCsvLabel, ext: '.csv', icon: FileSpreadsheet, color: '#10b981', desc: t.reportsCsvDesc },
@@ -169,8 +314,13 @@ function ExportModal({ onClose, exportData, t }) {
   const handleExport = async () => {
     setStatus('loading')
     await new Promise(r => setTimeout(r, 900))
-    if (selected === 'csv') exportCSV(exportData)
-    else exportPDF(exportData)
+    if (groupBy === 'day') {
+      if (selected === 'csv') exportDayCSV(activeDayRows)
+      else exportDayPDF(activeDayRows)
+    } else {
+      if (selected === 'csv') exportCSV(exportData)
+      else exportPDF(exportData)
+    }
     setStatus('done')
     setTimeout(() => { setStatus('idle'); onClose() }, 1600)
   }
@@ -223,9 +373,9 @@ function ExportModal({ onClose, exportData, t }) {
           {/* Stats preview */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 20, padding: 14, borderRadius: 14, background: 'var(--inner-bg)', border: '1px solid var(--inner-border)' }}>
             {[
-              { label: t.workersLabel ?? 'Diaristas', value: exportData.stats.activeWorkers, color: '#818cf8' },
-              { label: t.days,                        value: exportData.stats.totalDays,    color: '#10b981' },
-              { label: 'Total (R$)',                  value: `R$ ${exportData.stats.totalEarnings.toLocaleString('pt-BR')}`, color: '#f59e0b' },
+              { label: t.workersLabel ?? 'Diaristas', value: previewWorkers,                                          color: '#818cf8' },
+              { label: t.days,                        value: previewDays,                                             color: '#10b981' },
+              { label: 'Total (R$)',                  value: `R$ ${previewTotal.toLocaleString('pt-BR')}`,            color: '#f59e0b' },
             ].map((s, i) => (
               <div key={i} style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 16, fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -233,6 +383,38 @@ function ExportModal({ onClose, exportData, t }) {
               </div>
             ))}
           </div>
+
+          {/* Grouping selector */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Agrupar por</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[{ id: 'worker', label: 'Por Trabalhador', icon: '👤' }, { id: 'day', label: 'Por Dia', icon: '📅' }].map(g => (
+                <motion.button key={g.id} whileTap={{ scale: 0.97 }} onClick={() => setGroupBy(g.id)}
+                  style={{ flex: 1, padding: '10px 8px', borderRadius: 10, cursor: 'pointer', background: groupBy === g.id ? 'rgba(99,102,241,0.12)' : 'var(--inner-bg)', border: `1.5px solid ${groupBy === g.id ? 'rgba(99,102,241,0.5)' : 'var(--card-border)'}`, color: groupBy === g.id ? '#818cf8' : 'var(--card-muted)', fontSize: 12, fontWeight: 700, transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <span>{g.icon}</span>{g.label}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date filter */}
+          <AnimatePresence>
+            {groupBy === 'day' && (
+              <motion.div key="date-filter" initial={{ opacity: 0, height: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 'auto', marginBottom: 18 }} exit={{ opacity: 0, height: 0, marginBottom: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'visible' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Período</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <MiniDatePicker label="De"  value={dateFrom} onChange={setDateFrom} />
+                  <MiniDatePicker label="Até" value={dateTo}   onChange={setDateTo}   />
+                </div>
+                {(dateFrom || dateTo) && (
+                  <button onClick={() => { setDateFrom(''); setDateTo('') }}
+                    style={{ marginTop: 8, fontSize: 11, color: 'rgba(239,68,68,0.6)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                    Limpar período
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Format selector */}
           <div style={{ marginBottom: 22 }}>
@@ -523,6 +705,9 @@ export default function Reports({ lang = 'pt', workers, workDays, locations }) {
           <ExportModal
             onClose={() => setShowExport(false)}
             exportData={{ topEarners, byLocation: stats.byLocation, monthlyData, byDayOfWeek, period, periodData: data, stats }}
+            workers={workers}
+            workDays={workDays}
+            locations={locations}
             t={t}
           />
         )}

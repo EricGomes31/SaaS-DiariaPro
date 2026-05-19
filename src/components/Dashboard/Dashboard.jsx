@@ -112,7 +112,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-export default function Dashboard({ lang = 'pt', onNavigate, workers, workDays, locations }) {
+export default function Dashboard({ lang = 'pt', onNavigate, workers, workDays, locations, currentUser }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const stats = getDashboardStats(workers, workDays, locations)
@@ -120,6 +120,12 @@ export default function Dashboard({ lang = 'pt', onNavigate, workers, workDays, 
 
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
   const todayFormatted = today.charAt(0).toUpperCase() + today.slice(1)
+
+  const userName = currentUser?.user_metadata?.name ?? currentUser?.email?.split('@')[0] ?? 'Admin'
+  const hour = new Date().getHours()
+  const greetingWord = lang === 'en' ? (hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening')
+    : lang === 'es' ? (hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches')
+    : (hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite')
 
   return (
     <div>
@@ -139,7 +145,7 @@ export default function Dashboard({ lang = 'pt', onNavigate, workers, workDays, 
               fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 26 : 32, fontWeight: 800,
               color: 'var(--page-heading)', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.2,
             }}>
-              {t.greeting}
+              {greetingWord}, {userName} 👋
             </h1>
             <p style={{ margin: '8px 0 0', color: 'var(--page-sub)', fontSize: 14 }}>
               {t.dashboardSubtitle}

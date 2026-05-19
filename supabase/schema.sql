@@ -86,6 +86,7 @@ create table public.payment_records (
   total             numeric,
   status            text,
   paid_date         text,
+  work_day_ids      text[],
   user_id           uuid references auth.users(id) on delete cascade not null default auth.uid()
 );
 

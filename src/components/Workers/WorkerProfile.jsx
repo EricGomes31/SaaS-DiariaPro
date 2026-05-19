@@ -8,7 +8,7 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
-import { getWorkerStats, getPaymentHistory, PIX_KEY_TYPES, isWeekendOrHoliday } from '../../data/mockData'
+import { getWorkerStats, getPaymentHistory, PIX_KEY_TYPES, isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -187,7 +187,7 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
 
   const workerLocations = locations.filter(l => worker.locations.includes(l.id))
   const isSpecial = date ? isWeekendOrHoliday(date, holidays) : false
-  const rate = isSpecial ? worker.weekendRate : worker.weekdayRate
+  const rate = date ? getWorkerDayRate(worker, date, holidays) : worker.weekdayRate
 
   const handleSave = () => {
     if (!date) return setError(t.selectDate)
@@ -563,7 +563,11 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b' }} />
-              <span style={{ fontSize: 11, color: 'var(--card-sub)' }}>{t.weekendLegend} — R$ {worker.weekendRate}</span>
+              <span style={{ fontSize: 11, color: 'var(--card-sub)' }}>Sábado — R$ {worker.saturdayRate}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#ef4444' }} />
+              <span style={{ fontSize: 11, color: 'var(--card-sub)' }}>Domingo — R$ {worker.sundayRate}</span>
             </div>
           </div>
         </motion.div>
@@ -595,9 +599,13 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
               <span style={{ fontSize: 12, color: '#818cf8', display: 'flex', alignItems: 'center', gap: 6 }}><Sun size={13} /> {t.weekdayLegend}</span>
               <span style={{ fontSize: 16, fontWeight: 800, color: '#818cf8' }}>R$ {worker.weekdayRate}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
-              <span style={{ fontSize: 12, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6 }}><Sunset size={13} /> {t.weekendLegend}</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color: '#f59e0b' }}>R$ {worker.weekendRate}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6 }}><Sunset size={13} /> Sábado</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: '#f59e0b' }}>R$ {worker.saturdayRate}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+              <span style={{ fontSize: 12, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}><Sunset size={13} /> Domingo</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color: '#ef4444' }}>R$ {worker.sundayRate}</span>
             </div>
           </div>
         </motion.div>

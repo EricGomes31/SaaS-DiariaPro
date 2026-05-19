@@ -22,12 +22,12 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
   const getLocStats = (locId) => {
     const days = workDays.filter(d => d.locationId === locId)
     const earnings = days.reduce((s, d) => s + d.earnings, 0)
-    const workerSet = new Set(days.map(d => d.workerId))
     const weekendDays = days.filter(d => d.isWeekend).length
+    const workerCount = workers.filter(w => w.locations?.includes(locId)).length
     return {
       totalDays: days.length,
       totalEarnings: earnings,
-      workerCount: workerSet.size,
+      workerCount,
       weekendDays,
       weekdayDays: days.length - weekendDays,
     }

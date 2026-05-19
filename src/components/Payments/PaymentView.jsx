@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
 import { DollarSign, Sun, Moon, Download, X, FileText, FileSpreadsheet, CheckCircle2, Loader2, QrCode, Copy, Check, BadgeCheck, RotateCcw } from 'lucide-react'
@@ -8,7 +8,7 @@ import {
 } from 'recharts'
 import { getWorkerStats, PIX_KEY_TYPES } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import i18n from '../../i18n'
 
@@ -38,7 +38,7 @@ function buildPixPayload(pixKey, merchantName) {
 }
 
 // ── Pix QR Code modal ──────────────────────────────────────
-function PixQrModal({ worker, pendingAmount, pendingWorkDayIds, onMarkPaid, onClose, t }) {
+function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayIds, onMarkPaid, onClose, t }) {
   const [copied, setCopied] = useState(false)
   const [paid, setPaid] = useState(false)
   const payload = buildPixPayload(worker.pixKey, worker.name)
@@ -152,6 +152,35 @@ function PixQrModal({ worker, pendingAmount, pendingWorkDayIds, onMarkPaid, onCl
           </span>
         </div>
 
+        {/* Amount breakdown */}
+        <div style={{
+          padding: '12px 14px', borderRadius: 12, marginBottom: 16,
+          background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          {overtimeAmount > 0 ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--card-muted)' }}>
+                <span>{t.overtimeDailies}</span>
+                <span>R$ {(pendingAmount - overtimeAmount).toLocaleString('pt-BR')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>
+                <span>+ {t.overtimeExtra}</span>
+                <span>R$ {overtimeAmount.toLocaleString('pt-BR')}</span>
+              </div>
+              <div style={{ borderTop: '1px solid rgba(16,185,129,0.15)', paddingTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 800, color: '#10b981' }}>
+                <span>Total</span>
+                <span>R$ {pendingAmount.toLocaleString('pt-BR')}</span>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 800, color: '#10b981' }}>
+              <span>Total</span>
+              <span>R$ {pendingAmount.toLocaleString('pt-BR')}</span>
+            </div>
+          )}
+        </div>
+
         {/* Copy / Download actions */}
         <div style={{ display: 'flex', gap: 10 }}>
           <motion.button
@@ -234,7 +263,7 @@ function exportCSV(workerSummary) {
     'Trabalhador', 'Cargo', 'Departamento', 'Chave PIX',
     'Dias Semana', 'Dias Fds/Feriado',
     'Ganho Semana (R$)', 'Ganho Fds/Feriado (R$)', 'Total (R$)',
-    'Diária Semana (R$)', 'Diária Fds (R$)',
+    'Diária Semana (R$)', 'Diária Sábado (R$)', 'Diária Domingo (R$)',
   ]
 
   const rows = workerSummary.map(w => [
@@ -248,7 +277,8 @@ function exportCSV(workerSummary) {
     w.weekendEarnings.toFixed(2).replace('.', ','),
     w.totalEarnings.toFixed(2).replace('.', ','),
     w.weekdayRate.toFixed(2).replace('.', ','),
-    w.weekendRate.toFixed(2).replace('.', ','),
+    (w.saturdayRate ?? 0).toFixed(2).replace('.', ','),
+    (w.sundayRate ?? 0).toFixed(2).replace('.', ','),
   ])
 
   const totals = [
@@ -422,9 +452,297 @@ function exportPDF(workerSummary, totals) {
   win.document.close()
 }
 
+// ── CSV por dia ────────────────────────────────────────────
+function exportDayCSV(dayRows) {
+  const BOM = '﻿'
+  const headers = ['Data', 'Dia da Semana', 'Trabalhador', 'Cargo', 'Departamento', 'Local', 'Tipo', 'Valor (R$)']
+  const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+  const rows = dayRows.map(d => {
+    const date = parseISO(d.date)
+    const dow = DAYS[date.getDay()]
+    const tipo = d.isWeekend ? (date.getDay() === 6 ? 'Sábado' : 'Dom/Feriado') : 'Semana'
+    return [
+      format(date, 'dd/MM/yyyy'),
+      dow,
+      d.workerName,
+      d.jobTitle,
+      d.department,
+      d.locationName || '—',
+      tipo,
+      d.earnings.toFixed(2).replace('.', ','),
+    ]
+  })
+  const total = dayRows.reduce((s, d) => s + d.earnings, 0)
+  const csv = [
+    `Relatório por Dia — Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+    '',
+    headers.join(';'),
+    ...rows.map(r => r.join(';')),
+    '',
+    `TOTAL GERAL;;;;;;;${total.toFixed(2).replace('.', ',')}`,
+  ].join('\n')
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `diaria-pro-por-dia-${format(new Date(), 'yyyy-MM-dd')}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── PDF por dia ────────────────────────────────────────────
+function exportDayPDF(dayRows) {
+  const dateStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+  const total = dayRows.reduce((s, d) => s + d.earnings, 0)
+  const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+  const rows = dayRows.map(d => {
+    const date = parseISO(d.date)
+    const dow = DAYS[date.getDay()]
+    const isWeekend = d.isWeekend
+    const isSun = date.getDay() === 0
+    const color = isWeekend ? (isSun ? '#ef4444' : '#f59e0b') : '#6366f1'
+    const tipo = isWeekend ? (date.getDay() === 6 ? 'Sábado' : 'Dom/Feriado') : 'Semana'
+    return `<tr>
+      <td><strong>${format(date, 'dd/MM/yyyy')}</strong><br/><small>${dow}</small></td>
+      <td>${d.workerName}<br/><small>${d.jobTitle}</small></td>
+      <td>${d.locationName || '—'}</td>
+      <td style="color:${color};font-weight:600">${tipo}</td>
+      <td class="num" style="color:${color};font-weight:700">R$ ${d.earnings.toLocaleString('pt-BR')}</td>
+    </tr>`
+  }).join('')
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Relatório por Dia — Diária Pro</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: #fff; color: #1e1e2e; padding: 40px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #f1f5f9; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 42px; height: 42px; border-radius: 10px; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 18px; }
+    .logo-text h1 { font-size: 20px; font-weight: 800; color: #1e1e2e; }
+    .logo-text p { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+    .meta { text-align: right; }
+    .meta h2 { font-size: 16px; font-weight: 700; color: #6366f1; }
+    .meta p { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+    .kpi { padding: 16px 20px; border-radius: 12px; border: 1px solid #e2e8f0; background: #f8fafc; }
+    .kpi label { display: block; font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .kpi span { font-size: 22px; font-weight: 800; }
+    .kpi.green span { color: #10b981; }
+    .kpi.indigo span { color: #6366f1; }
+    .kpi.gold span { color: #f59e0b; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: #6366f1; color: white; }
+    thead th { padding: 11px 14px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+    thead th.num { text-align: right; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    td { padding: 11px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    td small { color: #94a3b8; font-size: 11px; display: block; margin-top: 2px; }
+    td.num { text-align: right; }
+    .total-row { background: #f0fdf4 !important; border-top: 2px solid #10b981; }
+    .total-row td { font-weight: 700; padding: 14px; }
+    .footer { margin-top: 32px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
+    @media print { body { padding: 20px; } @page { margin: 1cm; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">D</div>
+      <div class="logo-text"><h1>Diária Pro</h1><p>Gestão de Diaristas</p></div>
+    </div>
+    <div class="meta">
+      <h2>Relatório por Dia</h2>
+      <p>${dateStr}</p>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="kpi green"><label>Total</label><span>R$ ${total.toLocaleString('pt-BR')}</span></div>
+    <div class="kpi indigo"><label>Registros</label><span>${dayRows.length} dias</span></div>
+    <div class="kpi gold"><label>Fins de Semana</label><span>${dayRows.filter(d => d.isWeekend).length} dias</span></div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Trabalhador</th>
+        <th>Local</th>
+        <th>Tipo</th>
+        <th class="num">Valor</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+      <tr class="total-row">
+        <td colspan="4">TOTAL GERAL</td>
+        <td class="num" style="color:#10b981;font-size:15px">R$ ${total.toLocaleString('pt-BR')}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="footer">
+    <span>Diária Pro — Relatório gerado automaticamente</span>
+    <span>${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+  </div>
+  <script>window.onload = () => window.print()</script>
+</body>
+</html>`
+
+  const win = window.open('', '_blank')
+  win.document.write(html)
+  win.document.close()
+}
+
+// ── Mini date picker ───────────────────────────────────────
+function MiniDatePicker({ value, onChange, label }) {
+  const [open, setOpen]   = useState(false)
+  const [month, setMonth] = useState(() => value ? parseISO(value) : new Date())
+  const [pos, setPos]     = useState({ top: 0, left: 0, width: 0 })
+  const btnRef            = useRef(null)
+  const calRef            = useRef(null)
+
+  const selected = value ? parseISO(value) : null
+  const firstDay = startOfMonth(month)
+  const days     = eachDayOfInterval({ start: firstDay, end: endOfMonth(month) })
+  const startPad = getDay(firstDay)
+  const WEEK     = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setPos({ top: r.bottom + 6, left: r.left, width: Math.max(r.width, 240) })
+    }
+    setOpen(o => !o)
+  }
+
+  const handleSelect = (day) => {
+    onChange(format(day, 'yyyy-MM-dd'))
+    setOpen(false)
+  }
+
+  const handleClear = (e) => {
+    e.stopPropagation()
+    onChange('')
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e) => {
+      if (btnRef.current?.contains(e.target)) return
+      if (calRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
+      <motion.button
+        ref={btnRef}
+        type="button"
+        whileTap={{ scale: 0.97 }}
+        onClick={handleOpen}
+        style={{
+          width: '100%', padding: '9px 12px', borderRadius: 10, cursor: 'pointer',
+          background: open ? 'rgba(99,102,241,0.1)' : 'rgba(255,255,255,0.03)',
+          border: `1.5px solid ${open ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)'}`,
+          color: selected ? '#f1f5f9' : 'rgba(255,255,255,0.3)',
+          fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          transition: 'all 0.2s',
+        }}
+      >
+        <span>{selected ? format(selected, 'dd/MM/yyyy') : 'dd/mm/aaaa'}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {selected && (
+            <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} onClick={handleClear}
+              style={{ color: 'rgba(239,68,68,0.6)', lineHeight: 1, fontSize: 16, padding: '0 2px' }}>×</motion.span>
+          )}
+          <span style={{ fontSize: 12, opacity: 0.4 }}>▾</span>
+        </span>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            ref={calRef}
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.18 }}
+            style={{
+              position: 'fixed', top: pos.top, left: pos.left, width: pos.width,
+              zIndex: 99999,
+              background: 'linear-gradient(135deg, #1c1c32 0%, #14141f 100%)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 14, padding: '14px 12px',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.7)',
+            }}
+          >
+            {/* Month nav */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => setMonth(m => subMonths(m, 1))}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, width: 28, height: 28, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</motion.button>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', textTransform: 'capitalize' }}>
+                {format(month, 'MMMM yyyy', { locale: ptBR })}
+              </span>
+              <motion.button type="button" whileTap={{ scale: 0.88 }} onClick={() => setMonth(m => addMonths(m, 1))}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 7, width: 28, height: 28, cursor: 'pointer', color: 'rgba(255,255,255,0.6)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</motion.button>
+            </div>
+
+            {/* Week headers */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+              {WEEK.map((d, i) => (
+                <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.22)', paddingBottom: 4 }}>{d}</div>
+              ))}
+            </div>
+
+            {/* Day grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+              {Array(startPad).fill(null).map((_, i) => <div key={`p${i}`} />)}
+              {days.map(day => {
+                const isSel = selected && isSameDay(day, selected)
+                const isTod = isToday(day)
+                const isWkd = getDay(day) === 0 || getDay(day) === 6
+                return (
+                  <motion.button
+                    key={day.toISOString()}
+                    type="button"
+                    whileHover={{ background: isSel ? '#6366f1' : 'rgba(99,102,241,0.15)' }}
+                    whileTap={{ scale: 0.85 }}
+                    onClick={() => handleSelect(day)}
+                    style={{
+                      padding: '6px 0', borderRadius: 7,
+                      border: isTod && !isSel ? '1.5px solid rgba(99,102,241,0.45)' : '1.5px solid transparent',
+                      background: isSel ? '#6366f1' : 'transparent',
+                      color: isSel ? '#fff' : isWkd ? 'rgba(245,158,11,0.75)' : 'rgba(255,255,255,0.72)',
+                      fontSize: 12, fontWeight: isSel || isTod ? 700 : 400,
+                      cursor: 'pointer', textAlign: 'center',
+                    }}
+                  >
+                    {format(day, 'd')}
+                  </motion.button>
+                )
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 // ── Export modal ───────────────────────────────────────────
-function ExportModal({ workerSummary, onClose, t }) {
+function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays, paidWorkDays, allWorkDays, workers, locations, onClose, t }) {
   const [selected, setSelected]   = useState('csv')
+  const [scope, setScope]         = useState('all') // 'all' | 'pending' | 'paid'
+  const [groupBy, setGroupBy]     = useState('worker') // 'worker' | 'day'
+  const [dateFrom, setDateFrom]   = useState('')
+  const [dateTo, setDateTo]       = useState('')
   const [status, setStatus]       = useState('idle') // idle | loading | done
 
   useEffect(() => {
@@ -432,10 +750,36 @@ function ExportModal({ workerSummary, onClose, t }) {
     return () => { document.body.style.overflow = '' }
   }, [])
 
-  const totalGeral      = workerSummary.reduce((s, w) => s + w.totalEarnings, 0)
-  const totalWorkers    = workerSummary.length
-  const totalDays       = workerSummary.reduce((s, w) => s + w.totalDays, 0)
-  const dateStr         = format(new Date(), "dd/MM/yyyy", { locale: ptBR })
+  const activeData = scope === 'pending' ? pendingSummary : scope === 'paid' ? paidSummary : allSummary
+
+  const activeDayRows = (() => {
+    const days = scope === 'pending' ? pendingWorkDays : scope === 'paid' ? paidWorkDays : allWorkDays
+    return [...days]
+      .filter(d => (!dateFrom || d.date >= dateFrom) && (!dateTo || d.date <= dateTo))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map(d => {
+        const w = workers.find(x => x.id === d.workerId) || {}
+        const l = locations.find(x => x.id === d.locationId) || {}
+        return { ...d, workerName: w.name || '—', jobTitle: w.jobTitle || '—', department: w.department || '—', locationName: l.name || '—' }
+      })
+  })()
+
+  const SCOPES = [
+    { id: 'all',     label: 'Todos',        color: '#818cf8' },
+    { id: 'pending', label: 'Pendentes',    color: '#f59e0b' },
+    { id: 'paid',    label: 'Confirmados',  color: '#10b981' },
+  ]
+
+  const totalGeral   = groupBy === 'day'
+    ? activeDayRows.reduce((s, d) => s + d.earnings, 0)
+    : activeData.reduce((s, w) => s + w.totalEarnings, 0)
+  const totalWorkers = groupBy === 'day'
+    ? new Set(activeDayRows.map(d => d.workerId)).size
+    : activeData.length
+  const totalDays    = groupBy === 'day'
+    ? activeDayRows.length
+    : activeData.reduce((s, w) => s + w.totalDays, 0)
+  const dateStr      = format(new Date(), "dd/MM/yyyy", { locale: ptBR })
 
   const FORMATS = [
     {
@@ -460,10 +804,12 @@ function ExportModal({ workerSummary, onClose, t }) {
     setStatus('loading')
     await new Promise(r => setTimeout(r, 900))
 
-    if (selected === 'csv') {
-      exportCSV(workerSummary)
+    if (groupBy === 'day') {
+      if (selected === 'csv') exportDayCSV(activeDayRows)
+      else exportDayPDF(activeDayRows)
     } else {
-      exportPDF(workerSummary)
+      if (selected === 'csv') exportCSV(activeData)
+      else exportPDF(activeData)
     }
 
     setStatus('done')
@@ -552,6 +898,94 @@ function ExportModal({ workerSummary, onClose, t }) {
               </div>
             ))}
           </div>
+
+          {/* Scope selector */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              Dados
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {SCOPES.map(s => (
+                <motion.button
+                  key={s.id}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setScope(s.id)}
+                  style={{
+                    flex: 1, padding: '9px 4px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    background: scope === s.id ? `${s.color}15` : 'var(--inner-bg)',
+                    border: `1.5px solid ${scope === s.id ? s.color + '50' : 'var(--card-border)'}`,
+                    color: scope === s.id ? s.color : 'var(--card-muted)',
+                    fontSize: 12, fontWeight: 700, transition: 'all 0.2s',
+                  }}
+                >
+                  {s.label}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grouping selector */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+              Agrupar por
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { id: 'worker', label: 'Por Trabalhador', icon: '👤' },
+                { id: 'day',    label: 'Por Dia',         icon: '📅' },
+              ].map(g => (
+                <motion.button
+                  key={g.id}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setGroupBy(g.id)}
+                  style={{
+                    flex: 1, padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
+                    background: groupBy === g.id ? 'rgba(99,102,241,0.12)' : 'var(--inner-bg)',
+                    border: `1.5px solid ${groupBy === g.id ? 'rgba(99,102,241,0.5)' : 'var(--card-border)'}`,
+                    color: groupBy === g.id ? '#818cf8' : 'var(--card-muted)',
+                    fontSize: 12, fontWeight: 700, transition: 'all 0.2s',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}
+                >
+                  <span>{g.icon}</span>
+                  {g.label}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date filter — only for "Por Dia" */}
+          <AnimatePresence>
+            {groupBy === 'day' && (
+              <motion.div
+                key="date-filter"
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 18 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{ duration: 0.22 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>
+                  Período
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <MiniDatePicker label="De" value={dateFrom} onChange={setDateFrom} />
+                  <MiniDatePicker label="Até" value={dateTo} onChange={setDateTo} />
+                </div>
+                {(dateFrom || dateTo) && (
+                  <button
+                    onClick={() => { setDateFrom(''); setDateTo('') }}
+                    style={{
+                      marginTop: 8, fontSize: 11, color: 'rgba(239,68,68,0.6)', background: 'none',
+                      border: 'none', cursor: 'pointer', padding: 0,
+                    }}
+                  >
+                    Limpar período
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Format selector */}
           <div style={{ marginBottom: 22 }}>
@@ -704,7 +1138,7 @@ function SortIcon({ active, dir }) {
 }
 
 // ── Main component ─────────────────────────────────────────
-export default function PaymentView({ lang = 'pt', workers, workDays, paymentRecords = [], setPaymentRecords }) {
+export default function PaymentView({ lang = 'pt', workers, workDays, locations = [], paymentRecords = [], setPaymentRecords }) {
   const t = i18n[lang] ?? i18n.pt
   const isMobile = useIsMobile()
   const [showExport, setShowExport] = useState(false)
@@ -743,6 +1177,13 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
     return { ...w, ...s }
   }))
 
+  // Para exportação: usa todos os dias (pagos + pendentes)
+  const allWorkerSummary = applySorting(
+    workers
+      .map(w => ({ ...w, ...getWorkerStats(w.id, workDays) }))
+      .filter(w => w.totalDays > 0)
+  )
+
   // Confirmed-paid summary: stats computed only from the days that have been settled
   const paidWorkDays = workDays.filter(d => paidDayIds.has(d.id))
   const paidWorkerSummary = applySorting(workers
@@ -751,7 +1192,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
       const s = getWorkerStats(w.id, paidWorkDays)
       const workerRecords = (paymentRecords || []).filter(r => r.workerId === w.id)
       const lastRecord = workerRecords[workerRecords.length - 1]
-      return { ...w, ...s, lastPaymentDate: lastRecord?.date }
+      return { ...w, ...s, lastPaymentDate: lastRecord?.paidDate }
     }))
 
   const workerChartData = workerSummary.slice(0, 6).map(w => ({
@@ -771,11 +1212,8 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
       {
         id: `payment-${worker.id}-${Date.now()}`,
         workerId: worker.id,
-        workerName: worker.name,
-        workerAvatar: worker.avatar,
-        workerAvatarColor: worker.avatarColor,
-        amount,
-        date: format(new Date(), 'yyyy-MM-dd'),
+        total: amount,
+        paidDate: format(new Date(), 'yyyy-MM-dd'),
         workDayIds,
       },
     ])
@@ -792,6 +1230,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
       worker,
       pendingWorkDayIds: pendingDays.map(d => d.id),
       pendingAmount: pendingDays.reduce((s, d) => s + d.earnings, 0),
+      overtimeAmount: pendingDays.reduce((s, d) => s + (d.overtime || 0), 0),
     })
   }
 
@@ -951,7 +1390,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worker.name}</div>
                     <div style={{ fontSize: 10, color: 'var(--card-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worker.jobTitle}</div>
                   </div>
-                  {worker.pixKey && (
+                  {worker.pixKey && !paidWorkerIds.has(worker.id) && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -968,12 +1407,21 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
                 </div>
                 <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, color: 'var(--card-sub)', alignSelf: 'center' }}>{worker.weekdayDays}d</div>
                 <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 500, color: 'rgba(245,158,11,0.8)', alignSelf: 'center' }}>{worker.weekendDays}d</div>
-                <div style={{ textAlign: 'right', fontSize: 13, fontWeight: 800, alignSelf: 'center', color: '#10b981' }}>
-                  {worker.totalEarnings > 0
-                    ? `R$${worker.totalEarnings.toLocaleString('pt-BR')}`
-                    : paidWorkerIds.has(worker.id)
-                      ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, padding: '3px 7px', borderRadius: 6, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981' }}><CheckCircle2 size={10} />{t.paidBadge}</span>
-                      : 'R$0'
+                <div style={{ textAlign: 'right', alignSelf: 'center' }}>
+                  {worker.totalEarnings > 0 ? (
+                    <>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: '#10b981' }}>
+                        R${worker.totalEarnings.toLocaleString('pt-BR')}
+                      </div>
+                      {worker.totalOvertime > 0 && (
+                        <div style={{ fontSize: 9, fontWeight: 600, color: '#f59e0b', marginTop: 2 }}>
+                          +R${worker.totalOvertime.toLocaleString('pt-BR')} HE
+                        </div>
+                      )}
+                    </>
+                  ) : paidWorkerIds.has(worker.id)
+                    ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, padding: '3px 7px', borderRadius: 6, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981' }}><CheckCircle2 size={10} />{t.paidBadge}</span>
+                    : 'R$0'
                   }
                 </div>
               </motion.div>
@@ -1030,7 +1478,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--card-heading)' }}>{worker.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--card-muted)' }}>{worker.jobTitle}</div>
                   </div>
-                  {worker.pixKey && (
+                  {worker.pixKey && !paidWorkerIds.has(worker.id) && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -1050,23 +1498,29 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
                 <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 500, color: 'rgba(245,158,11,0.7)', alignSelf: 'center' }}>{worker.weekendDays}d</div>
                 <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#818cf8', alignSelf: 'center' }}>R$ {worker.weekdayEarnings.toLocaleString('pt-BR')}</div>
                 <div style={{ textAlign: 'right', fontSize: 14, fontWeight: 600, color: '#f59e0b', alignSelf: 'center' }}>R$ {worker.weekendEarnings.toLocaleString('pt-BR')}</div>
-                <div style={{ textAlign: 'right', fontSize: 15, fontWeight: 800, alignSelf: 'center', color: '#10b981' }}>
-                  {worker.totalEarnings > 0
-                    ? `R$ ${worker.totalEarnings.toLocaleString('pt-BR')}`
-                    : paidWorkerIds.has(worker.id)
-                      ? (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                          fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
-                          background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
-                          color: '#10b981',
-                        }}>
-                          <CheckCircle2 size={12} />
-                          {t.paidBadge}
-                        </span>
-                      )
-                      : 'R$ 0'
-                  }
+                <div style={{ textAlign: 'right', alignSelf: 'center' }}>
+                  {worker.totalEarnings > 0 ? (
+                    <>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: '#10b981' }}>
+                        R$ {worker.totalEarnings.toLocaleString('pt-BR')}
+                      </div>
+                      {worker.totalOvertime > 0 && (
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', marginTop: 2 }}>
+                          +R$ {worker.totalOvertime.toLocaleString('pt-BR')} {t.overtimeExtra}
+                        </div>
+                      )}
+                    </>
+                  ) : paidWorkerIds.has(worker.id) ? (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
+                      background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',
+                      color: '#10b981',
+                    }}>
+                      <CheckCircle2 size={12} />
+                      {t.paidBadge}
+                    </span>
+                  ) : 'R$ 0'}
                 </div>
               </motion.div>
             ))}
@@ -1263,7 +1717,14 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
       <AnimatePresence>
         {showExport && (
           <ExportModal
-            workerSummary={workerSummary}
+            pendingSummary={workerSummary}
+            paidSummary={paidWorkerSummary}
+            allSummary={allWorkerSummary}
+            pendingWorkDays={unpaidWorkDays}
+            paidWorkDays={paidWorkDays}
+            allWorkDays={workDays}
+            workers={workers}
+            locations={locations}
             onClose={() => setShowExport(false)}
             t={t}
           />
@@ -1276,6 +1737,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, paymentRec
           <PixQrModal
             worker={selectedPixWorker.worker}
             pendingAmount={selectedPixWorker.pendingAmount}
+            overtimeAmount={selectedPixWorker.overtimeAmount}
             pendingWorkDayIds={selectedPixWorker.pendingWorkDayIds}
             onMarkPaid={handleMarkPaid}
             onClose={() => setSelectedPixWorker(null)}

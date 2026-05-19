@@ -44,6 +44,7 @@ export default function App() {
   // ── UI state ──────────────────────────────────────────────────────────────
   const [authChecking,     setAuthChecking]     = useState(true)
   const [isAuthenticated,  setIsAuthenticated]  = useState(false)
+  const [currentUser,      setCurrentUser]      = useState(null)
   const [dataLoading,      setDataLoading]       = useState(false)
   const [passwordRecovery, setPasswordRecovery]  = useState(false)
   const [activePage,       setActivePage]        = useState('dashboard')
@@ -76,12 +77,12 @@ export default function App() {
     // Restore session on page reload
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAuthChecking(false)
-      if (session) loadData()
+      if (session) { setCurrentUser(session.user); loadData() }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') { setPasswordRecovery(true); return }
-      if (event === 'SIGNED_IN'  && session) loadData()
+      if (event === 'SIGNED_IN'  && session) { setCurrentUser(session.user); loadData() }
       if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false)
         syncing.current = false
@@ -236,6 +237,7 @@ export default function App() {
               theme={theme} setTheme={setTheme} lang={lang} setLang={setLang}
               holidays={holidays} setHolidays={setHolidays}
               isMobile={isMobile} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}
+              currentUser={currentUser}
             />
 
             <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
@@ -271,6 +273,7 @@ export default function App() {
                     locations={locations} setLocations={setLocations}
                     paymentRecords={paymentRecords} setPaymentRecords={setPaymentRecords}
                     holidays={holidays} setHolidays={setHolidays}
+                    currentUser={currentUser}
                   />
                 </motion.div>
               </AnimatePresence>

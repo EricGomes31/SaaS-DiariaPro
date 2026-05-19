@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Eye, EyeOff, ArrowRight, Shield, Users, BarChart3, Lock } from 'lucide-react'
+import { Zap, Eye, EyeOff, ArrowRight, Shield, Users, BarChart3 } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
 
@@ -10,8 +10,6 @@ const FEATURES = [
   { icon: Shield, text: 'Controle de múltiplos galpões' },
 ]
 
-const DEMO_EMAIL = 'admin@diariapro.com'
-const DEMO_PASSWORD = 'admin123'
 
 export default function LoginScreen() {
   const isMobile = useIsMobile()
@@ -37,25 +35,9 @@ export default function LoginScreen() {
     const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInErr) {
-      // Auto-register on first access (demo / development)
-      if (signInErr.message.toLowerCase().includes('invalid login credentials')) {
-        const { error: signUpErr } = await supabase.auth.signUp({ email, password })
-        if (signUpErr) {
-          setIsLoading(false)
-          setError('Erro ao criar conta: ' + signUpErr.message)
-          return
-        }
-        const { error: signInErr2 } = await supabase.auth.signInWithPassword({ email, password })
-        if (signInErr2) {
-          setIsLoading(false)
-          setError('Conta criada! Verifique seu e-mail para confirmar o cadastro.')
-          return
-        }
-      } else {
-        setIsLoading(false)
-        setError(signInErr.message)
-        return
-      }
+      setIsLoading(false)
+      setError('E-mail ou senha incorretos.')
+      return
     }
     // Auth state change in App.jsx handles the rest — no need to call onLogin()
   }
@@ -73,11 +55,7 @@ export default function LoginScreen() {
     setView('forgot-sent')
   }
 
-  const fillDemo = () => {
-    setEmail(DEMO_EMAIL)
-    setPassword(DEMO_PASSWORD)
-    setError('')
-  }
+
 
   return (
     <div style={{
@@ -543,52 +521,6 @@ export default function LoginScreen() {
               <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
             </motion.div>
 
-            {/* Demo access */}
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.62, duration: 0.4 }}
-            >
-              <motion.button
-                type="button"
-                onClick={fillDemo}
-                whileHover={{ scale: 1.02, borderColor: 'rgba(99,102,241,0.35)', background: 'rgba(99,102,241,0.07)' }}
-                whileTap={{ scale: 0.98 }}
-                style={{
-                  width: '100%', padding: '13px',
-                  borderRadius: 13, fontSize: 14, fontWeight: 600,
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  background: 'rgba(255,255,255,0.03)',
-                  color: 'rgba(255,255,255,0.55)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  transition: 'all 0.2s', fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                <Lock size={14} style={{ opacity: 0.7 }} />
-                Usar credenciais de demonstração
-              </motion.button>
-
-              {/* Credential hint */}
-              <div style={{
-                marginTop: 12, padding: '10px 14px', borderRadius: 10,
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 2 }}>E-mail</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-                    {DEMO_EMAIL}
-                  </div>
-                </div>
-                <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.06)' }} />
-                <div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 2 }}>Senha</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
-                    {DEMO_PASSWORD}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
             </>}
           </div>
 
