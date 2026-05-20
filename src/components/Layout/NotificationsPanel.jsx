@@ -1,9 +1,8 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Bell, CheckCheck, Users, CreditCard, AlertCircle, Info, Trash2 } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
-const INITIAL_NOTIFICATIONS = [
+export const INITIAL_NOTIFICATIONS = [
   {
     id: 1,
     type: 'worker',
@@ -50,9 +49,8 @@ const INITIAL_NOTIFICATIONS = [
   },
 ]
 
-export default function NotificationsPanel({ onClose, theme }) {
+export default function NotificationsPanel({ onClose, theme, notes, setNotes }) {
   const isMobile = useIsMobile()
-  const [notes, setNotes] = useState(INITIAL_NOTIFICATIONS)
 
   const isLight = theme === 'light'
   const np = {

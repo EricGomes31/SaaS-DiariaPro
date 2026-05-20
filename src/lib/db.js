@@ -3,15 +3,24 @@ import { WORKERS, WORK_DAYS, LOCATIONS, HOLIDAYS_2025 } from '../data/mockData'
 
 // ─── Mappers (exported for realtime handlers in App.jsx) ─────────────────────
 
+const AVATAR_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6', '#06b6d4']
+function deriveAvatarColor(str = '') {
+  let hash = 0
+  for (const c of str) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
 export function workerFromRow(r) {
   const weekend = r.saturday_rate ?? r.weekend_rate ?? r.weekday_rate
+  const avatar = r.avatar || (r.name ? r.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?')
+  const avatarColor = r.avatar_color || deriveAvatarColor(r.id || r.name || '')
   return {
     id: r.id, name: r.name, department: r.department,
     jobTitle: r.job_title, weekdayRate: r.weekday_rate,
     saturdayRate: r.saturday_rate ?? weekend,
     sundayRate:   r.sunday_rate   ?? weekend,
     locations: r.locations ?? [], schedule: r.schedule, status: r.status,
-    avatar: r.avatar, avatarColor: r.avatar_color, phone: r.phone,
+    avatar, avatarColor, phone: r.phone,
     startDate: r.start_date, pixKeyType: r.pix_key_type, pixKey: r.pix_key,
   }
 }
@@ -179,4 +188,24 @@ export async function syncHolidays(holidays) {
     const { error } = await supabase.from('holidays').insert(holidays.map(date => ({ date })))
     if (error) throw error
   }
+}
+
+// ─── Activity log ────────────────────────────────────────────────────────────
+
+export async function logActivity(action, description, metadata = {}) {
+  try {
+    await supabase.from('activity_logs').insert({ action, description, metadata })
+  } catch {
+    // nunca deixar o log travar o app
+  }
+}
+
+export async function fetchActivityLogs(limit = 100) {
+  const { data, error } = await supabase
+    .from('activity_logs')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data ?? []
 }

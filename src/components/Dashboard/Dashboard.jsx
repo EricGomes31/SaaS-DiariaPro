@@ -44,22 +44,13 @@ function StatCard({ title, value, prefix, suffix, decimals, icon: Icon, color, c
       transition={{ delay, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
       className="card-hover"
       style={{
-        background: 'linear-gradient(135deg, var(--card-bg) 0%, rgba(16,16,30,0.9) 100%)',
+        background: 'var(--card-bg)',
         border: '1px solid var(--card-border)',
         borderRadius: 16, padding: '20px',
         position: 'relative', overflow: 'hidden',
         backdropFilter: 'blur(20px)',
       }}
     >
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-        background: `linear-gradient(90deg, transparent, ${color}40, transparent)`,
-      }} />
-      <div style={{
-        position: 'absolute', top: -20, right: -20, width: 100, height: 100,
-        background: `radial-gradient(circle, ${color}15 0%, transparent 70%)`,
-        borderRadius: '50%',
-      }} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>

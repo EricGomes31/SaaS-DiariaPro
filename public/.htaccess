@@ -3,3 +3,23 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.html [QSA,L]
+
+# ── Security Headers ────────────────────────────────────────────────────────
+
+# Bloqueia carregamento do site em iframes (proteção contra clickjacking)
+Header always set X-Frame-Options "DENY"
+
+# Impede que o browser "adivinhe" o tipo de arquivo (MIME sniffing)
+Header always set X-Content-Type-Options "nosniff"
+
+# Controla quais informações são enviadas ao navegar para outros sites
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Força HTTPS por 1 ano (só ative se o SSL estiver funcionando corretamente)
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+# Desativa acesso a features sensíveis do browser que o app não usa
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+
+# Oculta a versão do Apache
+ServerSignature Off

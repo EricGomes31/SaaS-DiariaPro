@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, CalendarDays, CreditCard,
-  MapPin, BarChart3, Settings, Bell, LogOut, Zap, AlertTriangle, X,
+  MapPin, BarChart3, Settings, Bell, LogOut, Zap, AlertTriangle, X, Shield,
 } from 'lucide-react'
-import NotificationsPanel from './NotificationsPanel'
+import NotificationsPanel, { INITIAL_NOTIFICATIONS } from './NotificationsPanel'
 import SettingsPanel from './SettingsPanel'
 import i18n from '../../i18n'
 
@@ -15,12 +15,13 @@ const NAV_ITEMS = [
   { id: 'payments',  icon: CreditCard },
   { id: 'locations', icon: MapPin },
   { id: 'reports',   icon: BarChart3 },
+  { id: 'audit',     icon: Shield },
 ]
 
 const NAV_LABELS = {
-  pt: { dashboard: 'Dashboard', workers: 'Trabalhadores', tracking: 'Controle de Dias', payments: 'Pagamentos', locations: 'Locais', reports: 'Relatórios', notifications: 'Notificações', settings: 'Configurações' },
-  en: { dashboard: 'Dashboard', workers: 'Workers', tracking: 'Time Tracking', payments: 'Payments', locations: 'Locations', reports: 'Reports', notifications: 'Notifications', settings: 'Settings' },
-  es: { dashboard: 'Dashboard', workers: 'Trabajadores', tracking: 'Control de Días', payments: 'Pagos', locations: 'Lugares', reports: 'Informes', notifications: 'Notificaciones', settings: 'Configuración' },
+  pt: { dashboard: 'Dashboard', workers: 'Trabalhadores', tracking: 'Controle de Dias', payments: 'Pagamentos', locations: 'Locais', reports: 'Relatórios', audit: 'Auditoria', notifications: 'Notificações', settings: 'Configurações' },
+  en: { dashboard: 'Dashboard', workers: 'Workers', tracking: 'Time Tracking', payments: 'Payments', locations: 'Locations', reports: 'Reports', audit: 'Audit Log', notifications: 'Notifications', settings: 'Settings' },
+  es: { dashboard: 'Dashboard', workers: 'Trabajadores', tracking: 'Control de Días', payments: 'Pagos', locations: 'Lugares', reports: 'Informes', audit: 'Auditoría', notifications: 'Notificaciones', settings: 'Configuración' },
 }
 
 export default function Sidebar({ activePage, setActivePage, onLogout, theme, setTheme, lang = 'pt', setLang, holidays = [], setHolidays, isMobile = false, sidebarOpen = false, setSidebarOpen, currentUser }) {
@@ -28,7 +29,8 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
   const [showNotifications, setShowNotifications] = useState(false)
   const [showSettings, setShowSettings]           = useState(false)
   const [confirmLogout, setConfirmLogout]         = useState(false)
-  const [unreadCount, setUnreadCount]             = useState(3)
+  const [notes, setNotes]                         = useState(INITIAL_NOTIFICATIONS)
+  const unreadCount = notes.filter(n => !n.read).length
 
   const handleLogout = () => {
     setConfirmLogout(false)
@@ -372,8 +374,9 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
         {showNotifications && (
           <NotificationsPanel
             onClose={() => setShowNotifications(false)}
-            onRead={() => setUnreadCount(0)}
             theme={theme}
+            notes={notes}
+            setNotes={setNotes}
           />
         )}
       </AnimatePresence>

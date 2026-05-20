@@ -8,17 +8,22 @@ import WorkCalendar from './components/Tracking/WorkCalendar'
 import PaymentView from './components/Payments/PaymentView'
 import LocationManager from './components/Locations/LocationManager'
 import Reports from './components/Reports/Reports'
+import ActivityLog from './components/Audit/ActivityLog'
 import LoginScreen from './components/Auth/LoginScreen'
 import LoadingScreen from './components/UI/LoadingScreen'
 import ChangePasswordModal from './components/Auth/ChangePasswordModal'
+import InviteSetPassword from './components/Auth/InviteSetPassword'
 import { useIsMobile } from './hooks/useIsMobile'
+import { useIdleTimeout } from './hooks/useIdleTimeout'
 import { supabase } from './lib/supabase'
 import * as db from './lib/db'
+import { logActivity } from './lib/db'
 import { useToast } from './components/UI/Toast'
 
 const PAGES = {
   dashboard: Dashboard, workers: WorkerList, tracking: WorkCalendar,
   payments: PaymentView, locations: LocationManager, reports: Reports,
+  audit: ActivityLog,
 }
 
 const pageVariants = {
@@ -47,12 +52,23 @@ export default function App() {
   const [currentUser,      setCurrentUser]      = useState(null)
   const [dataLoading,      setDataLoading]       = useState(false)
   const [passwordRecovery, setPasswordRecovery]  = useState(false)
+  const [isInvite,         setIsInvite]          = useState(() => window.location.hash.includes('type=invite'))
   const [activePage,       setActivePage]        = useState('dashboard')
   const [selectedWorker,   setSelectedWorker]    = useState(null)
-  const [theme,            setTheme]             = useState('dark')
+  const [theme,            setTheme]             = useState(() => localStorage.getItem('theme') ?? 'dark')
   const [lang,             setLang]              = useState('pt')
   const [sidebarOpen,      setSidebarOpen]       = useState(false)
+  const [showIdleWarning,  setShowIdleWarning]   = useState(false)
   const isMobile = useIsMobile()
+
+  useIdleTimeout({
+    timeout:     60 * 60 * 1000, // 1 hora
+    warningTime: 60 * 1000,      // aviso 1 minuto antes
+    enabled:     isAuthenticated,
+    onWarning:   () => setShowIdleWarning(true),
+    onReset:     () => setShowIdleWarning(false),
+    onIdle:      () => { setShowIdleWarning(false); handleLogout() },
+  })
 
   // ── Data state ───────────────────────────────────────────────────────────
   const [workers,        setWorkers]        = useState([])
@@ -82,7 +98,11 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') { setPasswordRecovery(true); return }
-      if (event === 'SIGNED_IN'  && session) { setCurrentUser(session.user); loadData() }
+      if (event === 'SIGNED_IN'  && session) {
+        setCurrentUser(session.user)
+        loadData()
+        logActivity('login', `Login: ${session.user.email}`)
+      }
       if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false)
         syncing.current = false
@@ -167,6 +187,7 @@ export default function App() {
 
   // ── Theme ────────────────────────────────────────────────────────────────
   useEffect(() => {
+    localStorage.setItem('theme', theme)
     if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light')
     else document.documentElement.removeAttribute('data-theme')
   }, [theme])
@@ -178,16 +199,35 @@ export default function App() {
     if (!syncing.current || fromRealtime.current) { prevWorkers.current = workers; return }
     const { toUpsert, toDelete } = diff(prevWorkers.current, workers)
     prevWorkers.current = workers
-    if (toUpsert.length) db.upsertWorkers(toUpsert).catch(() => showToast('Erro ao salvar diaristas.', 'error'))
-    if (toDelete.length) db.deleteWorkers(toDelete).catch(() => showToast('Erro ao salvar diaristas.', 'error'))
+    if (toUpsert.length) {
+      db.upsertWorkers(toUpsert).catch(() => showToast('Erro ao salvar diaristas.', 'error'))
+      const isNew = id => !prevWorkers.current.find(p => p.id === id)
+      toUpsert.forEach(w => logActivity(
+        isNew(w.id) ? 'add_worker' : 'edit_worker',
+        isNew(w.id) ? `Diarista adicionado: ${w.name}` : `Diarista editado: ${w.name}`
+      ))
+    }
+    if (toDelete.length) {
+      db.deleteWorkers(toDelete).catch(() => showToast('Erro ao salvar diaristas.', 'error'))
+      toDelete.forEach(id => {
+        const w = prevWorkers.current.find(p => p.id === id)
+        logActivity('delete_worker', `Diarista removido: ${w?.name ?? id}`)
+      })
+    }
   }, [workers])
 
   useEffect(() => {
     if (!syncing.current || fromRealtime.current) { prevWorkDays.current = workDays; return }
     const { toUpsert, toDelete } = diff(prevWorkDays.current, workDays)
     prevWorkDays.current = workDays
-    if (toUpsert.length) db.upsertWorkDays(toUpsert).catch(() => showToast('Erro ao salvar dias de trabalho.', 'error'))
-    if (toDelete.length) db.deleteWorkDays(toDelete).catch(() => showToast('Erro ao salvar dias de trabalho.', 'error'))
+    if (toUpsert.length) {
+      db.upsertWorkDays(toUpsert).catch(() => showToast('Erro ao salvar dias de trabalho.', 'error'))
+      toUpsert.forEach(d => logActivity('add_workday', `Dia registrado: ${d.date}`))
+    }
+    if (toDelete.length) {
+      db.deleteWorkDays(toDelete).catch(() => showToast('Erro ao salvar dias de trabalho.', 'error'))
+      toDelete.forEach(() => logActivity('delete_workday', 'Dia de trabalho removido'))
+    }
   }, [workDays])
 
   useEffect(() => {
@@ -202,8 +242,14 @@ export default function App() {
     if (!syncing.current || fromRealtime.current) { prevPayments.current = paymentRecords; return }
     const { toUpsert, toDelete } = diff(prevPayments.current, paymentRecords)
     prevPayments.current = paymentRecords
-    if (toUpsert.length) db.upsertPaymentRecords(toUpsert).catch(() => showToast('Erro ao salvar pagamentos.', 'error'))
-    if (toDelete.length) db.deletePaymentRecords(toDelete).catch(() => showToast('Erro ao salvar pagamentos.', 'error'))
+    if (toUpsert.length) {
+      db.upsertPaymentRecords(toUpsert).catch(() => showToast('Erro ao salvar pagamentos.', 'error'))
+      toUpsert.forEach(p => logActivity('add_payment', `Pagamento registrado: R$ ${p.total ?? 0}`))
+    }
+    if (toDelete.length) {
+      db.deletePaymentRecords(toDelete).catch(() => showToast('Erro ao salvar pagamentos.', 'error'))
+      toDelete.forEach(() => logActivity('edit_payment', 'Pagamento removido'))
+    }
   }, [paymentRecords])
 
   useEffect(() => {
@@ -211,7 +257,10 @@ export default function App() {
     db.syncHolidays(holidays).catch(() => showToast('Erro ao salvar feriados.', 'error'))
   }, [holidays])
 
-  const handleLogout = async () => { await supabase.auth.signOut() }
+  const handleLogout = async () => {
+    await logActivity('logout', `Logout: ${currentUser?.email ?? ''}`)
+    await supabase.auth.signOut()
+  }
   const PageComponent = PAGES[activePage] || Dashboard
 
   return (
@@ -226,6 +275,13 @@ export default function App() {
             exit={{ opacity: 0, scale: 1.02, filter: 'blur(8px)', transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } }}
           >
             <LoginScreen />
+          </motion.div>
+        ) : isInvite ? (
+          <motion.div key="invite" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <InviteSetPassword
+              currentUser={currentUser}
+              onDone={() => { setIsInvite(false); window.location.hash = '' }}
+            />
           </motion.div>
         ) : (
           <motion.div key="app" initial={{ opacity: 0 }}
@@ -266,7 +322,7 @@ export default function App() {
                   style={{ minHeight: isMobile ? 'calc(100vh - 61px)' : '100vh', padding: isMobile ? '81px 16px 20px' : '32px 40px' }}
                 >
                   <PageComponent
-                    lang={lang} onNavigate={setActivePage}
+                    lang={lang} theme={theme} onNavigate={setActivePage}
                     selectedWorker={selectedWorker} setSelectedWorker={setSelectedWorker}
                     workers={workers} setWorkers={setWorkers}
                     workDays={workDays} setWorkDays={setWorkDays}
@@ -278,6 +334,57 @@ export default function App() {
                 </motion.div>
               </AnimatePresence>
             </main>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Idle warning modal ── */}
+      <AnimatePresence>
+        {showIdleWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              style={{
+                background: theme === 'light'
+                  ? 'linear-gradient(135deg, #f8fafc, #f1f5f9)'
+                  : 'linear-gradient(135deg, #131325, #0f0f1e)',
+                border: theme === 'light' ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: 20, padding: '32px 36px', maxWidth: 360, width: '90%', textAlign: 'center',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+              }}
+            >
+              <div style={{ fontSize: 36, marginBottom: 12 }}>⏱️</div>
+              <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 800, color: theme === 'light' ? '#1e293b' : '#f1f5f9', marginBottom: 8 }}>
+                Ainda está aí?
+              </div>
+              <div style={{ fontSize: 13, color: theme === 'light' ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.4)', marginBottom: 24, lineHeight: 1.6 }}>
+                Você será deslogado em <strong>1 minuto</strong> por inatividade.
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowIdleWarning(false)}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  color: 'white', fontSize: 14, fontWeight: 700,
+                  boxShadow: '0 4px 14px rgba(99,102,241,0.4)',
+                }}
+              >
+                Continuar sessão
+              </motion.button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
