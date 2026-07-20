@@ -21,7 +21,7 @@ begin;
 do $$
 declare owner_id uuid;
 begin
-  select id into owner_id from auth.users where email = 'eric.outubro@gmail.com';
+  select id into owner_id from auth.users where email = 'francisco.total@gmail.com';
   if owner_id is null then
     raise exception 'Conta dona não encontrada — ajuste o e-mail na migration.';
   end if;

@@ -32,6 +32,16 @@ const PAGES = {
   reports: Reports, audit: ActivityLog, migration: DataImport,
 }
 
+// URL de cada página (sem lib de rotas — o .htaccess já faz fallback de
+// qualquer caminho para index.html, então só precisamos refletir a página
+// atual na barra de endereço via History API).
+const PAGE_SLUGS = {
+  dashboard: 'dashboard', workers: 'trabalhadores', tracking: 'controle-de-dias',
+  expenses: 'gastos-diarios', payments: 'pagamentos', locations: 'locais',
+  reports: 'relatorios', audit: 'auditoria', migration: 'importar-csv',
+}
+const SLUG_TO_PAGE = Object.fromEntries(Object.entries(PAGE_SLUGS).map(([page, slug]) => [slug, page]))
+
 const pageVariants = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.4, 0, 0.2, 1] } },
@@ -68,7 +78,10 @@ export default function App() {
     }
     return false
   })
-  const [activePage,       setActivePage]        = useState('dashboard')
+  const [activePage,       setActivePage]        = useState(() => {
+    const slug = window.location.pathname.replace(/^\/+|\/+$/g, '')
+    return SLUG_TO_PAGE[slug] ?? 'dashboard'
+  })
   const [selectedWorker,   setSelectedWorker]    = useState(null)
   const [theme,            setTheme]             = useState(() => localStorage.getItem('theme') ?? 'dark')
   const [authPage,         setAuthPage]          = useState('login') // 'login' | 'signup'
@@ -182,6 +195,8 @@ export default function App() {
       if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false)
         setIsInvite(false)
+        setActivePage('dashboard')
+        window.history.replaceState(null, '', '/entrar')
         syncing.current = false
         setWorkers([]); setWorkDays([]); setLocations([])
         setPaymentRecords([]); setHolidays([]); setDailyExpenses([])
@@ -274,6 +289,15 @@ export default function App() {
 
   // ── Keep module-level logger in sync with current user ──────────────────
   useEffect(() => { setLogUser(currentUser) }, [currentUser])
+
+  // ── URL reflects the current page (e.g. /dashboard, /trabalhadores) ─────
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const path = `/${PAGE_SLUGS[activePage] ?? 'dashboard'}`
+    if (window.location.pathname !== path) {
+      window.history.replaceState(null, '', path)
+    }
+  }, [activePage, isAuthenticated])
 
   // ── Theme ────────────────────────────────────────────────────────────────
   useEffect(() => {
