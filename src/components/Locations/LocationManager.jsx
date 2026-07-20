@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Users, CalendarDays, DollarSign, Plus, X, Building2, Trash2, AlertTriangle } from 'lucide-react'
-import { getWorkerStats } from '../../data/mockData'
+import { MapPin, Plus, Building2, Trash2, AlertTriangle, Pencil, X } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
+  ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell
 } from 'recharts'
 import i18n from '../../i18n'
@@ -18,6 +17,8 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
   const [newName, setNewName] = useState('')
   const [newCity, setNewCity] = useState('')
   const [newAddress, setNewAddress] = useState('')
+  const [editingLoc, setEditingLoc] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', city: '', address: '' })
 
   const getLocStats = (locId) => {
     const days = workDays.filter(d => d.locationId === locId)
@@ -40,14 +41,13 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
   const selStats = selected ? getLocStats(selected.id) : null
   const selWorkers = selected ? getLocWorkers(selected.id) : []
 
-  // Radar data for comparison
-  const radarData = locations.map(loc => {
+  // Dados de comparação entre locais (barras de total pago)
+  const comparisonData = locations.map(loc => {
     const s = getLocStats(loc.id)
     return {
-      loc: loc.shortName,
-      Dias: s.totalDays,
-      Diaristas: s.workerCount * 5,
-      Ganhos: Math.round(s.totalEarnings / 1000),
+      name: loc.shortName || loc.name,
+      total: Math.round(s.totalEarnings),
+      color: loc.color,
     }
   })
 
@@ -77,6 +77,25 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
     if (selected?.id === locId) {
       setSelected(remaining[0] || null)
     }
+  }
+
+  const startEdit = (loc) => {
+    setEditingLoc(loc)
+    setEditForm({ name: loc.name, city: loc.city || '', address: loc.address || '' })
+  }
+
+  const handleSaveEdit = () => {
+    if (!editForm.name.trim()) return
+    const updated = {
+      ...editingLoc,
+      name: editForm.name.trim(),
+      city: editForm.city.trim(),
+      address: editForm.address.trim(),
+      shortName: editForm.name.trim().slice(0, 2).toUpperCase(),
+    }
+    setLocations(prev => prev.map(l => (l.id === editingLoc.id ? updated : l)))
+    if (selected?.id === editingLoc.id) setSelected(updated)
+    setEditingLoc(null)
   }
 
   const allStats = locations.map(loc => {
@@ -338,6 +357,25 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                     </div>
                   </div>
 
+                  {/* Edit from detail panel */}
+                  <motion.button
+                    whileHover={{ scale: 1.05, background: 'rgba(99,102,241,0.15)' }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => startEdit(selected)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: isMobile ? '8px' : '9px 16px', borderRadius: 10,
+                      border: '1px solid rgba(99,102,241,0.25)',
+                      background: 'rgba(99,102,241,0.08)', color: '#818cf8',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0,
+                      width: isMobile ? 36 : 'auto', height: isMobile ? 36 : 'auto',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Pencil size={14} />
+                    {!isMobile && t.editLocation}
+                  </motion.button>
+
                   {/* Delete from detail panel */}
                   <motion.button
                     whileHover={{ scale: 1.05, background: 'rgba(244,63,94,0.15)' }}
@@ -377,11 +415,38 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                 </div>
               </div>
 
-              {/* Workers assigned */}
+              {/* Comparison bar chart */}
               <div style={{
                 background: 'var(--card-bg)', border: '1px solid var(--card-border)',
                 boxShadow: 'var(--card-shadow)',
                 borderRadius: 18, padding: '22px', marginBottom: 16,
+              }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+                  {t.locationComparison}
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--card-muted)', marginBottom: 16 }}>{t.totalPaidStatLabel}</div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={comparisonData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--inner-border)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fill: 'var(--card-sub)', fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fill: 'var(--card-muted)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(99,102,241,0.06)' }}
+                      contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 12, fontSize: 12 }}
+                      formatter={(v) => [`R$ ${Number(v).toLocaleString('pt-BR')}`, t.totalPaidStatLabel]}
+                    />
+                    <Bar dataKey="total" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                      {comparisonData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Workers assigned */}
+              <div style={{
+                background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                boxShadow: 'var(--card-shadow)',
+                borderRadius: 18, padding: '22px',
               }}>
                 <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
                   {t.assignedWorkers} ({selWorkers.length})
@@ -417,29 +482,43 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                   )}
                 </div>
               </div>
-
-              {/* Comparison radar */}
-              <div style={{
-                background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-                boxShadow: 'var(--card-shadow)',
-                borderRadius: 18, padding: '22px',
-              }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
-                  {t.locationComparison}
-                </h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
-                    <PolarGrid stroke="var(--card-border)" />
-                    <PolarAngleAxis dataKey="loc" tick={{ fill: 'var(--card-sub)', fontSize: 12 }} />
-                    <Radar name="Dias" dataKey="Dias" stroke="#6366f1" fill="#6366f1" fillOpacity={0.15} />
-                    <Radar name="Ganhos" dataKey="Ganhos" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Edit location modal */}
+      <AnimatePresence>
+        {editingLoc && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setEditingLoc(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ duration: 0.25 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 440, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 20, padding: '24px', boxShadow: '0 40px 80px rgba(0,0,0,0.4)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <h3 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 800, color: 'var(--card-heading)' }}>{t.editLocationTitle}</h3>
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setEditingLoc(null)}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--inner-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--card-muted)' }}>
+                  <X size={15} />
+                </motion.button>
+              </div>
+              <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder={t.locationNamePlaceholder} className="input-premium" style={{ width: '100%', padding: '11px 13px', borderRadius: 11, fontSize: 14, marginBottom: 10, boxSizing: 'border-box' }} />
+              <input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} placeholder={t.cityPlaceholder} className="input-premium" style={{ width: '100%', padding: '11px 13px', borderRadius: 11, fontSize: 14, marginBottom: 10, boxSizing: 'border-box' }} />
+              <input value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} placeholder={t.addressPlaceholder} className="input-premium" style={{ width: '100%', padding: '11px 13px', borderRadius: 11, fontSize: 14, marginBottom: 16, boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setEditingLoc(null)} style={{ flex: 1, padding: '11px', borderRadius: 11, border: '1px solid var(--card-border)', background: 'var(--inner-bg)', color: 'var(--card-sub)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t.cancel}</button>
+                <motion.button whileTap={{ scale: 0.97 }} onClick={handleSaveEdit} className="btn-primary" style={{ flex: 2, padding: '11px', borderRadius: 11, fontSize: 14, fontWeight: 700 }}>{t.saveChanges}</motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

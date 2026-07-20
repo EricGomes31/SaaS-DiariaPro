@@ -2,17 +2,19 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend
+  CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend, PieChart, Pie
 } from 'recharts'
-import { Download, Filter, TrendingUp, CalendarDays, BarChart3, Users, ChevronDown, FileText, FileSpreadsheet, CheckCircle2, Loader2, X } from 'lucide-react'
+import { Download, Filter, TrendingUp, CalendarDays, BarChart3, Users, ChevronDown, FileText, FileSpreadsheet, CheckCircle2, Loader2, X, Mail, UtensilsCrossed, Coffee, Cookie, PieChart as PieChartIcon } from 'lucide-react'
 import { getDashboardStats, getWorkerStats } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { format, subDays, parseISO, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { format, parseISO, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, subDays } from 'date-fns'
+import { ptBR, enUS, es } from 'date-fns/locale'
 import i18n from '../../i18n'
+import { log } from '../../lib/logger'
+import ReportSubscribers from './ReportSubscribers'
 
 // ── CSV export ─────────────────────────────────────────────
-function exportCSV({ topEarners, byLocation, monthlyData, byDayOfWeek, period, periodData }) {
+function exportCSV({ topEarners, byLocation, monthlyData, byDayOfWeek, period }) {
   const BOM = '﻿'
   const dateStr = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
 
@@ -314,6 +316,7 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
   const handleExport = async () => {
     setStatus('loading')
     await new Promise(r => setTimeout(r, 900))
+    const groupLabel = groupBy === 'day' ? 'por dia' : 'por trabalhador'
     if (groupBy === 'day') {
       if (selected === 'csv') exportDayCSV(activeDayRows)
       else exportDayPDF(activeDayRows)
@@ -321,6 +324,7 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
       if (selected === 'csv') exportCSV(exportData)
       else exportPDF(exportData)
     }
+    log('export_report', `Relatório exportado: ${selected.toUpperCase()} — ${groupLabel} (Relatórios)`)
     setStatus('done')
     setTimeout(() => { setStatus('idle'); onClose() }, 1600)
   }
@@ -346,10 +350,10 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 480,
-          background: 'linear-gradient(135deg, #131325 0%, #0f0f1e 100%)',
+          background: 'var(--card-bg)',
           border: '1px solid var(--card-border)',
           borderRadius: 22, overflow: 'hidden',
-          boxShadow: '0 40px 80px rgba(0,0,0,0.7)',
+          boxShadow: '0 40px 80px rgba(0,0,0,0.4)',
         }}
       >
         {/* Header */}
@@ -499,12 +503,118 @@ const CustomTooltip = ({ active, payload, label }) => {
   )
 }
 
-export default function Reports({ lang = 'pt', workers, workDays, locations }) {
+// ── Gastos diários (refeições) — agregações para os gráficos ──
+const MEAL_COLORS = { breakfast: '#f59e0b', lunch: '#10b981', snack: '#8b5cf6' }
+
+function computeExpenseStats(workDays, dailyExpenses, locale, dayNames) {
+  const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n >= 0 ? n : 0 }
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1)
+  const exp = dailyExpenses ?? []
+  const defaultRow = exp.find(e => e.id === 'default')
+  const dBreak = num(defaultRow?.breakfastPrice)
+  const dLunch = num(defaultRow?.lunchPrice)
+  const dSnack = num(defaultRow?.snackPrice)
+  const snackDefault = defaultRow?.snackActive ?? true
+
+  const overrideByDate = {}
+  for (const e of exp) if (e.id !== 'default') overrideByDate[e.date] = e
+
+  const wdByDate = {}
+  for (const d of (workDays ?? [])) {
+    if (typeof d.date !== 'string') continue
+    ;(wdByDate[d.date] ??= []).push(d)
+  }
+
+  const byDate = {}
+  for (const date in wdByDate) {
+    const wds = wdByDate[date]
+    const present = wds.length
+    const o = overrideByDate[date]
+    const snackOn = (o && o.snackActive != null) ? o.snackActive : snackDefault
+    const excluded = new Set(o?.snackExcluded ?? [])
+    const snackCount = wds.filter(d => !excluded.has(d.workerId)).length
+    const cafe   = present    * (o?.breakfastPrice != null ? num(o.breakfastPrice) : dBreak)
+    const almoco = present    * (o?.lunchPrice     != null ? num(o.lunchPrice)     : dLunch)
+    const lanche = snackOn ? snackCount * (o?.snackPrice != null ? num(o.snackPrice) : dSnack) : 0
+    byDate[date] = { cafe, almoco, lanche, total: cafe + almoco + lanche }
+  }
+
+  const weekly = Array.from({ length: 7 }, (_, i) => {
+    const d = subDays(new Date(), 6 - i)
+    const e = byDate[format(d, 'yyyy-MM-dd')]
+    return { label: cap(format(d, 'EEE', { locale })), breakfast: e?.cafe ?? 0, lunch: e?.almoco ?? 0, snack: e?.lanche ?? 0 }
+  })
+
+  const monthly = Array.from({ length: 6 }, (_, i) => {
+    const md = subMonths(new Date(), 5 - i)
+    const key = format(md, 'yyyy-MM')
+    let breakfast = 0, lunch = 0, snack = 0
+    for (const date in byDate) if (date.slice(0, 7) === key) {
+      breakfast += byDate[date].cafe; lunch += byDate[date].almoco; snack += byDate[date].lanche
+    }
+    return { label: cap(format(md, 'MMM', { locale }).replace('.', '')), breakfast, lunch, snack }
+  })
+
+  const weekday = (dayNames ?? ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'])
+    .map(name => ({ label: name, breakfast: 0, lunch: 0, snack: 0 }))
+  for (const date in byDate) {
+    const dow = getDay(parseISO(date))
+    weekday[dow].breakfast += byDate[date].cafe
+    weekday[dow].lunch     += byDate[date].almoco
+    weekday[dow].snack     += byDate[date].lanche
+  }
+
+  const totals = Object.values(byDate).reduce(
+    (a, e) => ({ breakfast: a.breakfast + e.cafe, lunch: a.lunch + e.almoco, snack: a.snack + e.lanche, total: a.total + e.total }),
+    { breakfast: 0, lunch: 0, snack: 0, total: 0 }
+  )
+  const daysWith = Object.values(byDate).filter(e => e.total > 0)
+  const peak = Object.values(byDate).reduce((m, e) => Math.max(m, e.total), 0)
+  const pie = [
+    { name: 'breakfast', value: totals.breakfast },
+    { name: 'lunch',     value: totals.lunch },
+    { name: 'snack',     value: totals.snack },
+  ].filter(s => s.value > 0)
+
+  return {
+    weekly, monthly, weekday, totals, pie, peak,
+    avg: daysWith.length ? totals.total / daysWith.length : 0,
+    daysCount: daysWith.length,
+    hasData: totals.total > 0,
+  }
+}
+
+const ExpenseTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null
+  const total = payload.reduce((s, p) => s + (p.value || 0), 0)
+  return (
+    <div style={{ background: 'var(--card-bg-elevated)', border: '1px solid var(--card-border)', borderRadius: 12, padding: '12px 16px', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}>
+      <div style={{ fontSize: 11, color: 'var(--card-sub)', marginBottom: 8 }}>{label}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 2, background: p.color || p.fill }} />
+          <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{p.name}</span>
+          <span style={{ fontSize: 13, color: 'var(--card-heading)', fontWeight: 600, marginLeft: 'auto' }}>R$ {(p.value || 0).toLocaleString('pt-BR')}</span>
+        </div>
+      ))}
+      {payload.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--card-border)' }}>
+          <span style={{ fontSize: 12, color: 'var(--card-sub)', fontWeight: 600 }}>Total</span>
+          <span style={{ fontSize: 13, color: '#10b981', fontWeight: 800 }}>R$ {total.toLocaleString('pt-BR')}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function Reports({ lang = 'pt', workers, workDays, locations, dailyExpenses }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const stats = getDashboardStats(workers, workDays, locations)
+  const [mainTab,      setMainTab]      = useState('payments')
   const [period, setPeriod]       = useState('30d')
   const [activeChart, setActiveChart] = useState('earnings')
+  const [expView, setExpView]     = useState('weekly')
   const [showExport, setShowExport]   = useState(false)
 
   // Workers per day of week
@@ -518,13 +628,19 @@ export default function Reports({ lang = 'pt', workers, workDays, locations }) {
     }
   })
 
-  // Monthly comparison (last 3 months simulated)
-  const monthlyData = [
-    { month: t.reportsMonths[0], earnings: 28400, days: 98 },
-    { month: t.reportsMonths[1], earnings: 34200, days: 112 },
-    { month: t.reportsMonths[2], earnings: 31800, days: 105 },
-    { month: t.reportsMonths[3], earnings: stats.totalEarnings, days: stats.totalDays },
-  ]
+  // Monthly comparison — real data, last 4 months ending in the current month
+  const monthLocale = { pt: ptBR, en: enUS, es }[lang] ?? ptBR
+  const monthlyData = Array.from({ length: 4 }, (_, idx) => {
+    const monthDate = subMonths(new Date(), 3 - idx)
+    const key = format(monthDate, 'yyyy-MM')
+    const monthDays = workDays.filter(d => d.date.slice(0, 7) === key)
+    const label = format(monthDate, 'MMM', { locale: monthLocale }).replace('.', '')
+    return {
+      month: label.charAt(0).toUpperCase() + label.slice(1),
+      earnings: monthDays.reduce((s, d) => s + d.earnings, 0),
+      days: monthDays.length,
+    }
+  })
 
   // Top earners
   const topEarners = workers.map(w => {
@@ -533,6 +649,20 @@ export default function Reports({ lang = 'pt', workers, workDays, locations }) {
   }).sort((a, b) => b.totalEarnings - a.totalEarnings).slice(0, 5)
 
   const data = period === '7d' ? stats.last7days : stats.last30days
+
+  // Gastos diários (refeições)
+  const expStats = computeExpenseStats(workDays, dailyExpenses, monthLocale, t.reportsDayNames)
+  const expData = expView === 'weekly' ? expStats.weekly : expView === 'monthly' ? expStats.monthly : expStats.weekday
+  const mealMeta = [
+    { key: 'breakfast', label: t.breakfastLabel, color: MEAL_COLORS.breakfast },
+    { key: 'lunch',     label: t.lunchLabel,     color: MEAL_COLORS.lunch },
+    { key: 'snack',     label: t.snackLabel,     color: MEAL_COLORS.snack },
+  ]
+  const expPie = expStats.pie.map(s => ({
+    ...s,
+    label: mealMeta.find(m => m.key === s.name)?.label ?? s.name,
+    color: MEAL_COLORS[s.name],
+  }))
 
   const chartTitleMap = {
     earnings:   `${t.chartPayments} — ${period === '7d' ? t.sevenDays : t.thirtyDays}`,
@@ -544,8 +674,8 @@ export default function Reports({ lang = 'pt', workers, workDays, locations }) {
   return (
     <div>
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', flexWrap: 'wrap', gap: isMobile ? 16 : 0 }}>
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', flexWrap: 'wrap', gap: isMobile ? 16 : 0, marginBottom: 20 }}>
           <div>
             <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 24 : 30, fontWeight: 800, color: 'var(--page-heading)', margin: 0, letterSpacing: '-0.02em' }}>
               {t.reportsTitle}
@@ -554,42 +684,49 @@ export default function Reports({ lang = 'pt', workers, workDays, locations }) {
               {t.reportsSubtitle}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            {/* Period selector */}
-            <div style={{ display: 'flex', gap: 4, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)', borderRadius: 12, padding: 4 }}>
-              {['7d', '30d'].map(p => (
-                <motion.button
-                  key={p}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setPeriod(p)}
-                  style={{
-                    padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                    background: period === p ? 'rgba(99,102,241,0.2)' : 'transparent',
-                    color: period === p ? '#818cf8' : 'var(--card-muted)',
-                  }}
-                >
-                  {p === '7d' ? t.sevenDays : t.thirtyDays}
-                </motion.button>
-              ))}
+          {mainTab === 'payments' && (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 4, background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)', borderRadius: 12, padding: 4 }}>
+                {['7d', '30d'].map(p => (
+                  <motion.button key={p} whileTap={{ scale: 0.95 }} onClick={() => setPeriod(p)}
+                    style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: period === p ? 'rgba(99,102,241,0.2)' : 'transparent', color: period === p ? '#818cf8' : 'var(--card-muted)' }}>
+                    {p === '7d' ? t.sevenDays : t.thirtyDays}
+                  </motion.button>
+                ))}
+              </div>
+              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setShowExport(true)}
+                style={{ padding: '11px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600, border: '1px solid rgba(99,102,241,0.3)', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))', color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}>
+                <Download size={15} />{t.exportBtn}
+              </motion.button>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setShowExport(true)}
-              style={{
-                padding: '11px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600,
-                border: '1px solid rgba(99,102,241,0.3)', background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
-                color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-                transition: 'all 0.2s',
-              }}
-            >
-              <Download size={15} />
-              {t.exportBtn}
+          )}
+        </div>
+
+        {/* Main tab switcher */}
+        <div style={{ display: 'flex', gap: 6, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 14, padding: 5, width: 'fit-content' }}>
+          {[
+            { id: 'payments',    label: t.reportsTabPayments, icon: BarChart3 },
+            { id: 'expenses',    label: t.reportsTabExpenses, icon: UtensilsCrossed },
+            { id: 'subscribers', label: 'Relatório por E-mail', icon: Mail },
+          ].map(tab => (
+            <motion.button key={tab.id} whileTap={{ scale: 0.96 }} onClick={() => setMainTab(tab.id)}
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, transition: 'all 0.2s', background: mainTab === tab.id ? 'rgba(99,102,241,0.18)' : 'transparent', color: mainTab === tab.id ? '#818cf8' : 'var(--card-muted)' }}>
+              <tab.icon size={14} />{tab.label}
             </motion.button>
-          </div>
+          ))}
         </div>
       </motion.div>
+
+      {/* Subscribers tab */}
+      <AnimatePresence mode="wait">
+        {mainTab === 'subscribers' && (
+          <motion.div key="subscribers" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.22 }}>
+            <ReportSubscribers />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {mainTab === 'payments' && <>
 
       {/* Chart type tabs */}
       <motion.div
@@ -714,6 +851,7 @@ export default function Reports({ lang = 'pt', workers, workDays, locations }) {
       </AnimatePresence>
 
       {/* Bottom row */}
+
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
         {/* Top earners */}
         <motion.div
@@ -813,6 +951,169 @@ export default function Reports({ lang = 'pt', workers, workDays, locations }) {
           })}
         </motion.div>
       </div>
+
+      </>}
+
+      {mainTab === 'expenses' && <>
+
+      {/* View selector */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}
+      >
+        {[
+          { id: 'weekly',  label: t.viewWeekly,    icon: CalendarDays },
+          { id: 'monthly', label: t.viewMonthly,   icon: BarChart3 },
+          { id: 'weekday', label: t.viewByWeekday, icon: TrendingUp },
+        ].map(tab => (
+          <motion.button
+            key={tab.id}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setExpView(tab.id)}
+            style={{
+              padding: '10px 18px', borderRadius: 11, fontSize: 13, fontWeight: 600,
+              border: `1px solid ${expView === tab.id ? 'rgba(99,102,241,0.35)' : 'var(--card-border)'}`,
+              background: expView === tab.id ? 'rgba(99,102,241,0.12)' : 'var(--inner-bg)',
+              color: expView === tab.id ? '#818cf8' : 'var(--card-sub)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.2s',
+            }}
+          >
+            <tab.icon size={14} />
+            {tab.label}
+          </motion.button>
+        ))}
+      </motion.div>
+
+      {/* Main expense chart */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={expView}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -5 }}
+          transition={{ duration: 0.25 }}
+          style={{
+            background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+            boxShadow: 'var(--card-shadow)',
+            borderRadius: 20, padding: '28px', marginBottom: 20,
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
+            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--card-heading)', display: 'flex', alignItems: 'center', gap: 9 }}>
+              <UtensilsCrossed size={18} color="#818cf8" />
+              {t.expenseDashTitle}
+            </h2>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              {mealMeta.map(m => (
+                <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: m.color }} />
+                  <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{m.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {expStats.hasData ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={expData} barSize={expView === 'monthly' ? 34 : 26}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--inner-border)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: 'var(--card-sub)', fontSize: 12 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: 'var(--card-muted)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => v >= 1000 ? `R$${(v / 1000).toFixed(1)}k` : `R$${v}`} />
+                <Tooltip content={<ExpenseTooltip />} cursor={{ fill: 'rgba(99,102,241,0.06)' }} />
+                <Bar dataKey="breakfast" stackId="m" fill={MEAL_COLORS.breakfast} name={t.breakfastLabel} />
+                <Bar dataKey="lunch"     stackId="m" fill={MEAL_COLORS.lunch}     name={t.lunchLabel} />
+                <Bar dataKey="snack"     stackId="m" fill={MEAL_COLORS.snack}     name={t.snackLabel} radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: 'var(--card-muted)' }}>
+              <UtensilsCrossed size={40} strokeWidth={1.4} style={{ opacity: 0.4 }} />
+              <span style={{ fontSize: 14 }}>{t.noExpenseData}</span>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Bottom row — composition + key stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
+        {/* Composition donut */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)', borderRadius: 20, padding: '24px' }}
+        >
+          <h3 style={{ margin: '0 0 16px', fontSize: 17, fontWeight: 700, color: 'var(--card-heading)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <PieChartIcon size={16} color="#818cf8" />{t.compositionTitle}
+          </h3>
+          {expPie.length ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ width: 190, height: 190, flexShrink: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={expPie} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius={52} outerRadius={82} paddingAngle={3} stroke="none">
+                      {expPie.map((s, i) => <Cell key={i} fill={s.color} />)}
+                    </Pie>
+                    <Tooltip content={<ExpenseTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                {expPie.map(s => {
+                  const pct = expStats.totals.total ? (s.value / expStats.totals.total) * 100 : 0
+                  return (
+                    <div key={s.name} style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--card-sub)' }}>
+                          <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color }} />{s.label}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--card-heading)' }}>R$ {s.value.toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div style={{ height: 4, borderRadius: 2, background: 'var(--inner-bg)', overflow: 'hidden' }}>
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }} style={{ height: '100%', borderRadius: 2, background: s.color }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--card-muted)', fontSize: 13 }}>{t.noExpenseData}</div>
+          )}
+        </motion.div>
+
+        {/* Key stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)', borderRadius: 20, padding: '24px' }}
+        >
+          <h3 style={{ margin: '0 0 20px', fontSize: 17, fontWeight: 700, color: 'var(--card-heading)' }}>{t.reportsTabExpenses}</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {[
+              { label: t.accumulatedTotal, value: expStats.totals.total, color: '#10b981', icon: UtensilsCrossed },
+              { label: t.avgPerDayExpense, value: expStats.avg,          color: '#6366f1', icon: Coffee },
+              { label: t.highestDay,       value: expStats.peak,         color: '#f59e0b', icon: TrendingUp },
+              { label: t.snackLabel,       value: expStats.totals.snack, color: '#8b5cf6', icon: Cookie },
+            ].map((s, i) => (
+              <div key={i} style={{ padding: '16px', borderRadius: 14, background: `${s.color}0d`, border: `1px solid ${s.color}22` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+                  <s.icon size={15} color={s.color} />
+                  <span style={{ fontSize: 11, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</span>
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>
+                  R$ {s.value.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      </>}
     </div>
   )
 }

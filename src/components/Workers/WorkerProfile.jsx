@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft, Edit2, Phone, MapPin, Clock, Calendar, Sun, Sunset,
+  Mail,
   QrCode, Copy, Check, CheckCircle2, Hourglass, AlertCircle, Ban,
   ChevronDown, ChevronUp, Plus, Trash2, X,
 } from 'lucide-react'
@@ -10,7 +11,7 @@ import {
 } from 'recharts'
 import { getWorkerStats, getPaymentHistory, PIX_KEY_TYPES, isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, getDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import i18n from '../../i18n'
 
@@ -98,7 +99,7 @@ function PaymentRow({ record, index, isMobile, t }) {
 
         {/* Period label */}
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', textTransform: 'capitalize' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--card-heading)', textTransform: 'capitalize' }}>
             {cap(record.period)}
           </div>
           <div style={{ fontSize: 11, color: 'var(--card-muted)', marginTop: 2 }}>
@@ -183,11 +184,15 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
   const today = format(new Date(), 'yyyy-MM-dd')
   const [date, setDate] = useState(today)
   const [locationId, setLocationId] = useState(worker.locations[0] || '')
+  const [overtimeHours, setOvertimeHours] = useState('')
+  const [bonusAmount, setBonusAmount] = useState('')
   const [error, setError] = useState('')
 
   const workerLocations = locations.filter(l => worker.locations.includes(l.id))
   const isSpecial = date ? isWeekendOrHoliday(date, holidays) : false
   const rate = date ? getWorkerDayRate(worker, date, holidays) : worker.weekdayRate
+  const overtimeValue = parseFloat(overtimeHours) || 0
+  const bonusValue = parseFloat(bonusAmount) || 0
 
   const handleSave = () => {
     if (!date) return setError(t.selectDate)
@@ -201,7 +206,9 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
       locationId,
       isWeekend: isSpecial,
       rate,
-      earnings: rate,
+      earnings: rate + overtimeValue + bonusValue,
+      overtime: overtimeValue,
+      bonus: bonusValue,
     })
     onClose()
   }
@@ -230,7 +237,7 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>
+          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--card-heading)' }}>
             {t.registerWorkDay}
           </h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--card-muted)', padding: 4, display: 'flex' }}>
@@ -258,16 +265,31 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
             {t.workLocation}
           </label>
-          <select
-            value={locationId}
-            onChange={e => setLocationId(e.target.value)}
-            className="input-premium"
-            style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 14, cursor: 'pointer', boxSizing: 'border-box' }}
-          >
-            {workerLocations.map(loc => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {workerLocations.map(loc => {
+              const sel = locationId === loc.id
+              return (
+                <motion.button
+                  key={loc.id}
+                  type="button"
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setLocationId(loc.id)}
+                  style={{
+                    flex: 1, minWidth: 'fit-content',
+                    padding: '10px 14px', borderRadius: 11, cursor: 'pointer',
+                    border: `1.5px solid ${sel ? loc.color + '70' : 'rgba(255,255,255,0.08)'}`,
+                    background: sel ? `${loc.color}18` : 'rgba(255,255,255,0.02)',
+                    color: sel ? loc.color : 'rgba(255,255,255,0.4)',
+                    fontSize: 13, fontWeight: sel ? 700 : 400,
+                    display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: sel ? loc.color : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                  {loc.name}
+                </motion.button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Rate preview */}
@@ -283,6 +305,70 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
           <span style={{ fontSize: 20, fontWeight: 800, color: isSpecial ? '#f59e0b' : '#818cf8' }}>
             R$ {rate}
           </span>
+        </div>
+
+        {/* Overtime (optional) */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+            {t.overtimeRegistered}
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={overtimeHours}
+            onChange={e => setOvertimeHours(e.target.value)}
+            placeholder="0"
+            className="input-premium"
+            style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 14, boxSizing: 'border-box' }}
+          />
+          {overtimeValue > 0 && (
+            <div style={{
+              marginTop: 10, padding: '10px 14px', borderRadius: 10,
+              background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#10b981', marginBottom: 4 }}>
+                <span>{t.overtimeRegistered}</span>
+                <span style={{ fontWeight: 700 }}>+ R$ {overtimeValue.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{t.totalCol}</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>R$ {(rate + overtimeValue).toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Bonus (optional) */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+            {t.bonusLabel}
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={bonusAmount}
+            onChange={e => setBonusAmount(e.target.value)}
+            placeholder="0"
+            className="input-premium"
+            style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 14, boxSizing: 'border-box' }}
+          />
+          {bonusValue > 0 && (
+            <div style={{
+              marginTop: 10, padding: '10px 14px', borderRadius: 10,
+              background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#10b981', marginBottom: 4 }}>
+                <span>{t.bonusRegistered}</span>
+                <span style={{ fontWeight: 700 }}>+ R$ {bonusValue.toFixed(2)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{t.totalCol}</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>R$ {(rate + overtimeValue + bonusValue).toFixed(2)}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Error */}
@@ -324,10 +410,12 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
 }
 
 // ── Main component ─────────────────────────────────────────
-export default function WorkerProfile({ lang = 'pt', worker, workDays, locations, holidays = [], onAddWorkDay, onDeleteWorkDay, onBack, onEdit }) {
+export default function WorkerProfile({ lang = 'pt', worker, workDays, locations, holidays = [], onAddWorkDay, onDeleteWorkDay, onBack, onEdit, onDelete }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const [showAddModal, setShowAddModal] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const stats = getWorkerStats(worker.id, workDays)
   const history = getPaymentHistory(worker.id, workDays)
@@ -337,18 +425,34 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 14)
 
-  const chartData = recentDays.slice(0, 10).reverse().map(d => ({
-    date: format(parseISO(d.date), 'dd/MM'),
-    value: d.earnings,
-    isWeekend: d.isWeekend,
-    location: workerLocations.find(l => l.id === d.locationId)?.shortName,
-  }))
+  // Cor da barra pelo tipo de dia (mesma lógica de getWorkerDayRate)
+  const DAY_KIND_COLORS = { weekday: '#6366f1', saturday: '#f59e0b', sunday: '#ef4444' }
+  const chartData = recentDays.slice(0, 10).reverse().map(d => {
+    const dow = getDay(parseISO(d.date))
+    const kind = (holidays.includes(d.date) || dow === 0) ? 'sunday' : dow === 6 ? 'saturday' : 'weekday'
+    return {
+      date: format(parseISO(d.date), 'dd/MM'),
+      value: d.earnings,
+      isWeekend: d.isWeekend,
+      color: DAY_KIND_COLORS[kind],
+      location: workerLocations.find(l => l.id === d.locationId)?.shortName,
+    }
+  })
 
   const earningPercent = stats.totalEarnings > 0
     ? Math.round((stats.weekendEarnings / stats.totalEarnings) * 100)
     : 0
 
   const pixTypeLabel = PIX_KEY_TYPES.find(pt => pt.value === worker.pixKeyType)?.label || 'PIX'
+
+  const kpiCards = [
+    { label: t.totalEarned,      value: `R$ ${stats.totalEarnings.toLocaleString('pt-BR')}`, color: '#10b981', sub: `${stats.totalDays} ${t.days}` },
+    { label: t.weekdayDaysLabel, value: stats.weekdayDays,  color: '#6366f1', sub: `R$ ${stats.weekdayEarnings.toLocaleString('pt-BR')}` },
+    { label: t.weekendDaysLabel, value: stats.weekendDays,  color: '#f59e0b', sub: `R$ ${stats.weekendEarnings.toLocaleString('pt-BR')}` },
+    { label: t.weekendPercent,   value: `${earningPercent}%`, color: '#8b5cf6', sub: t.ofTotalEarned },
+  ]
+  if (stats.totalOvertime > 0) kpiCards.push({ label: t.overtimeRegistered, value: `R$ ${stats.totalOvertime.toLocaleString('pt-BR')}`, color: '#f59e0b', sub: t.includedInTotal })
+  if (stats.totalBonus > 0)    kpiCards.push({ label: t.bonusRegistered,    value: `R$ ${stats.totalBonus.toLocaleString('pt-BR')}`,    color: '#10b981', sub: t.includedInTotal })
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
@@ -390,6 +494,23 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
           <Edit2 size={15} />
           {t.editBtn}
         </motion.button>
+        {onDelete && (
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setShowDeleteConfirm(true)}
+            title={t.deleteWorkerBtn}
+            style={{
+              padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600,
+              border: '1px solid rgba(244,63,94,0.3)', background: 'rgba(244,63,94,0.08)',
+              color: '#f43f5e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              transition: 'all 0.2s', flexShrink: 0,
+            }}
+          >
+            <Trash2 size={15} />
+            {!isMobile && t.deleteWorkerBtn}
+          </motion.button>
+        )}
       </div>
 
       {/* ── Hero card ── */}
@@ -439,6 +560,13 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
                 <Phone size={13} />{worker.phone || t.notInformed}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--card-sub)' }}>
+                <Mail size={13} />{worker.email ? (
+                  <a href={`mailto:${worker.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                    {worker.email}
+                  </a>
+                ) : t.notInformed}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--card-sub)' }}>
                 <Calendar size={13} />
                 {t.since} {worker.startDate ? format(parseISO(worker.startDate), "MMM 'de' yyyy", { locale: ptBR }) : '—'}
               </div>
@@ -484,7 +612,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
             </span>
           </div>
           {worker.pixKey ? (
-            <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 600, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 600, color: 'var(--card-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {worker.pixKey}
             </div>
           ) : (
@@ -499,12 +627,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
 
       {/* ── KPI stats ── */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        {[
-          { label: t.totalEarned,      value: `R$ ${stats.totalEarnings.toLocaleString('pt-BR')}`, color: '#10b981', sub: `${stats.totalDays} ${t.days}` },
-          { label: t.weekdayDaysLabel, value: stats.weekdayDays,  color: '#6366f1', sub: `R$ ${stats.weekdayEarnings.toLocaleString('pt-BR')}` },
-          { label: t.weekendDaysLabel, value: stats.weekendDays,  color: '#f59e0b', sub: `R$ ${stats.weekendEarnings.toLocaleString('pt-BR')}` },
-          { label: t.weekendPercent,   value: `${earningPercent}%`, color: '#8b5cf6', sub: t.ofTotalEarned },
-        ].map((s, i) => (
+        {kpiCards.map((s, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 10 }}
@@ -528,7 +651,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
           transition={{ delay: 0.3 }}
           style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 18, padding: '24px' }}
         >
-          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>
+          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
             {t.earningsHistory}
           </h3>
           <ResponsiveContainer width="100%" height={200}>
@@ -541,7 +664,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
                 const d = payload[0].payload
                 return (
                   <div style={{ background: '#161628', border: '1px solid var(--card-border)', borderRadius: 10, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 11, color: d.isWeekend ? '#f59e0b' : '#818cf8', fontWeight: 600, marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, color: d.color, fontWeight: 600, marginBottom: 4 }}>
                       {d.isWeekend ? t.weekendTooltip : t.weekdayTooltip}
                     </div>
                     <div style={{ fontSize: 14, color: '#f1f5f9', fontWeight: 700 }}>R$ {d.value}</div>
@@ -551,7 +674,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
               }} />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.isWeekend ? '#f59e0b' : '#6366f1'} />
+                  <Cell key={i} fill={entry.color} />
                 ))}
               </Bar>
             </BarChart>
@@ -579,7 +702,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
           transition={{ delay: 0.35 }}
           style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 18, padding: '24px' }}
         >
-          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>{t.locationsTitle}</h3>
+          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>{t.locationsTitle}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
             {workerLocations.map(loc => (
               <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', borderRadius: 12, background: `${loc.color}08`, border: `1px solid ${loc.color}20` }}>
@@ -620,7 +743,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#f1f5f9' }}>
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--card-heading)' }}>
               {t.paymentHistory}
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--card-muted)' }}>
@@ -679,7 +802,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
         style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 18, padding: '24px' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f1f5f9' }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
             {t.workDaysLog}
           </h3>
           <motion.button
@@ -719,8 +842,21 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
                   border: `1px solid ${day.isWeekend ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.12)'}`,
                 }}
               >
+                {confirmDeleteId === day.id && (
+                  <div style={{
+                    position: 'absolute', top: 6, right: 6, zIndex: 2,
+                    display: 'flex', gap: 4, alignItems: 'center',
+                    padding: '4px 6px', borderRadius: 8,
+                    background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
+                  }}>
+                    <span style={{ fontSize: 10, color: '#f43f5e', fontWeight: 600, whiteSpace: 'nowrap' }}>Excluir?</span>
+                    <button onClick={() => { onDeleteWorkDay(day.id); setConfirmDeleteId(null) }} style={{ padding: '3px 7px', borderRadius: 5, cursor: 'pointer', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.35)', color: '#f43f5e', fontSize: 10, fontWeight: 700 }}>Sim</button>
+                    <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '3px 7px', borderRadius: 5, cursor: 'pointer', background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)', color: 'var(--card-dim)', fontSize: 10, fontWeight: 700 }}>Não</button>
+                  </div>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-heading)' }}>
                     {format(parseISO(day.date), 'dd MMM', { locale: ptBR })}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -728,7 +864,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
                     <motion.button
                       whileHover={{ scale: 1.15 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => onDeleteWorkDay(day.id)}
+                      onClick={() => setConfirmDeleteId(day.id)}
                       title={t.removeRecord}
                       style={{
                         background: 'none', border: 'none', cursor: 'pointer',
@@ -745,6 +881,16 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
                 <div style={{ fontSize: 15, fontWeight: 700, color: day.isWeekend ? '#f59e0b' : '#818cf8', marginBottom: 4 }}>
                   R$ {day.earnings}
                 </div>
+                {(day.overtime || 0) > 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>
+                    +R$ {day.overtime.toFixed(2)} HE
+                  </div>
+                )}
+                {(day.bonus || 0) > 0 && (
+                  <div style={{ fontSize: 10, fontWeight: 600, color: '#10b981', marginBottom: 4 }}>
+                    +R$ {day.bonus.toFixed(2)} Bonif.
+                  </div>
+                )}
                 {loc && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <div style={{ width: 6, height: 6, borderRadius: '50%', background: loc.color }} />
@@ -769,6 +915,85 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
             onClose={() => setShowAddModal(false)}
             t={t}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Delete Worker Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowDeleteConfirm(false)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(4px)', padding: 16,
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.92, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--card-bg)', border: '1px solid rgba(244,63,94,0.25)',
+                borderRadius: 20, padding: 32, width: 420, maxWidth: '90vw',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                  background: 'rgba(244,63,94,0.12)', border: '1.5px solid rgba(244,63,94,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Trash2 size={20} color="#f43f5e" />
+                </div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--card-heading)' }}>
+                  {t.deleteWorkerTitle}
+                </h3>
+              </div>
+
+              <p style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--card-sub)', lineHeight: 1.5 }}>
+                {t.deleteWorkerQuestion} <strong style={{ color: 'var(--card-heading)' }}>{worker.name}</strong>?
+              </p>
+              <div style={{
+                marginBottom: 24, padding: '10px 14px', borderRadius: 10,
+                background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)',
+                fontSize: 13, color: '#f43f5e', lineHeight: 1.5,
+              }}>
+                {t.deleteWorkerWarning}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer',
+                    border: '1px solid var(--card-border)', background: 'var(--inner-bg)',
+                    color: 'var(--card-sub)', fontSize: 14, fontWeight: 600,
+                  }}
+                >
+                  {t.cancel}
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => { setShowDeleteConfirm(false); onDelete(worker) }}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer',
+                    border: '1px solid rgba(244,63,94,0.4)', background: 'rgba(244,63,94,0.15)',
+                    color: '#f43f5e', fontSize: 14, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  }}
+                >
+                  <Trash2 size={15} />
+                  {t.deleteBtn}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>

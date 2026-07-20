@@ -93,7 +93,7 @@ function getWorkerEmail(worker) {
 }
 
 // ── Pix QR Code modal ──────────────────────────────────────
-function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayIds, onMarkPaid, onClose, t }) {
+function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, bonusAmount = 0, pendingWorkDayIds, onMarkPaid, onClose, t }) {
   const [copied, setCopied] = useState(false)
   const [paid, setPaid] = useState(false)
   const pixTypeLabel = PIX_KEY_TYPES.find(pt => pt.value === worker.pixKeyType)?.label || 'PIX'
@@ -232,16 +232,24 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayI
           background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          {overtimeAmount > 0 ? (
+          {(overtimeAmount > 0 || bonusAmount > 0) ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--card-muted)' }}>
                 <span>{t.overtimeDailies}</span>
-                <span>R$ {(pendingAmount - overtimeAmount).toLocaleString('pt-BR')}</span>
+                <span>R$ {(pendingAmount - overtimeAmount - bonusAmount).toLocaleString('pt-BR')}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>
-                <span>+ {t.overtimeExtra}</span>
-                <span>R$ {overtimeAmount.toLocaleString('pt-BR')}</span>
-              </div>
+              {overtimeAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>
+                  <span>+ {t.overtimeExtra}</span>
+                  <span>R$ {overtimeAmount.toLocaleString('pt-BR')}</span>
+                </div>
+              )}
+              {bonusAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#10b981', fontWeight: 600 }}>
+                  <span>+ {t.bonusRegistered}</span>
+                  <span>R$ {bonusAmount.toLocaleString('pt-BR')}</span>
+                </div>
+              )}
               <div style={{ borderTop: '1px solid rgba(16,185,129,0.15)', paddingTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 800, color: '#10b981' }}>
                 <span>Total</span>
                 <span>R$ {pendingAmount.toLocaleString('pt-BR')}</span>
@@ -384,7 +392,7 @@ function exportCSV(workerSummary) {
 }
 
 // ── PDF export (print window) ──────────────────────────────
-function exportPDF(workerSummary, totals) {
+function exportPDF(workerSummary) {
   const dateStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
   const totalGeral = workerSummary.reduce((s, w) => s + w.totalEarnings, 0)
 
@@ -989,7 +997,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setScope(s.id)}
                   style={{
-                    flex: 1, padding: '9px 4px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    flex: 1, padding: '9px 4px', borderRadius: 10, cursor: 'pointer',
                     background: scope === s.id ? `${s.color}15` : 'var(--inner-bg)',
                     border: `1.5px solid ${scope === s.id ? s.color + '50' : 'var(--card-border)'}`,
                     color: scope === s.id ? s.color : 'var(--card-muted)',
@@ -1081,7 +1089,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                     onClick={() => setSelected(fmt.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14,
-                      padding: '14px 16px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                      padding: '14px 16px', borderRadius: 14, cursor: 'pointer',
                       background: active ? `${fmt.color}10` : 'var(--inner-bg)',
                       border: `1.5px solid ${active ? fmt.color + '40' : 'var(--card-border)'}`,
                       transition: 'all 0.2s', textAlign: 'left',
@@ -1350,6 +1358,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
       pendingWorkDayIds: pendingDays.map(d => d.id),
       pendingAmount: pendingDays.reduce((s, d) => s + d.earnings, 0),
       overtimeAmount: pendingDays.reduce((s, d) => s + (d.overtime || 0), 0),
+      bonusAmount: pendingDays.reduce((s, d) => s + (d.bonus || 0), 0),
     })
   }
 
@@ -1489,7 +1498,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSelectedLocation(null)}
                 style={{
-                  padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                  padding: '6px 14px', borderRadius: 20, cursor: 'pointer',
                   fontSize: 12, fontWeight: 700, transition: 'all 0.18s',
                   background: !selectedLocation ? '#6366f1' : 'var(--inner-bg)',
                   color: !selectedLocation ? 'white' : 'var(--card-muted)',
@@ -1589,6 +1598,11 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                           +R${worker.totalOvertime.toLocaleString('pt-BR')} HE
                         </div>
                       )}
+                      {worker.totalBonus > 0 && (
+                        <div style={{ fontSize: 9, fontWeight: 600, color: '#10b981', marginTop: 2 }}>
+                          +R${worker.totalBonus.toLocaleString('pt-BR')} Bonif.
+                        </div>
+                      )}
                     </>
                   ) : paidWorkerIds.has(worker.id)
                     ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, padding: '3px 7px', borderRadius: 6, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#10b981' }}><CheckCircle2 size={10} />{t.paidBadge}</span>
@@ -1678,6 +1692,11 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                       {worker.totalOvertime > 0 && (
                         <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', marginTop: 2 }}>
                           +R$ {worker.totalOvertime.toLocaleString('pt-BR')} {t.overtimeExtra}
+                        </div>
+                      )}
+                      {worker.totalBonus > 0 && (
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#10b981', marginTop: 2 }}>
+                          +R$ {worker.totalBonus.toLocaleString('pt-BR')} {t.bonusRegistered}
                         </div>
                       )}
                     </>
@@ -1909,6 +1928,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
             worker={selectedPixWorker.worker}
             pendingAmount={selectedPixWorker.pendingAmount}
             overtimeAmount={selectedPixWorker.overtimeAmount}
+            bonusAmount={selectedPixWorker.bonusAmount}
             pendingWorkDayIds={selectedPixWorker.pendingWorkDayIds}
             onMarkPaid={handleMarkPaid}
             onClose={() => setSelectedPixWorker(null)}

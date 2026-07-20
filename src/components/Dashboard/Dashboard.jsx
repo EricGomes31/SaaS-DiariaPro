@@ -4,16 +4,15 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts'
-import { Users, TrendingUp, CalendarDays, DollarSign, ArrowUpRight, MapPin, ChevronRight } from 'lucide-react'
+import { Users, TrendingUp, CalendarDays, DollarSign, ArrowUpRight, ArrowDownRight, MapPin, ChevronRight } from 'lucide-react'
 import { getDashboardStats } from '../../data/mockData'
-import { format, subDays } from 'date-fns'
+import { format, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
 
 function AnimatedNumber({ value, prefix = '', suffix = '', decimals = 0, duration = 1500 }) {
   const [display, setDisplay] = useState(0)
-  const startRef = useRef(null)
   const frameRef = useRef(null)
 
   useEffect(() => {
@@ -60,10 +59,14 @@ function StatCard({ title, value, prefix, suffix, decimals, icon: Icon, color, c
           <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 800, color: 'var(--card-heading)', letterSpacing: '-0.02em', lineHeight: 1 }}>
             <AnimatedNumber value={value} prefix={prefix} suffix={suffix} decimals={decimals} />
           </div>
-          {change !== undefined && (
+          {change != null && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8 }}>
-              <ArrowUpRight size={13} color="#10b981" />
-              <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>+{change}%</span>
+              {change < 0
+                ? <ArrowDownRight size={13} color="#f43f5e" />
+                : <ArrowUpRight size={13} color="#10b981" />}
+              <span style={{ fontSize: 11, color: change < 0 ? '#f43f5e' : '#10b981', fontWeight: 600 }}>
+                {change >= 0 ? '+' : ''}{change}%
+              </span>
               {changeLabel && <span style={{ fontSize: 11, color: 'var(--card-dim)', marginLeft: 2 }}>{changeLabel}</span>}
             </div>
           )}
@@ -108,6 +111,20 @@ export default function Dashboard({ lang = 'pt', onNavigate, workers, workDays, 
   const t = i18n[lang] ?? i18n.pt
   const stats = getDashboardStats(workers, workDays, locations)
   const activeWorkers = workers.filter(w => w.status === 'active').slice(0, 4)
+
+  // Variação real vs mês anterior (null = sem dados no mês anterior → selo oculto)
+  const curMonthKey  = format(new Date(), 'yyyy-MM')
+  const prevMonthKey = format(subMonths(new Date(), 1), 'yyyy-MM')
+  const curMonthDays  = workDays.filter(d => d.date.startsWith(curMonthKey))
+  const prevMonthDays = workDays.filter(d => d.date.startsWith(prevMonthKey))
+  const sumEarnings = days => days.reduce((s, d) => s + (d.earnings || 0), 0)
+  const pctChange = (cur, prev) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null
+  const earningsChange = pctChange(sumEarnings(curMonthDays), sumEarnings(prevMonthDays))
+  const daysChange     = pctChange(curMonthDays.length, prevMonthDays.length)
+  const avgChange      = pctChange(
+    curMonthDays.length  ? sumEarnings(curMonthDays)  / curMonthDays.length  : 0,
+    prevMonthDays.length ? sumEarnings(prevMonthDays) / prevMonthDays.length : 0,
+  )
 
   const today = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
   const todayFormatted = today.charAt(0).toUpperCase() + today.slice(1)
@@ -161,10 +178,10 @@ export default function Dashboard({ lang = 'pt', onNavigate, workers, workDays, 
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
-        <StatCard title={t.totalPaid30d} value={stats.totalEarnings} prefix="R$ " decimals={0} icon={DollarSign} color="#6366f1" change={14} changeLabel={t.vsPrevMonth} delay={0.05} />
-        <StatCard title={t.daysWorked} value={stats.totalDays} suffix={` ${t.days}`} icon={CalendarDays} color="#10b981" change={8} changeLabel={t.vsPrevMonth} delay={0.1} />
+        <StatCard title={t.totalPaid30d} value={stats.totalEarnings} prefix="R$ " decimals={0} icon={DollarSign} color="#6366f1" change={earningsChange} changeLabel={t.vsPrevMonth} delay={0.05} />
+        <StatCard title={t.daysWorked} value={stats.totalDays} suffix={` ${t.days}`} icon={CalendarDays} color="#10b981" change={daysChange} changeLabel={t.vsPrevMonth} delay={0.1} />
         <StatCard title={t.activeWorkers} value={stats.activeWorkers} suffix={`/${stats.totalWorkers}`} icon={Users} color="#f59e0b" delay={0.15} />
-        <StatCard title={t.avgPerDay} value={stats.avgEarningPerDay} prefix="R$ " decimals={0} icon={TrendingUp} color="#8b5cf6" change={5} changeLabel={t.vsPrevMonth} delay={0.2} />
+        <StatCard title={t.avgPerDay} value={stats.avgEarningPerDay} prefix="R$ " decimals={0} icon={TrendingUp} color="#8b5cf6" change={avgChange} changeLabel={t.vsPrevMonth} delay={0.2} />
       </div>
 
       {/* Charts row */}

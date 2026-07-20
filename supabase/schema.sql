@@ -2,6 +2,7 @@
 -- Execute este arquivo no SQL Editor do seu projeto Supabase.
 
 -- ─── Drop (ordem inversa de dependências) ───────────────────────────────────
+drop table if exists public.daily_expenses  cascade;
 drop table if exists public.holidays        cascade;
 drop table if exists public.payment_records cascade;
 drop table if exists public.work_days       cascade;
@@ -40,6 +41,7 @@ create table public.workers (
   avatar        text,
   avatar_color  text,
   phone         text,
+  email         text,
   start_date    text,
   pix_key_type  text,
   pix_key       text,
@@ -62,6 +64,8 @@ create table public.work_days (
   is_weekend   boolean default false,
   rate         numeric,
   earnings     numeric,
+  overtime     numeric default 0,
+  bonus        numeric default 0,
   user_id      uuid references auth.users(id) on delete cascade not null default auth.uid()
 );
 
@@ -111,9 +115,31 @@ create policy "Usuários gerenciam seus feriados"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- ─── Daily Expenses (gastos de refeições) ───────────────────────────────────
+-- id = 'default' guarda os preços padrão por pessoa; id = 'yyyy-MM-dd' é o override de um dia.
+create table public.daily_expenses (
+  id               text not null,
+  date             text not null,
+  breakfast_price  numeric,
+  lunch_price      numeric,
+  snack_price      numeric,
+  snack_active     boolean,   -- linha 'default': lanche todo dia? · linha do dia: override (null = herda)
+  snack_excluded   text[],    -- worker_ids que NÃO recebem o lanche naquele dia (null/vazio = todos)
+  user_id          uuid references auth.users(id) on delete cascade not null default auth.uid(),
+  primary key (user_id, id)  -- PK composta: cada usuário tem seus próprios 'default'/'yyyy-MM-dd'
+);
+
+alter table public.daily_expenses enable row level security;
+
+create policy "Usuários gerenciam seus gastos diários"
+  on public.daily_expenses for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- ─── Realtime ────────────────────────────────────────────────────────────────
 alter publication supabase_realtime add table public.workers;
 alter publication supabase_realtime add table public.work_days;
 alter publication supabase_realtime add table public.locations;
 alter publication supabase_realtime add table public.payment_records;
 alter publication supabase_realtime add table public.holidays;
+alter publication supabase_realtime add table public.daily_expenses;
