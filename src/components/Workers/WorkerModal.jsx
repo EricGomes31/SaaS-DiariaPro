@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, User, DollarSign, MapPin, Clock, Check, QrCode } from 'lucide-react'
-import { JOB_TITLES, PIX_KEY_TYPES } from '../../data/mockData'
+import { PIX_KEY_TYPES } from '../../data/mockData'
 import SearchableSelect from '../UI/SearchableSelect'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
@@ -16,13 +16,13 @@ const Field = ({ label, children }) => (
   </div>
 )
 
-export default function WorkerModal({ lang = 'pt', worker, locations, onSave, onClose }) {
+export default function WorkerModal({ lang = 'pt', worker, locations, locationDepartments = [], locationJobTitles = [], onSave, onClose }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const [form, setForm] = useState({
     name: worker?.name || '',
     department: worker?.department || '',
-    jobTitle: worker?.jobTitle || JOB_TITLES[0],
+    jobTitle: worker?.jobTitle || '',
     schedule: worker?.schedule || '',
     weekdayRate: worker?.weekdayRate ?? 150,
     saturdayRate: worker?.saturdayRate ?? 220,
@@ -54,6 +54,30 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
       saturdayRate: parseFloat(form.saturdayRate) || 0,
       sundayRate: parseFloat(form.sundayRate) || 0,
     })
+  }
+
+  // Departamentos/cargos cadastrados nos locais selecionados para este trabalhador
+  // (+ o valor atual do worker, caso não bata com o catálogo — cadastro legado).
+  const deptNames = new Set(locationDepartments.filter(d => form.locations.includes(d.locationId)).map(d => d.name))
+  if (worker?.department) deptNames.add(worker.department)
+  const deptOptions = [...deptNames].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
+
+  const jobTitlesForLocations = locationJobTitles.filter(j => form.locations.includes(j.locationId))
+  const jobTitleNames = new Set(jobTitlesForLocations.map(j => j.name))
+  if (worker?.jobTitle) jobTitleNames.add(worker.jobTitle)
+  const jobTitleOptions = [...jobTitleNames].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
+
+  const handleJobTitleChange = (name) => {
+    const match = jobTitlesForLocations.find(j => j.name === name) ?? locationJobTitles.find(j => j.name === name)
+    setForm(p => ({
+      ...p,
+      jobTitle: name,
+      ...(match ? {
+        weekdayRate: match.weekdayRate ?? p.weekdayRate,
+        saturdayRate: match.saturdayRate ?? p.saturdayRate,
+        sundayRate: match.sundayRate ?? p.sundayRate,
+      } : {}),
+    }))
   }
 
   return (
@@ -162,15 +186,61 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
               </div>
             </Field>
 
+            {/* Section: Locais (precisa vir antes de Departamento/Cargo — o catálogo depende do local escolhido) */}
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <MapPin size={13} color="#10b981" />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-sub)' }}>{t.workLocationsSection}</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+                {locations.map(loc => {
+                  const selected = form.locations.includes(loc.id)
+                  return (
+                    <motion.button
+                      key={loc.id}
+                      type="button"
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => toggle('locations', loc.id)}
+                      style={{
+                        padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                        border: `1.5px solid ${selected ? loc.color + '60' : 'var(--card-border)'}`,
+                        background: selected ? `${loc.color}12` : 'var(--inner-bg)',
+                        display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s',
+                      }}
+                    >
+                      <div style={{
+                        width: 18, height: 18, borderRadius: 5,
+                        background: selected ? loc.color : 'var(--inner-border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.2s', flexShrink: 0,
+                      }}>
+                        {selected && <Check size={11} color="white" />}
+                      </div>
+                      <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: selected ? loc.color : 'var(--card-sub)' }}>{loc.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--card-muted)' }}>{loc.city}</div>
+                      </div>
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
               {/* Departamento */}
               <Field label={t.departmentLabel}>
-                <input
+                <SearchableSelect
                   value={form.department}
-                  onChange={e => setForm(p => ({ ...p, department: e.target.value }))}
-                  placeholder="Ex: Serra Park"
-                  className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                  onChange={v => setForm(p => ({ ...p, department: v }))}
+                  options={deptOptions}
+                  placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.departmentLabel}
+                  minWidth="100%"
+                  fontSize={14}
+                  padding="12px 16px"
+                  clearable={false}
+                  allowCustom={false}
                 />
               </Field>
 
@@ -178,14 +248,14 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
               <Field label={t.jobTitleLabel}>
                 <SearchableSelect
                   value={form.jobTitle}
-                  onChange={v => setForm(p => ({ ...p, jobTitle: v }))}
-                  options={JOB_TITLES.map(jt => ({ value: jt, label: jt }))}
-                  placeholder="Selecione ou digite o cargo..."
+                  onChange={handleJobTitleChange}
+                  options={jobTitleOptions}
+                  placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.jobTitleLabel}
                   minWidth="100%"
                   fontSize={14}
                   padding="12px 16px"
                   clearable={false}
-                  allowCustom
+                  allowCustom={false}
                 />
               </Field>
             </div>
@@ -230,6 +300,7 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-sub)' }}>{t.remunerationSection}</span>
             </div>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--card-muted)' }}>{t.remunerationAutoFillHint}</p>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 11, color: 'var(--card-muted)', marginBottom: 6 }}>
@@ -334,48 +405,6 @@ export default function WorkerModal({ lang = 'pt', worker, locations, onSave, on
               className="input-premium"
               style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14, fontFamily: 'monospace', borderColor: 'rgba(6,182,212,0.2)' }}
             />
-          </div>
-
-          {/* Section: Locais */}
-          <div style={{ marginBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <MapPin size={13} color="#10b981" />
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-sub)' }}>{t.workLocationsSection}</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
-              {locations.map(loc => {
-                const selected = form.locations.includes(loc.id)
-                return (
-                  <motion.button
-                    key={loc.id}
-                    type="button"
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => toggle('locations', loc.id)}
-                    style={{
-                      padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
-                      border: `1.5px solid ${selected ? loc.color + '60' : 'var(--card-border)'}`,
-                      background: selected ? `${loc.color}12` : 'var(--inner-bg)',
-                      display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s',
-                    }}
-                  >
-                    <div style={{
-                      width: 18, height: 18, borderRadius: 5,
-                      background: selected ? loc.color : 'var(--inner-border)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      transition: 'all 0.2s', flexShrink: 0,
-                    }}>
-                      {selected && <Check size={11} color="white" />}
-                    </div>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: selected ? loc.color : 'var(--card-sub)' }}>{loc.name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--card-muted)' }}>{loc.city}</div>
-                    </div>
-                  </motion.button>
-                )
-              })}
-            </div>
           </div>
 
           {/* Footer buttons */}

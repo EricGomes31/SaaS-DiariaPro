@@ -27,7 +27,7 @@ const DELETED_MSG = {
   es: (name) => `Trabajador ${name} eliminado con éxito.`,
 }
 
-export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays, setWorkDays, locations, paymentRecords = [], setPaymentRecords, holidays = [], subscription = null, onUpgrade }) {
+export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays, setWorkDays, locations, locationDepartments = [], locationJobTitles = [], paymentRecords = [], setPaymentRecords, holidays = [], subscription = null, onUpgrade }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const { showToast } = useToast()
@@ -709,6 +709,8 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
             lang={lang}
             worker={editWorker}
             locations={locations}
+            locationDepartments={locationDepartments}
+            locationJobTitles={locationJobTitles}
             onSave={handleSave}
             onClose={() => { setShowModal(false); setEditWorker(null) }}
           />

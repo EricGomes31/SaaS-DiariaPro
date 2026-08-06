@@ -2,12 +2,14 @@
 -- Execute este arquivo no SQL Editor do seu projeto Supabase.
 
 -- ─── Drop (ordem inversa de dependências) ───────────────────────────────────
-drop table if exists public.daily_expenses  cascade;
-drop table if exists public.holidays        cascade;
-drop table if exists public.payment_records cascade;
-drop table if exists public.work_days       cascade;
-drop table if exists public.workers         cascade;
-drop table if exists public.locations       cascade;
+drop table if exists public.daily_expenses      cascade;
+drop table if exists public.holidays            cascade;
+drop table if exists public.payment_records     cascade;
+drop table if exists public.work_days           cascade;
+drop table if exists public.workers             cascade;
+drop table if exists public.location_job_titles cascade;
+drop table if exists public.location_departments cascade;
+drop table if exists public.locations           cascade;
 
 -- ─── Locations ──────────────────────────────────────────────────────────────
 create table public.locations (
@@ -24,6 +26,39 @@ alter table public.locations enable row level security;
 
 create policy "Usuários gerenciam seus locais"
   on public.locations for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- ─── Departamentos por local ─────────────────────────────────────────────────
+create table public.location_departments (
+  id           text primary key,
+  location_id  text not null references public.locations(id) on delete cascade,
+  name         text not null,
+  user_id      uuid references auth.users(id) on delete cascade not null default auth.uid()
+);
+
+alter table public.location_departments enable row level security;
+
+create policy "Usuários gerenciam seus departamentos"
+  on public.location_departments for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- ─── Cargos por local (com valor de diária) ─────────────────────────────────
+create table public.location_job_titles (
+  id             text primary key,
+  location_id    text not null references public.locations(id) on delete cascade,
+  name           text not null,
+  weekday_rate   numeric,
+  saturday_rate  numeric,
+  sunday_rate    numeric,
+  user_id        uuid references auth.users(id) on delete cascade not null default auth.uid()
+);
+
+alter table public.location_job_titles enable row level security;
+
+create policy "Usuários gerenciam seus cargos"
+  on public.location_job_titles for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
@@ -140,6 +175,8 @@ create policy "Usuários gerenciam seus gastos diários"
 alter publication supabase_realtime add table public.workers;
 alter publication supabase_realtime add table public.work_days;
 alter publication supabase_realtime add table public.locations;
+alter publication supabase_realtime add table public.location_departments;
+alter publication supabase_realtime add table public.location_job_titles;
 alter publication supabase_realtime add table public.payment_records;
 alter publication supabase_realtime add table public.holidays;
 alter publication supabase_realtime add table public.daily_expenses;

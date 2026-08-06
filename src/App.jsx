@@ -104,6 +104,8 @@ export default function App() {
   const [workers,        setWorkers]        = useState([])
   const [workDays,       setWorkDays]       = useState([])
   const [locations,      setLocations]      = useState([])
+  const [locationDepartments, setLocationDepartments] = useState([])
+  const [locationJobTitles,   setLocationJobTitles]   = useState([])
   const [paymentRecords, setPaymentRecords] = useState([])
   const [holidays,       setHolidays]       = useState([])
   const [dailyExpenses,  setDailyExpenses]  = useState([])
@@ -119,6 +121,8 @@ export default function App() {
   const prevWorkers   = useRef([])
   const prevWorkDays  = useRef([])
   const prevLocations = useRef([])
+  const prevLocationDepartments = useRef([])
+  const prevLocationJobTitles   = useRef([])
   const prevPayments  = useRef([])
   const prevHolidays  = useRef([])
   const prevDailyExpenses = useRef([])
@@ -199,10 +203,12 @@ export default function App() {
         window.history.replaceState(null, '', '/entrar')
         syncing.current = false
         setWorkers([]); setWorkDays([]); setLocations([])
+        setLocationDepartments([]); setLocationJobTitles([])
         setPaymentRecords([]); setHolidays([]); setDailyExpenses([])
         setSubscription(null)
         prevWorkers.current = []; prevWorkDays.current = []
         prevLocations.current = []; prevPayments.current = []
+        prevLocationDepartments.current = []; prevLocationJobTitles.current = []
         prevDailyExpenses.current = []
       }
     })
@@ -221,12 +227,16 @@ export default function App() {
       prevWorkers.current   = data.workers
       prevWorkDays.current  = data.workDays
       prevLocations.current = data.locations
+      prevLocationDepartments.current = data.locationDepartments
+      prevLocationJobTitles.current   = data.locationJobTitles
       prevPayments.current  = data.paymentRecords
       prevDailyExpenses.current = data.dailyExpenses
       syncing.current = false
       setWorkers(data.workers)
       setWorkDays(data.workDays)
       setLocations(data.locations)
+      setLocationDepartments(data.locationDepartments)
+      setLocationJobTitles(data.locationJobTitles)
       setPaymentRecords(data.paymentRecords)
       setHolidays(data.holidays)
       setDailyExpenses(data.dailyExpenses)
@@ -257,11 +267,15 @@ export default function App() {
           prevWorkers.current   = data.workers
           prevWorkDays.current  = data.workDays
           prevLocations.current = data.locations
+          prevLocationDepartments.current = data.locationDepartments
+          prevLocationJobTitles.current   = data.locationJobTitles
           prevPayments.current  = data.paymentRecords
           prevDailyExpenses.current = data.dailyExpenses
           setWorkers(data.workers)
           setWorkDays(data.workDays)
           setLocations(data.locations)
+          setLocationDepartments(data.locationDepartments)
+          setLocationJobTitles(data.locationJobTitles)
           setPaymentRecords(data.paymentRecords)
           setHolidays(data.holidays)
           setDailyExpenses(data.dailyExpenses)
@@ -279,6 +293,8 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'workers' },         handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'work_days' },       handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' },       handleRemoteChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_departments' }, handleRemoteChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_job_titles' },   handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_records' }, handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_expenses' },  handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' },   handleRemoteChange)
@@ -375,6 +391,50 @@ export default function App() {
       })
     }
   }, [locations])
+
+  useEffect(() => {
+    if (!syncing.current || fromRealtime.current) { prevLocationDepartments.current = locationDepartments; return }
+    const oldDepartments = prevLocationDepartments.current
+    const { toUpsert, toDelete } = diff(oldDepartments, locationDepartments)
+    prevLocationDepartments.current = locationDepartments
+    if (toUpsert.length) {
+      db.upsertLocationDepartments(toUpsert).catch(() => showToast('Erro ao salvar departamentos.', 'error'))
+      toUpsert.forEach(dep => {
+        const isNew = !oldDepartments.find(od => od.id === dep.id)
+        log(isNew ? 'add_department' : 'edit_department',
+            isNew ? `Departamento adicionado: ${dep.name}` : `Departamento editado: ${dep.name}`)
+      })
+    }
+    if (toDelete.length) {
+      db.deleteLocationDepartments(toDelete).catch(() => showToast('Erro ao salvar departamentos.', 'error'))
+      toDelete.forEach(id => {
+        const dep = oldDepartments.find(od => od.id === id)
+        log('delete_department', `Departamento removido: ${dep?.name ?? id}`)
+      })
+    }
+  }, [locationDepartments])
+
+  useEffect(() => {
+    if (!syncing.current || fromRealtime.current) { prevLocationJobTitles.current = locationJobTitles; return }
+    const oldJobTitles = prevLocationJobTitles.current
+    const { toUpsert, toDelete } = diff(oldJobTitles, locationJobTitles)
+    prevLocationJobTitles.current = locationJobTitles
+    if (toUpsert.length) {
+      db.upsertLocationJobTitles(toUpsert).catch(() => showToast('Erro ao salvar cargos.', 'error'))
+      toUpsert.forEach(jt => {
+        const isNew = !oldJobTitles.find(oj => oj.id === jt.id)
+        log(isNew ? 'add_job_title' : 'edit_job_title',
+            isNew ? `Cargo adicionado: ${jt.name}` : `Cargo editado: ${jt.name}`)
+      })
+    }
+    if (toDelete.length) {
+      db.deleteLocationJobTitles(toDelete).catch(() => showToast('Erro ao salvar cargos.', 'error'))
+      toDelete.forEach(id => {
+        const jt = oldJobTitles.find(oj => oj.id === id)
+        log('delete_job_title', `Cargo removido: ${jt?.name ?? id}`)
+      })
+    }
+  }, [locationJobTitles])
 
   useEffect(() => {
     if (!syncing.current || fromRealtime.current) { prevPayments.current = paymentRecords; return }
@@ -526,6 +586,8 @@ export default function App() {
                     workers={workers} setWorkers={setWorkers}
                     workDays={workDays} setWorkDays={setWorkDays}
                     locations={locations} setLocations={setLocations}
+                    locationDepartments={locationDepartments} setLocationDepartments={setLocationDepartments}
+                    locationJobTitles={locationJobTitles} setLocationJobTitles={setLocationJobTitles}
                     paymentRecords={paymentRecords} setPaymentRecords={setPaymentRecords}
                     holidays={holidays} setHolidays={setHolidays}
                     dailyExpenses={dailyExpenses} setDailyExpenses={setDailyExpenses}
