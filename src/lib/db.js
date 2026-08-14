@@ -12,16 +12,19 @@ function deriveAvatarColor(str = '') {
 
 export function workerFromRow(r) {
   const weekend = r.saturday_rate ?? r.weekend_rate ?? r.weekday_rate
-  const avatar = r.avatar || (r.name ? r.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?')
-  const avatarColor = r.avatar_color || deriveAvatarColor(r.id || r.name || '')
+  const rawAvatar = (r.avatar || '').trim()
+  const avatar = rawAvatar || (r.name ? r.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?')
+  const rawColor = (r.avatar_color || '').trim()
+  const avatarColor = (rawColor.length === 7 || rawColor.length === 4) ? rawColor : deriveAvatarColor(r.id || r.name || '')
   return {
     id: r.id, name: r.name, department: r.department,
     jobTitle: r.job_title, weekdayRate: r.weekday_rate,
     saturdayRate: r.saturday_rate ?? weekend,
     sundayRate:   r.sunday_rate   ?? weekend,
     locations: r.locations ?? [], schedule: r.schedule, status: r.status,
-    avatar, avatarColor, phone: r.phone,
+    avatar, avatarColor, phone: r.phone, email: r.email,
     startDate: r.start_date, pixKeyType: r.pix_key_type, pixKey: r.pix_key,
+    workerType: r.worker_type ?? 'diarista',
   }
 }
 
@@ -30,12 +33,35 @@ export function workDayFromRow(r) {
     id: r.id, workerId: r.worker_id, date: r.date,
     locationId: r.location_id, isWeekend: r.is_weekend,
     rate: r.rate ?? 0, earnings: r.earnings ?? 0,
-    overtime: r.overtime ?? 0,
+    overtime: r.overtime ?? 0, bonus: r.bonus ?? 0,
   }
 }
 
 export function locationFromRow(r) {
   return { id: r.id, name: r.name, color: r.color, shortName: r.short_name, address: r.address, city: r.city }
+}
+
+export function locationDepartmentFromRow(r) {
+  return { id: r.id, locationId: r.location_id, name: r.name }
+}
+
+export function locationJobTitleFromRow(r) {
+  return {
+    id: r.id, locationId: r.location_id, name: r.name,
+    weekdayRate: r.weekday_rate, saturdayRate: r.saturday_rate, sundayRate: r.sunday_rate,
+  }
+}
+
+export function dailyExpenseFromRow(r) {
+  return {
+    id: r.id, date: r.date,
+    // null = herda o padrão (preço/lanche). A linha 'default' guarda os valores reais.
+    breakfastPrice: r.breakfast_price ?? null,
+    lunchPrice:     r.lunch_price ?? null,
+    snackPrice:     r.snack_price ?? null,
+    snackActive:    r.snack_active ?? null,
+    snackExcluded:  r.snack_excluded ?? [],   // worker_ids fora do lanche naquele dia
+  }
 }
 
 function paymentFromRow(r) {
@@ -48,6 +74,18 @@ function paymentFromRow(r) {
   }
 }
 
+export function subscriptionFromRow(r) {
+  return {
+    id: r.id, plan: r.plan, status: r.status,
+    billingCycle: r.billing_cycle,
+    workerLimit: r.worker_limit ?? null,   // null = ilimitado
+    trialEndsAt: r.trial_ends_at,
+    currentPeriodEnd: r.current_period_end,
+    asaasCustomerId: r.asaas_customer_id,
+    asaasSubscriptionId: r.asaas_subscription_id,
+  }
+}
+
 function workerToRow(w) {
   return {
     id: w.id, name: w.name, department: w.department, job_title: w.jobTitle,
@@ -56,7 +94,8 @@ function workerToRow(w) {
     sunday_rate:  w.sundayRate  ?? w.saturdayRate ?? w.weekdayRate,
     locations: w.locations,
     schedule: w.schedule, status: w.status, avatar: w.avatar, avatar_color: w.avatarColor,
-    phone: w.phone, start_date: w.startDate, pix_key_type: w.pixKeyType, pix_key: w.pixKey,
+    phone: w.phone, email: w.email ?? null, start_date: w.startDate, pix_key_type: w.pixKeyType, pix_key: w.pixKey,
+    worker_type: w.workerType ?? 'diarista',
   }
 }
 
@@ -64,12 +103,34 @@ function workDayToRow(d) {
   return {
     id: d.id, worker_id: d.workerId, date: d.date,
     location_id: d.locationId, is_weekend: d.isWeekend,
-    rate: d.rate, earnings: d.earnings, overtime: d.overtime ?? 0,
+    rate: d.rate, earnings: d.earnings, overtime: d.overtime ?? 0, bonus: d.bonus ?? 0,
   }
 }
 
 function locationToRow(l) {
   return { id: l.id, name: l.name, color: l.color, short_name: l.shortName, address: l.address, city: l.city }
+}
+
+function locationDepartmentToRow(d) {
+  return { id: d.id, location_id: d.locationId, name: d.name }
+}
+
+function locationJobTitleToRow(j) {
+  return {
+    id: j.id, location_id: j.locationId, name: j.name,
+    weekday_rate: j.weekdayRate, saturday_rate: j.saturdayRate, sunday_rate: j.sundayRate,
+  }
+}
+
+function dailyExpenseToRow(e) {
+  return {
+    id: e.id, date: e.date,
+    breakfast_price: e.breakfastPrice ?? null,
+    lunch_price:     e.lunchPrice ?? null,
+    snack_price:     e.snackPrice ?? null,
+    snack_active:    e.snackActive ?? null,
+    snack_excluded:  e.snackExcluded ?? null,
+  }
 }
 
 function paymentToRow(p) {
@@ -85,12 +146,16 @@ function paymentToRow(p) {
 // ─── Fetch all (used on login and realtime refresh) ──────────────────────────
 
 export async function fetchAll() {
-  const [w, d, l, p, h] = await Promise.all([
+  const [w, d, l, p, h, e, s, ld, lj] = await Promise.all([
     supabase.from('workers').select('*').order('name'),
     supabase.from('work_days').select('*').order('date'),
     supabase.from('locations').select('*').order('name'),
     supabase.from('payment_records').select('*'),
     supabase.from('holidays').select('date'),
+    supabase.from('daily_expenses').select('*'),
+    supabase.from('subscriptions').select('*').limit(1),  // RLS já filtra p/ o próprio usuário
+    supabase.from('location_departments').select('*').order('name'),
+    supabase.from('location_job_titles').select('*').order('name'),
   ])
 
   if (w.error) throw w.error
@@ -98,16 +163,28 @@ export async function fetchAll() {
   if (l.error) throw l.error
   if (p.error) throw p.error
   if (h.error) throw h.error
+  // Tolerante: se a tabela daily_expenses ainda não existir no banco, não derruba o app.
+  if (e.error) console.warn('[fetchAll] daily_expenses indisponível (rode a migration):', e.error.message)
+  // Idem para subscriptions (rode add-subscriptions.sql).
+  if (s.error) console.warn('[fetchAll] subscriptions indisponível (rode a migration):', s.error.message)
+  // Idem para departamentos/cargos (rode add-location-departments-job-titles.sql).
+  if (ld.error) console.warn('[fetchAll] location_departments indisponível (rode a migration):', ld.error.message)
+  if (lj.error) console.warn('[fetchAll] location_job_titles indisponível (rode a migration):', lj.error.message)
 
   const locations = (l.data ?? []).map(locationFromRow)
   const workers   = (w.data ?? []).map(workerFromRow)
   const workDays       = (d.data ?? []).map(workDayFromRow)
   const paymentRecords = (p.data ?? []).map(paymentFromRow)
   const holidays       = (h.data ?? []).map(r => r.date)
+  const dailyExpenses  = e.error ? [] : (e.data ?? []).map(dailyExpenseFromRow)
+  const subscription   = s.error ? null : ((s.data ?? []).map(subscriptionFromRow)[0] ?? null)
+  const locationDepartments = ld.error ? [] : (ld.data ?? []).map(locationDepartmentFromRow)
+  const locationJobTitles   = lj.error ? [] : (lj.data ?? []).map(locationJobTitleFromRow)
 
-  return { workers, workDays, locations, paymentRecords, holidays }
+  return { workers, workDays, locations, paymentRecords, holidays, dailyExpenses, subscription, locationDepartments, locationJobTitles }
 }
 
+// eslint-disable-next-line no-unused-vars -- utilitário de manutenção mantido de propósito
 async function clearAllData() {
   // Sequential to respect FK constraints: dependents first
   await supabase.from('payment_records').delete().neq('id', '')
@@ -127,6 +204,7 @@ async function batchInsert(table, rows, size = 50) {
   }
 }
 
+// eslint-disable-next-line no-unused-vars -- utilitário de seed mantido de propósito
 async function seedMockData() {
   await Promise.all([
     supabase.from('locations').insert(LOCATIONS.map(locationToRow)),
@@ -171,6 +249,28 @@ export async function deleteLocations(ids) {
   if (error) throw error
 }
 
+export async function upsertLocationDepartments(items) {
+  if (!items.length) return
+  const { error } = await supabase.from('location_departments').upsert(items.map(locationDepartmentToRow), { onConflict: 'id' })
+  if (error) throw error
+}
+export async function deleteLocationDepartments(ids) {
+  if (!ids.length) return
+  const { error } = await supabase.from('location_departments').delete().in('id', ids)
+  if (error) throw error
+}
+
+export async function upsertLocationJobTitles(items) {
+  if (!items.length) return
+  const { error } = await supabase.from('location_job_titles').upsert(items.map(locationJobTitleToRow), { onConflict: 'id' })
+  if (error) throw error
+}
+export async function deleteLocationJobTitles(ids) {
+  if (!ids.length) return
+  const { error } = await supabase.from('location_job_titles').delete().in('id', ids)
+  if (error) throw error
+}
+
 export async function upsertPaymentRecords(records) {
   if (!records.length) return
   const { error } = await supabase.from('payment_records').upsert(records.map(paymentToRow), { onConflict: 'id' })
@@ -182,12 +282,59 @@ export async function deletePaymentRecords(ids) {
   if (error) throw error
 }
 
+export async function upsertDailyExpenses(items) {
+  if (!items.length) return
+  // A PK de daily_expenses é composta (user_id, id): o mesmo id ('default', 'yyyy-MM-dd')
+  // existe por usuário. Envia o user_id e conflita em (user_id, id).
+  const { data: { session } } = await supabase.auth.getSession()
+  const userId = session?.user?.id
+  const rows = items.map(e => {
+    const row = dailyExpenseToRow(e)
+    if (userId) row.user_id = userId
+    return row
+  })
+  const { error } = await supabase.from('daily_expenses').upsert(rows, { onConflict: 'user_id,id' })
+  if (error) throw error
+}
+export async function deleteDailyExpenses(ids) {
+  if (!ids.length) return
+  const { error } = await supabase.from('daily_expenses').delete().in('id', ids)
+  if (error) throw error
+}
+
 export async function syncHolidays(holidays) {
   await supabase.from('holidays').delete().gte('id', 0)
   if (holidays.length > 0) {
     const { error } = await supabase.from('holidays').insert(holidays.map(date => ({ date })))
     if (error) throw error
   }
+}
+
+// ─── Report Subscribers ──────────────────────────────────────────────────────
+
+export async function fetchReportSubscribers() {
+  const { data, error } = await supabase
+    .from('report_subscribers')
+    .select('*')
+    .order('created_at')
+  if (error) throw error
+  return (data ?? []).map(r => ({
+    id: r.id, name: r.name, email: r.email,
+    dayOfWeek: r.day_of_week, sendHour: r.send_hour ?? 12, active: r.active, createdAt: r.created_at,
+  }))
+}
+
+export async function upsertReportSubscriber(sub) {
+  const { error } = await supabase.from('report_subscribers').upsert(
+    { id: sub.id, name: sub.name, email: sub.email, day_of_week: sub.dayOfWeek, send_hour: sub.sendHour ?? 12, active: sub.active },
+    { onConflict: 'id' }
+  )
+  if (error) throw error
+}
+
+export async function deleteReportSubscriber(id) {
+  const { error } = await supabase.from('report_subscribers').delete().eq('id', id)
+  if (error) throw error
 }
 
 // ─── Activity log ────────────────────────────────────────────────────────────

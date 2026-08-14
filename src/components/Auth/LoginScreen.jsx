@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Eye, EyeOff, ArrowRight, Shield, Users, BarChart3 } from 'lucide-react'
+import { Zap, Eye, EyeOff, ArrowRight, Shield, Users, BarChart3, Sun, Moon } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
+import PrivacyModal from './PrivacyModal'
+import Captcha from './Captcha'
 
 const FEATURES = [
   { icon: Users, text: 'Gestão completa de diaristas' },
@@ -10,8 +12,7 @@ const FEATURES = [
   { icon: Shield, text: 'Controle de múltiplos galpões' },
 ]
 
-
-export default function LoginScreen() {
+export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
   const isMobile = useIsMobile()
   const [view, setView] = useState('login') // 'login' | 'forgot' | 'forgot-sent'
   const [email, setEmail] = useState('')
@@ -20,6 +21,40 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [focusedField, setFocusedField] = useState(null)
+  const [privacyModal, setPrivacyModal] = useState(null) // null | 'privacy' | 'terms' | 'cookies'
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captchaRef = useRef(null)
+
+  const resetCaptcha = () => { captchaRef.current?.resetCaptcha(); setCaptchaToken(null) }
+
+  const isLight = theme === 'light'
+  const c = {
+    bg:            isLight ? '#f1f5f9'                        : '#07070f',
+    cardBg:        isLight ? 'rgba(255,255,255,0.92)'         : 'rgba(17,17,34,0.85)',
+    cardBorder:    isLight ? 'rgba(0,0,0,0.1)'                : 'rgba(255,255,255,0.07)',
+    cardShadow:    isLight ? '0 32px 80px rgba(0,0,0,0.1)'    : '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset',
+    panelBorder:   isLight ? '1px solid rgba(0,0,0,0.06)'     : '1px solid rgba(255,255,255,0.04)',
+    text:          isLight ? '#0f172a'                        : '#f1f5f9',
+    sub:           isLight ? 'rgba(15,23,42,0.55)'            : 'rgba(255,255,255,0.4)',
+    subMid:        isLight ? 'rgba(15,23,42,0.5)'             : 'rgba(255,255,255,0.35)',
+    muted:         isLight ? 'rgba(15,23,42,0.38)'            : 'rgba(255,255,255,0.25)',
+    dim:           isLight ? 'rgba(15,23,42,0.22)'            : 'rgba(255,255,255,0.18)',
+    divider:       isLight ? 'rgba(0,0,0,0.08)'               : 'rgba(255,255,255,0.06)',
+    grid:          isLight ? 'rgba(0,0,0,0.04)'               : 'rgba(255,255,255,0.015)',
+    featureText:   isLight ? 'rgba(15,23,42,0.6)'             : 'rgba(255,255,255,0.55)',
+    logoSub:       isLight ? 'rgba(15,23,42,0.3)'             : 'rgba(255,255,255,0.25)',
+    footer:        isLight ? 'rgba(15,23,42,0.25)'            : 'rgba(255,255,255,0.18)',
+    backBtnBorder: isLight ? 'rgba(0,0,0,0.1)'                : 'rgba(255,255,255,0.08)',
+    backBtnColor:  isLight ? 'rgba(15,23,42,0.5)'             : 'rgba(255,255,255,0.4)',
+    accentLine:    isLight
+      ? 'linear-gradient(90deg, transparent, rgba(99,102,241,0.35), transparent)'
+      : 'linear-gradient(90deg, transparent, rgba(129,140,248,0.6), transparent)',
+    toggleBg:      isLight ? 'rgba(0,0,0,0.06)'               : 'rgba(255,255,255,0.07)',
+    toggleBorder:  isLight ? 'rgba(0,0,0,0.1)'                : 'rgba(255,255,255,0.1)',
+    toggleColor:   isLight ? '#64748b'                        : 'rgba(255,255,255,0.45)',
+    eyeBtnColor:   isLight ? 'rgba(15,23,42,0.3)'             : 'rgba(255,255,255,0.25)',
+    eyeBtnHover:   isLight ? 'rgba(15,23,42,0.6)'             : 'rgba(255,255,255,0.6)',
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -29,39 +64,69 @@ export default function LoginScreen() {
       setError('Preencha todos os campos.')
       return
     }
+    if (!captchaToken) {
+      setError('Confirme que você não é um robô.')
+      return
+    }
 
     setIsLoading(true)
 
-    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email, password, options: { captchaToken },
+    })
 
     if (signInErr) {
       setIsLoading(false)
+      resetCaptcha()  // token é de uso único
       setError('E-mail ou senha incorretos.')
       return
     }
-    // Auth state change in App.jsx handles the rest — no need to call onLogin()
+    // Auth state change in App.jsx handles the rest
   }
 
   const handleForgotPassword = async (e) => {
     e.preventDefault()
     setError('')
     if (!email) { setError('Digite seu e-mail.'); return }
+    if (!captchaToken) { setError('Confirme que você não é um robô.'); return }
     setIsLoading(true)
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: window.location.origin + '/entrar',
+      captchaToken,
     })
     setIsLoading(false)
+    resetCaptcha()  // token é de uso único
     if (err) { setError(err.message); return }
     setView('forgot-sent')
   }
 
-
-
   return (
     <div style={{
       minHeight: '100vh', display: 'flex',
-      backgroundColor: '#07070f', position: 'relative', overflow: 'hidden',
+      backgroundColor: c.bg, position: 'relative', overflow: 'hidden',
+      transition: 'background-color 0.3s',
     }}>
+      {/* ── Theme toggle button ── */}
+      {setTheme && (
+        <button
+          onClick={() => setTheme(isLight ? 'dark' : 'light')}
+          title={isLight ? 'Modo escuro' : 'Modo claro'}
+          style={{
+            position: 'fixed', top: 16, right: 16, zIndex: 100,
+            width: 38, height: 38, borderRadius: 10,
+            background: c.toggleBg, border: `1px solid ${c.toggleBorder}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: c.toggleColor,
+            transition: 'background 0.2s, border-color 0.2s, color 0.2s',
+            backdropFilter: 'blur(8px)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = c.toggleBg }}
+        >
+          {isLight ? <Moon size={16} /> : <Sun size={16} />}
+        </button>
+      )}
+
       {/* ── Ambient background orbs ── */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
         <div className="orb" style={{
@@ -84,8 +149,8 @@ export default function LoginScreen() {
       {/* ── Fine grid texture ── */}
       <div style={{
         position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-                          linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(${c.grid} 1px, transparent 1px),
+                          linear-gradient(90deg, ${c.grid} 1px, transparent 1px)`,
         backgroundSize: '60px 60px',
       }} />
 
@@ -100,7 +165,7 @@ export default function LoginScreen() {
           width: '44%', minHeight: '100vh', position: 'relative', zIndex: 1,
           display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
           padding: '48px 56px',
-          borderRight: '1px solid rgba(255,255,255,0.04)',
+          borderRight: c.panelBorder,
         }}
       >
         {/* Logo */}
@@ -119,10 +184,10 @@ export default function LoginScreen() {
             <Zap size={20} color="white" fill="white" />
           </div>
           <div>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
+            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: c.text, letterSpacing: '-0.02em' }}>
               Diária Pro
             </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 10, color: c.logoSub, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Gestão de Diaristas
             </div>
           </div>
@@ -148,7 +213,7 @@ export default function LoginScreen() {
             <h1 style={{
               fontFamily: 'Syne, sans-serif',
               fontSize: 'clamp(2.4rem, 3.5vw, 3.2rem)',
-              fontWeight: 800, color: '#f1f5f9',
+              fontWeight: 800, color: c.text,
               margin: '0 0 20px', letterSpacing: '-0.03em', lineHeight: 1.1,
             }}>
               Controle total{' '}
@@ -160,7 +225,7 @@ export default function LoginScreen() {
               </span>
             </h1>
             <p style={{
-              fontSize: 16, color: 'rgba(255,255,255,0.4)', lineHeight: 1.65,
+              fontSize: 16, color: c.subMid, lineHeight: 1.65,
               margin: 0, maxWidth: 360,
             }}>
               Gerencie diaristas, controle jornadas, visualize pagamentos por turno e gere relatórios instantâneos.
@@ -184,7 +249,7 @@ export default function LoginScreen() {
                 }}>
                   <f.icon size={16} color="#818cf8" />
                 </div>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>
+                <span style={{ fontSize: 14, color: c.featureText, fontWeight: 500 }}>
                   {f.text}
                 </span>
               </motion.div>
@@ -197,7 +262,7 @@ export default function LoginScreen() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.8, duration: 0.5 }}
-          style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)', lineHeight: 1.6 }}
+          style={{ fontSize: 12, color: c.footer, lineHeight: 1.6 }}
         >
           © 2025 Diária Pro. Todos os direitos reservados.
         </motion.div>
@@ -220,18 +285,19 @@ export default function LoginScreen() {
         >
           {/* Card */}
           <div style={{
-            background: 'rgba(17,17,34,0.85)',
-            border: '1px solid rgba(255,255,255,0.07)',
+            background: c.cardBg,
+            border: `1px solid ${c.cardBorder}`,
             borderRadius: 24, padding: isMobile ? '28px 24px' : '40px',
             backdropFilter: 'blur(24px)',
             WebkitBackdropFilter: 'blur(24px)',
-            boxShadow: '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset',
+            boxShadow: c.cardShadow,
             position: 'relative', overflow: 'hidden',
+            transition: 'background 0.3s, border-color 0.3s, box-shadow 0.3s',
           }}>
             {/* Top accent line */}
             <div style={{
               position: 'absolute', top: 0, left: '20%', right: '20%', height: 1,
-              background: 'linear-gradient(90deg, transparent, rgba(129,140,248,0.6), transparent)',
+              background: c.accentLine,
             }} />
 
             {/* Mobile logo */}
@@ -252,10 +318,10 @@ export default function LoginScreen() {
                   <Zap size={16} color="white" fill="white" />
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: '#f1f5f9', letterSpacing: '-0.02em' }}>
+                  <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: c.text, letterSpacing: '-0.02em' }}>
                     Diária Pro
                   </div>
-                  <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: 9, color: c.logoSub, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                     Gestão de Diaristas
                   </div>
                 </div>
@@ -267,15 +333,15 @@ export default function LoginScreen() {
               <AnimatePresence mode="wait">
                 <motion.div key="forgot" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
                   <div style={{ marginBottom: 28 }}>
-                    <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 22 : 24, fontWeight: 800, color: '#f1f5f9', margin: '0 0 8px' }}>
+                    <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 22 : 24, fontWeight: 800, color: c.text, margin: '0 0 8px' }}>
                       Redefinir senha
                     </h2>
-                    <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>
+                    <p style={{ margin: 0, fontSize: 14, color: c.subMid }}>
                       Enviaremos um link para seu e-mail.
                     </p>
                   </div>
                   <form onSubmit={handleForgotPassword}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>E-mail</label>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.sub, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>E-mail</label>
                     <input
                       type="email" value={email}
                       onChange={e => { setEmail(e.target.value); setError('') }}
@@ -286,12 +352,13 @@ export default function LoginScreen() {
                     {error && (
                       <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 14, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', fontSize: 13, color: '#fb7185', fontWeight: 500 }}>{error}</div>
                     )}
+                    <Captcha ref={captchaRef} theme={theme} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
                     <motion.button type="submit" disabled={isLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                       style={{ width: '100%', padding: '14px', borderRadius: 13, fontSize: 14, fontWeight: 700, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', background: isLoading ? 'rgba(99,102,241,0.4)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white', fontFamily: 'Inter, sans-serif', marginBottom: 12 }}>
                       {isLoading ? 'Enviando...' : 'Enviar link de redefinição'}
                     </motion.button>
-                    <button type="button" onClick={() => { setView('login'); setError('') }}
-                      style={{ width: '100%', padding: '12px', borderRadius: 13, fontSize: 14, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    <button type="button" onClick={() => { setView('login'); setError(''); setCaptchaToken(null) }}
+                      style={{ width: '100%', padding: '12px', borderRadius: 13, fontSize: 14, fontWeight: 600, border: `1px solid ${c.backBtnBorder}`, background: 'transparent', color: c.backBtnColor, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                       Voltar ao login
                     </button>
                   </form>
@@ -305,12 +372,12 @@ export default function LoginScreen() {
                   <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                     <span style={{ fontSize: 26 }}>📬</span>
                   </div>
-                  <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, color: '#f1f5f9', margin: '0 0 10px' }}>Link enviado!</h2>
-                  <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, margin: '0 0 24px' }}>
-                    Verifique sua caixa de entrada em <strong style={{ color: 'rgba(255,255,255,0.6)' }}>{email}</strong> e clique no link para redefinir sua senha.
+                  <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, color: c.text, margin: '0 0 10px' }}>Link enviado!</h2>
+                  <p style={{ fontSize: 14, color: c.sub, lineHeight: 1.6, margin: '0 0 24px' }}>
+                    Verifique sua caixa de entrada em <strong style={{ color: c.subMid }}>{email}</strong> e clique no link para redefinir sua senha.
                   </p>
-                  <button onClick={() => { setView('login'); setError('') }}
-                    style={{ padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  <button onClick={() => { setView('login'); setError(''); setCaptchaToken(null) }}
+                    style={{ padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, border: `1px solid ${c.backBtnBorder}`, background: 'transparent', color: c.backBtnColor, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                     Voltar ao login
                   </button>
                 </motion.div>
@@ -328,11 +395,11 @@ export default function LoginScreen() {
             >
               <h2 style={{
                 fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 22 : 26, fontWeight: 800,
-                color: '#f1f5f9', margin: '0 0 8px', letterSpacing: '-0.025em',
+                color: c.text, margin: '0 0 8px', letterSpacing: '-0.025em',
               }}>
                 Bem-vindo de volta
               </h2>
-              <p style={{ margin: 0, fontSize: 14, color: 'rgba(255,255,255,0.35)' }}>
+              <p style={{ margin: 0, fontSize: 14, color: c.subMid }}>
                 Acesse o painel com suas credenciais
               </p>
             </motion.div>
@@ -348,7 +415,7 @@ export default function LoginScreen() {
               >
                 <label style={{
                   display: 'block', fontSize: 12, fontWeight: 600,
-                  color: 'rgba(255,255,255,0.4)', marginBottom: 8,
+                  color: c.sub, marginBottom: 8,
                   letterSpacing: '0.06em', textTransform: 'uppercase',
                 }}>
                   E-mail
@@ -383,14 +450,14 @@ export default function LoginScreen() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <label style={{
-                    fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.4)',
+                    fontSize: 12, fontWeight: 600, color: c.sub,
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                   }}>
                     Senha
                   </label>
                   <button
                     type="button"
-                    onClick={() => { setView('forgot'); setError('') }}
+                    onClick={() => { setView('forgot'); setError(''); setCaptchaToken(null) }}
                     style={{
                       background: 'none', border: 'none', fontSize: 12,
                       color: '#818cf8', cursor: 'pointer', fontWeight: 600,
@@ -424,11 +491,11 @@ export default function LoginScreen() {
                     style={{
                       position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
                       background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center',
+                      color: c.eyeBtnColor, display: 'flex', alignItems: 'center',
                       transition: 'color 0.2s', padding: 0,
                     }}
-                    onMouseEnter={e => e.currentTarget.style.color = 'rgba(255,255,255,0.6)'}
-                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.25)'}
+                    onMouseEnter={e => e.currentTarget.style.color = c.eyeBtnHover}
+                    onMouseLeave={e => e.currentTarget.style.color = c.eyeBtnColor}
                   >
                     {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                   </button>
@@ -454,6 +521,9 @@ export default function LoginScreen() {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* CAPTCHA */}
+              <Captcha ref={captchaRef} theme={theme} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
 
               {/* Submit button */}
               <motion.div
@@ -509,17 +579,26 @@ export default function LoginScreen() {
               </motion.div>
             </form>
 
-            {/* Divider */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.58, duration: 0.4 }}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '24px 0' }}
-            >
-              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)', fontWeight: 500 }}>ou</span>
-              <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
-            </motion.div>
+            {/* Divider + link de cadastro */}
+            {onSignUp && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.58, duration: 0.4 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '24px 0' }}>
+                  <div style={{ flex: 1, height: 1, background: c.divider }} />
+                  <span style={{ fontSize: 12, color: c.muted, fontWeight: 500 }}>ou</span>
+                  <div style={{ flex: 1, height: 1, background: c.divider }} />
+                </div>
+                <div style={{ textAlign: 'center', fontSize: 14, color: c.muted }}>
+                  Não tem uma conta?{' '}
+                  <button onClick={onSignUp} style={{ background: 'none', border: 'none', fontSize: 14, fontWeight: 700, color: '#818cf8', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: 0 }}>
+                    Criar conta
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             </>}
           </div>
@@ -529,15 +608,22 @@ export default function LoginScreen() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.75, duration: 0.4 }}
-            style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: 'rgba(255,255,255,0.2)', lineHeight: 1.5 }}
+            style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: c.dim, lineHeight: 1.5 }}
           >
             Ao entrar, você concorda com os{' '}
-            <span style={{ color: 'rgba(129,140,248,0.6)', cursor: 'pointer' }}>Termos de Uso</span>
+            <span onClick={() => setPrivacyModal('terms')} style={{ color: 'rgba(129,140,248,0.8)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(129,140,248,0.3)' }}>Termos de Uso</span>
             {' '}e{' '}
-            <span style={{ color: 'rgba(129,140,248,0.6)', cursor: 'pointer' }}>Política de Privacidade</span>.
+            <span onClick={() => setPrivacyModal('privacy')} style={{ color: 'rgba(129,140,248,0.8)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(129,140,248,0.3)' }}>Política de Privacidade</span>.
           </motion.p>
         </motion.div>
       </div>
+
+      {privacyModal && (
+        <PrivacyModal
+          initialTab={privacyModal}
+          onClose={() => setPrivacyModal(null)}
+        />
+      )}
     </div>
   )
 }

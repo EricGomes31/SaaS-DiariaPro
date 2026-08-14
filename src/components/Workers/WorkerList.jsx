@@ -1,19 +1,41 @@
 import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Search, Clock, Check, X } from 'lucide-react'
-import { DEPARTMENTS, JOB_TITLES, getWorkerStats, isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
+import { Plus, Search, Clock, Check, X, Gift } from 'lucide-react'
+import SearchableSelect from '../UI/SearchableSelect'
+import { getWorkerStats, isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
 import { format } from 'date-fns'
 import WorkerModal from './WorkerModal'
 import WorkerProfile from './WorkerProfile'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
 import { upsertWorkDays } from '../../lib/db'
+import { log } from '../../lib/logger'
+import { useToast } from '../UI/Toast'
 
 const TODAY = format(new Date(), 'yyyy-MM-dd')
 
-export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays, setWorkDays, locations, holidays = [] }) {
+// Mensagem de limite atingido (padrão local, igual a outros componentes)
+const LIMIT_MSG = {
+  pt: (n) => `Limite de ${n} diaristas do seu plano atingido. Faça upgrade para adicionar mais.`,
+  en: (n) => `Your plan's limit of ${n} workers reached. Upgrade to add more.`,
+  es: (n) => `Límite de ${n} trabajadores de tu plan alcanzado. Mejora tu plan para agregar más.`,
+}
+
+const DELETED_MSG = {
+  pt: (name) => `Diarista ${name} excluído com sucesso.`,
+  en: (name) => `Worker ${name} deleted successfully.`,
+  es: (name) => `Trabajador ${name} eliminado con éxito.`,
+}
+
+export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays, setWorkDays, locations, locationDepartments = [], locationJobTitles = [], paymentRecords = [], setPaymentRecords, holidays = [], subscription = null, onUpgrade }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
+  const { showToast } = useToast()
+  // Limite de diaristas do plano · null = ilimitado. Sem assinatura carregada → não bloqueia (fail-open).
+  const workerLimit = subscription?.workerLimit ?? null
+  const atLimit = workerLimit != null && workers.length >= workerLimit
+  // Work days already settled by a payment record (same model used in PaymentView)
+  const paidDayIds = useMemo(() => new Set((paymentRecords || []).flatMap(r => r.workDayIds || [])), [paymentRecords])
   const [search, setSearch] = useState('')
   const [filterDept, setFilterDept] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -24,6 +46,14 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
   const [registeringWorker, setRegisteringWorker] = useState(null)
   const [overtimeWorker, setOvertimeWorker] = useState(null)
   const [overtimeValue, setOvertimeValue] = useState('')
+  const [bonusWorker, setBonusWorker] = useState(null)
+  const [bonusValue, setBonusValue] = useState('')
+
+  // Departamentos reais dos diaristas cadastrados (inclui os digitados livremente)
+  const departments = useMemo(
+    () => [...new Set(workers.map(w => w.department).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [workers],
+  )
 
   const filtered = useMemo(() => workers.filter(w => {
     const matchSearch = w.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -34,18 +64,28 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
     return matchSearch && matchDept && matchStatus && matchLocation
   }), [workers, search, filterDept, filterStatus, filterLocation])
 
-  const getOvertimeHourlyRate = (worker) => worker.department === 'Total' ? 15 : 10
-
-  const handleAddOvertime = (worker, hours) => {
-    const hourlyRate = getOvertimeHourlyRate(worker)
-    const amount = (parseFloat(hours) || 0) * hourlyRate
+  const handleAddOvertime = (worker, value) => {
+    const amount = parseFloat(value) || 0
     const todayWD = workDays.find(d => d.workerId === worker.id && d.date === TODAY)
     if (!todayWD) return
-    const updatedWD = { ...todayWD, overtime: amount, earnings: todayWD.rate + amount }
+    const updatedWD = { ...todayWD, overtime: amount, earnings: todayWD.rate + amount + (todayWD.bonus || 0) }
     setWorkDays(prev => prev.map(d => d.id === updatedWD.id ? updatedWD : d))
     upsertWorkDays([updatedWD]).catch(() => {})
+    log('add_overtime', `Hora extra: ${worker.name} — R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em ${TODAY}`)
     setOvertimeWorker(null)
     setOvertimeValue('')
+  }
+
+  const handleAddBonus = (worker, value) => {
+    const amount = parseFloat(value) || 0
+    const todayWD = workDays.find(d => d.workerId === worker.id && d.date === TODAY)
+    if (!todayWD) return
+    const updatedWD = { ...todayWD, bonus: amount, earnings: todayWD.rate + (todayWD.overtime || 0) + amount }
+    setWorkDays(prev => prev.map(d => d.id === updatedWD.id ? updatedWD : d))
+    upsertWorkDays([updatedWD]).catch(() => {})
+    log('add_overtime', `Bonificação: ${worker.name} — R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em ${TODAY}`)
+    setBonusWorker(null)
+    setBonusValue('')
   }
 
   const handleAddWorkDay = (day) => setWorkDays(prev => [...prev, day])
@@ -86,6 +126,25 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
     }
   }
 
+  const handleNewWorker = () => {
+    if (atLimit) {
+      showToast((LIMIT_MSG[lang] ?? LIMIT_MSG.pt)(workerLimit), 'info')
+      onUpgrade?.()
+      return
+    }
+    setEditWorker(null)
+    setShowModal(true)
+  }
+
+  const handleDeleteWorker = (worker) => {
+    setWorkDays(prev => prev.filter(d => d.workerId !== worker.id))
+    setPaymentRecords?.(prev => prev.filter(p => p.workerId !== worker.id))
+    setWorkers(prev => prev.filter(w => w.id !== worker.id))
+    log('delete_worker', `Diarista excluído: ${worker.name}`)
+    showToast((DELETED_MSG[lang] ?? DELETED_MSG.pt)(worker.name), 'success')
+    setSelectedWorker(null)
+  }
+
   const handleSave = (data) => {
     if (editWorker) {
       setWorkers(prev => prev.map(w => w.id === editWorker.id ? { ...w, ...data } : w))
@@ -114,12 +173,13 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
         onDeleteWorkDay={handleDeleteWorkDay}
         onBack={() => setSelectedWorker(null)}
         onEdit={(w) => { setEditWorker(w); setShowModal(true); setSelectedWorker(null) }}
+        onDelete={handleDeleteWorker}
       />
     )
   }
 
   return (
-    <div onClick={() => { setRegisteringWorker(null); setOvertimeWorker(null); setOvertimeValue('') }}>
+    <div onClick={() => { setRegisteringWorker(null); setOvertimeWorker(null); setOvertimeValue(''); setBonusWorker(null); setBonusValue('') }}>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', flexWrap: 'wrap', gap: isMobile ? 16 : 0 }}>
@@ -133,11 +193,23 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
             <p style={{ margin: '8px 0 0', color: 'var(--page-sub)', fontSize: 15 }}>
               {workers.filter(w => w.status === 'active').length} {t.activeLabel} · {workers.length} {t.totalLabel}
             </p>
+            {workerLimit != null && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
+                padding: '4px 12px', borderRadius: 100,
+                background: atLimit ? 'rgba(244,63,94,0.1)' : 'rgba(99,102,241,0.1)',
+                border: `1px solid ${atLimit ? 'rgba(244,63,94,0.25)' : 'rgba(99,102,241,0.2)'}`,
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: atLimit ? '#f43f5e' : '#818cf8' }}>
+                  {workers.length} / {workerLimit}
+                </span>
+              </div>
+            )}
           </div>
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => { setEditWorker(null); setShowModal(true) }}
+            onClick={handleNewWorker}
             className="btn-primary"
             style={{ padding: '12px 22px', borderRadius: 12, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
           >
@@ -167,28 +239,32 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
         </div>
 
         {/* Dept filter */}
-        <select
+        <SearchableSelect
           value={filterDept}
-          onChange={e => setFilterDept(e.target.value)}
-          className="input-premium"
-          style={{ padding: '11px 16px', borderRadius: 12, fontSize: 14, cursor: 'pointer', minWidth: 160 }}
-        >
-          <option value="all">{t.allDepts}</option>
-          {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
+          onChange={setFilterDept}
+          options={[
+            { value: 'all', label: t.allDepts },
+            ...departments.map(d => ({ value: d, label: d })),
+          ]}
+          placeholder={t.allDepts}
+          minWidth={160}
+          fontSize={14}
+          padding="11px 16px"
+        />
 
         {/* Location filter */}
-        <select
+        <SearchableSelect
           value={filterLocation}
-          onChange={e => setFilterLocation(e.target.value)}
-          className="input-premium"
-          style={{ padding: '11px 16px', borderRadius: 12, fontSize: 14, cursor: 'pointer', minWidth: 160 }}
-        >
-          <option value="all">{t.allLocations}</option>
-          {locations.map(loc => (
-            <option key={loc.id} value={loc.id}>{loc.name}</option>
-          ))}
-        </select>
+          onChange={setFilterLocation}
+          options={[
+            { value: 'all', label: t.allLocations },
+            ...locations.map(loc => ({ value: loc.id, label: loc.name })),
+          ]}
+          placeholder={t.allLocations}
+          minWidth={160}
+          fontSize={14}
+          padding="11px 16px"
+        />
 
         {/* Status filter */}
         <div style={{ display: 'flex', gap: 6 }}>
@@ -214,14 +290,19 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
       {/* Worker grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
         <AnimatePresence>
-          {filtered.map((worker, i) => {
+          {filtered.map((worker) => {
             const stats = getWorkerStats(worker.id, workDays)
+            const workerDays = workDays.filter(d => d.workerId === worker.id)
+            const paidEarnings = workerDays.filter(d => paidDayIds.has(d.id)).reduce((s, d) => s + d.earnings, 0)
+            const availableEarnings = stats.totalEarnings - paidEarnings
             const workerLocations = locations.filter(l => worker.locations.includes(l.id))
             const todayWorkDay = workDays.find(d => d.workerId === worker.id && d.date === TODAY)
             const registeredToday = !!todayWorkDay
             const currentOvertime = todayWorkDay?.overtime || 0
+            const currentBonus = todayWorkDay?.bonus || 0
             const isPickingLocation = registeringWorker === worker.id
             const isAddingOvertime = overtimeWorker === worker.id
+            const isAddingBonus = bonusWorker === worker.id
 
             return (
               <motion.div
@@ -275,7 +356,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 15, fontWeight: 800, color: worker.avatarColor, flexShrink: 0,
                   }}>
-                    {worker.avatar}
+                    {(worker.avatar && worker.avatar.trim()) || worker.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
                   <div style={{ overflow: 'hidden', paddingRight: 60 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--card-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -303,13 +384,25 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
 
                 {/* Earnings summary */}
                 <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  display: 'flex', flexDirection: 'column', gap: 8,
                   padding: '10px 12px', borderRadius: 10,
                   background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.1)',
                   marginBottom: 14,
                 }}>
-                  <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{stats.totalDays} {t.daysWorkedLabel}</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#10b981' }}>R$ {stats.totalEarnings.toLocaleString('pt-BR')}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{stats.totalDays} {t.daysWorkedLabel}</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#10b981' }}>R$ {stats.totalEarnings.toLocaleString('pt-BR')}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(16,185,129,0.12)', paddingTop: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 10, color: 'var(--card-muted)', marginBottom: 2 }}>{t.paidLabel}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--card-sub)' }}>R$ {paidEarnings.toLocaleString('pt-BR')}</div>
+                    </div>
+                    <div style={{ flex: 1, textAlign: 'right' }}>
+                      <div style={{ fontSize: 10, color: 'var(--card-muted)', marginBottom: 2 }}>{t.toReceiveLabel}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: availableEarnings > 0 ? '#f59e0b' : 'var(--card-dim)' }}>R$ {availableEarnings.toLocaleString('pt-BR')}</div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Locations */}
@@ -358,11 +451,11 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                               style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
                             >
                               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                <span style={{ fontSize: 11, color: 'var(--card-muted)', whiteSpace: 'nowrap' }}>Horas:</span>
+                                <span style={{ fontSize: 11, color: 'var(--card-muted)', whiteSpace: 'nowrap' }}>R$:</span>
                                 <input
                                   type="number"
                                   min="0"
-                                  step="0.5"
+                                  step="0.01"
                                   value={overtimeValue}
                                   onChange={e => setOvertimeValue(e.target.value)}
                                   placeholder="0"
@@ -398,7 +491,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                               </div>
                               {parseFloat(overtimeValue) > 0 && (
                                 <div style={{ fontSize: 11, color: '#10b981', paddingLeft: 2 }}>
-                                  {overtimeValue}h × R${getOvertimeHourlyRate(worker)}/h = R$ {((parseFloat(overtimeValue) || 0) * getOvertimeHourlyRate(worker)).toFixed(2)}
+                                  + R$ {(parseFloat(overtimeValue) || 0).toFixed(2)}
                                 </div>
                               )}
                             </motion.div>
@@ -406,7 +499,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                             <motion.button
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}
-                              onClick={e => { e.stopPropagation(); setOvertimeWorker(worker.id); setOvertimeValue('') }}
+                              onClick={e => { e.stopPropagation(); setOvertimeWorker(worker.id); setOvertimeValue(currentOvertime > 0 ? String(currentOvertime) : '') }}
                               style={{
                                 width: '100%', padding: '7px 14px', borderRadius: 9, cursor: 'pointer',
                                 fontSize: 12, fontWeight: 600,
@@ -421,6 +514,82 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                               {currentOvertime > 0
                                 ? `${t.overtimeRegistered}: R$ ${currentOvertime.toLocaleString('pt-BR')}`
                                 : t.addOvertime}
+                            </motion.button>
+                          )}
+
+                          {/* Bonus section */}
+                          {isAddingBonus ? (
+                            <motion.div
+                              initial={{ opacity: 0, y: -4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.15 }}
+                              onClick={e => e.stopPropagation()}
+                              style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
+                            >
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <span style={{ fontSize: 11, color: 'var(--card-muted)', whiteSpace: 'nowrap' }}>R$:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={bonusValue}
+                                  onChange={e => setBonusValue(e.target.value)}
+                                  placeholder="0"
+                                  autoFocus
+                                  onClick={e => e.stopPropagation()}
+                                  style={{
+                                    flex: 1, padding: '6px 10px', borderRadius: 8,
+                                    border: '1px solid rgba(16,185,129,0.3)',
+                                    background: 'var(--inner-bg)', color: 'var(--card-heading)',
+                                    fontSize: 13, outline: 'none', minWidth: 0,
+                                  }}
+                                />
+                                <button
+                                  onClick={() => handleAddBonus(worker, bonusValue)}
+                                  style={{
+                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
+                                    background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
+                                    color: '#10b981', display: 'flex', alignItems: 'center',
+                                  }}
+                                >
+                                  <Check size={13} />
+                                </button>
+                                <button
+                                  onClick={() => { setBonusWorker(null); setBonusValue('') }}
+                                  style={{
+                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
+                                    background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)',
+                                    color: 'var(--card-dim)', display: 'flex', alignItems: 'center',
+                                  }}
+                                >
+                                  <X size={13} />
+                                </button>
+                              </div>
+                              {parseFloat(bonusValue) > 0 && (
+                                <div style={{ fontSize: 11, color: '#10b981', paddingLeft: 2 }}>
+                                  + R$ {(parseFloat(bonusValue) || 0).toFixed(2)}
+                                </div>
+                              )}
+                            </motion.div>
+                          ) : (
+                            <motion.button
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={e => { e.stopPropagation(); setBonusWorker(worker.id); setBonusValue(currentBonus > 0 ? String(currentBonus) : '') }}
+                              style={{
+                                width: '100%', padding: '7px 14px', borderRadius: 9, cursor: 'pointer',
+                                fontSize: 12, fontWeight: 600,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                background: currentBonus > 0 ? 'rgba(16,185,129,0.08)' : 'rgba(99,102,241,0.06)',
+                                border: `1px solid ${currentBonus > 0 ? 'rgba(16,185,129,0.25)' : 'rgba(99,102,241,0.2)'}`,
+                                color: currentBonus > 0 ? '#10b981' : 'var(--card-sub)',
+                                transition: 'all 0.2s',
+                              }}
+                            >
+                              <Gift size={12} />
+                              {currentBonus > 0
+                                ? `${t.bonusRegistered}: R$ ${currentBonus.toLocaleString('pt-BR')}`
+                                : t.addBonus}
                             </motion.button>
                           )}
                         </div>
@@ -540,6 +709,8 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
             lang={lang}
             worker={editWorker}
             locations={locations}
+            locationDepartments={locationDepartments}
+            locationJobTitles={locationJobTitles}
             onSave={handleSave}
             onClose={() => { setShowModal(false); setEditWorker(null) }}
           />

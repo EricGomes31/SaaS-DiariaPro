@@ -11,6 +11,9 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, isToday } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import i18n from '../../i18n'
+import { log } from '../../lib/logger'
+import { supabase } from '../../lib/supabase'
+import { useToast } from '../UI/Toast'
 
 // ── Pix BR Code payload (EMV / BACEN spec) ────────────────
 function crc16(str) {
@@ -25,24 +28,78 @@ function crc16(str) {
   return crc.toString(16).toUpperCase().padStart(4, '0')
 }
 
-function buildPixPayload(pixKey, merchantName) {
+// ── Sanitiza a chave PIX para o formato exato esperado pelo BACEN DICT ──────
+function sanitizePixKey(key, type) {
+  if (!key) return ''
+  const raw = key.trim()
+  switch (type) {
+    case 'cpf': {
+      // DICT espera apenas 11 dígitos, sem pontuação: 12345678900
+      const digits = raw.replace(/\D/g, '')
+      return digits.slice(0, 11)
+    }
+    case 'phone': {
+      // DICT espera E.164: +5511999999999
+      const digits = raw.replace(/\D/g, '')
+      if (digits.length === 11) return `+55${digits}`     // sem DDI
+      if (digits.length === 13 && digits.startsWith('55')) return `+${digits}` // com DDI sem +
+      if (raw.startsWith('+')) return raw.replace(/[^\d+]/g, '') // já tem +
+      return `+55${digits}`
+    }
+    case 'email':
+      return raw.toLowerCase()
+    case 'random':
+    default:
+      return raw
+  }
+}
+
+function buildPixPayload(pixKey, pixKeyType, merchantName, amount = 0) {
   const f = (id, value) => `${id}${String(value.length).padStart(2, '0')}${value}`
-  const gui = f('00', 'BR.GOV.BCB.PIX')
-  const key = f('01', pixKey)
-  const mai = f('26', gui + key)
-  const name = f('59', merchantName.slice(0, 25))
-  const city = f('60', 'SAO PAULO')
-  const txid = f('62', f('05', '***'))
-  const body = `000201${mai}520400005303986${name}${city}5802BR${txid}6304`
+
+  // Sanitiza chave para o formato exato do BACEN DICT
+  const cleanKey = sanitizePixKey(pixKey, pixKeyType)
+
+  // Remove acentos e chars não-ASCII (obrigatório spec BACEN EMV)
+  const cleanName = merchantName
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')   // remove marcas de acento
+    .replace(/[^a-zA-Z0-9 ]/g, ' ')   // remove qualquer char fora de ASCII básico
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 25) || 'PAGAMENTO'
+
+  const gui      = f('00', 'BR.GOV.BCB.PIX')
+  const key      = f('01', cleanKey)
+  const mai      = f('26', gui + key)
+  const amount54 = amount > 0 ? f('54', amount.toFixed(2)) : ''
+  const name     = f('59', cleanName)
+  const city     = f('60', 'SAO PAULO')
+  const txid     = f('62', f('05', '***'))
+
+  // Ordem CORRETA EMV/BACEN: 00 → 26 → 52 → 53 → [54] → 58 → 59 → 60 → 62 → 63
+  const body = `000201${mai}520400005303986${amount54}5802BR${name}${city}${txid}6304`
   return body + crc16(body)
 }
 
+function getWorkerEmail(worker) {
+  if (worker?.email && typeof worker.email === 'string' && worker.email.includes('@')) {
+    return worker.email.trim().toLowerCase()
+  }
+  if (worker?.pixKeyType === 'email' && worker?.pixKey?.includes('@')) {
+    return worker.pixKey.trim().toLowerCase()
+  }
+  return null
+}
+
 // ── Pix QR Code modal ──────────────────────────────────────
-function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayIds, onMarkPaid, onClose, t }) {
+function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, bonusAmount = 0, pendingWorkDayIds, onMarkPaid, onClose, t }) {
   const [copied, setCopied] = useState(false)
   const [paid, setPaid] = useState(false)
-  const payload = buildPixPayload(worker.pixKey, worker.name)
   const pixTypeLabel = PIX_KEY_TYPES.find(pt => pt.value === worker.pixKeyType)?.label || 'PIX'
+  // Sanitiza chave e gera payload com valor embutido (campo 54 BACEN EMV)
+  const cleanKey = sanitizePixKey(worker.pixKey, worker.pixKeyType)
+  const payload  = buildPixPayload(worker.pixKey, worker.pixKeyType, worker.name, pendingAmount)
 
   const handleCopy = () => {
     navigator.clipboard.writeText(payload).catch(() => {})
@@ -96,7 +153,7 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayI
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>{t.pixQrTitle}</h3>
+            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--card-heading)' }}>{t.pixQrTitle}</h3>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--card-muted)' }}>{t.pointCamera}</p>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--card-muted)', padding: 4, display: 'flex' }}>
@@ -119,7 +176,7 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayI
             {worker.avatar}
           </div>
           <div style={{ overflow: 'hidden' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--card-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {worker.name}
             </div>
             <div style={{ fontSize: 11, color: '#06b6d4', marginTop: 2 }}>
@@ -129,12 +186,29 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayI
         </div>
 
         {/* QR code */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          background: '#ffffff', borderRadius: 18, padding: 20, marginBottom: 20,
-          boxShadow: '0 0 0 1px rgba(6,182,212,0.2)',
-        }}>
-          <QRCodeSVG id="pix-qr-svg-pay" value={payload} size={220} level="M" bgColor="#ffffff" fgColor="#0f172a" />
+        <div style={{ position: 'relative', marginBottom: 20 }}>
+          <div style={{
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            background: '#ffffff', borderRadius: 18, padding: 20,
+            boxShadow: '0 0 0 1px rgba(6,182,212,0.2)',
+          }}>
+            <QRCodeSVG id="pix-qr-svg-pay" value={payload} size={220} level="M" bgColor="#ffffff" fgColor="#0f172a" />
+          </div>
+          {/* Badge de valor embutido */}
+          <div style={{
+            position: 'absolute', bottom: -12, left: '50%', transform: 'translateX(-50%)',
+            background: 'linear-gradient(135deg, #059669, #10b981)',
+            borderRadius: 100, padding: '5px 16px',
+            display: 'flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 4px 16px rgba(16,185,129,0.4)',
+            border: '2px solid var(--card-bg)',
+            whiteSpace: 'nowrap',
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>R$</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
+              {pendingAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </span>
+          </div>
         </div>
 
         {/* Pix key label */}
@@ -144,8 +218,8 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayI
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <QrCode size={14} color="#06b6d4" />
-          <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#e2e8f0', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {worker.pixKey}
+          <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--card-heading)', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {cleanKey}
           </span>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#06b6d4', padding: '2px 7px', borderRadius: 100, background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.2)', flexShrink: 0 }}>
             {pixTypeLabel}
@@ -158,16 +232,24 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, pendingWorkDayI
           background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
           display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          {overtimeAmount > 0 ? (
+          {(overtimeAmount > 0 || bonusAmount > 0) ? (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--card-muted)' }}>
                 <span>{t.overtimeDailies}</span>
-                <span>R$ {(pendingAmount - overtimeAmount).toLocaleString('pt-BR')}</span>
+                <span>R$ {(pendingAmount - overtimeAmount - bonusAmount).toLocaleString('pt-BR')}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>
-                <span>+ {t.overtimeExtra}</span>
-                <span>R$ {overtimeAmount.toLocaleString('pt-BR')}</span>
-              </div>
+              {overtimeAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>
+                  <span>+ {t.overtimeExtra}</span>
+                  <span>R$ {overtimeAmount.toLocaleString('pt-BR')}</span>
+                </div>
+              )}
+              {bonusAmount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#10b981', fontWeight: 600 }}>
+                  <span>+ {t.bonusRegistered}</span>
+                  <span>R$ {bonusAmount.toLocaleString('pt-BR')}</span>
+                </div>
+              )}
               <div style={{ borderTop: '1px solid rgba(16,185,129,0.15)', paddingTop: 6, display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 800, color: '#10b981' }}>
                 <span>Total</span>
                 <span>R$ {pendingAmount.toLocaleString('pt-BR')}</span>
@@ -310,7 +392,7 @@ function exportCSV(workerSummary) {
 }
 
 // ── PDF export (print window) ──────────────────────────────
-function exportPDF(workerSummary, totals) {
+function exportPDF(workerSummary) {
   const dateStr = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
   const totalGeral = workerSummary.reduce((s, w) => s + w.totalEarnings, 0)
 
@@ -804,6 +886,9 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
     setStatus('loading')
     await new Promise(r => setTimeout(r, 900))
 
+    const scopeLabel = scope === 'pending' ? 'Pendentes' : scope === 'paid' ? 'Confirmados' : 'Todos'
+    const groupLabel = groupBy === 'day' ? 'por dia' : 'por trabalhador'
+
     if (groupBy === 'day') {
       if (selected === 'csv') exportDayCSV(activeDayRows)
       else exportDayPDF(activeDayRows)
@@ -812,6 +897,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
       else exportPDF(activeData)
     }
 
+    log('export_report', `Relatório exportado: ${selected.toUpperCase()} — ${scopeLabel}, ${groupLabel} (Pagamentos)`)
     setStatus('done')
     setTimeout(() => { setStatus('idle'); onClose() }, 1600)
   }
@@ -836,10 +922,10 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 480,
-          background: 'linear-gradient(135deg, #131325 0%, #0f0f1e 100%)',
+          background: 'var(--card-bg)',
           border: '1px solid var(--card-border)',
           borderRadius: 22, overflow: 'hidden',
-          boxShadow: '0 40px 80px rgba(0,0,0,0.7)',
+          boxShadow: '0 40px 80px rgba(0,0,0,0.4)',
         }}
       >
         {/* Header */}
@@ -911,7 +997,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setScope(s.id)}
                   style={{
-                    flex: 1, padding: '9px 4px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                    flex: 1, padding: '9px 4px', borderRadius: 10, cursor: 'pointer',
                     background: scope === s.id ? `${s.color}15` : 'var(--inner-bg)',
                     border: `1.5px solid ${scope === s.id ? s.color + '50' : 'var(--card-border)'}`,
                     color: scope === s.id ? s.color : 'var(--card-muted)',
@@ -1003,7 +1089,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                     onClick={() => setSelected(fmt.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14,
-                      padding: '14px 16px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                      padding: '14px 16px', borderRadius: 14, cursor: 'pointer',
                       background: active ? `${fmt.color}10` : 'var(--inner-bg)',
                       border: `1.5px solid ${active ? fmt.color + '40' : 'var(--card-border)'}`,
                       transition: 'all 0.2s', textAlign: 'left',
@@ -1145,6 +1231,10 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
   const [selectedPixWorker, setSelectedPixWorker] = useState(null)
   const [sortKey, setSortKey] = useState('totalEarnings')
   const [sortDir, setSortDir] = useState('desc')
+  const [selectedLocation, setSelectedLocation] = useState(null)
+  const [undoConfirmWorker, setUndoConfirmWorker] = useState(null)
+  const [undoConfirmRecord, setUndoConfirmRecord] = useState(null)
+  const { showToast } = useToast()
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -1167,15 +1257,24 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
   const paidWorkerIds = new Set((paymentRecords || []).map(r => r.workerId))
   const unpaidWorkDays = workDays.filter(d => !paidDayIds.has(d.id))
 
-  const filtered        = unpaidWorkDays
+  // Localidades que têm dias pendentes
+  const activeLocations = locations.filter(l => unpaidWorkDays.some(d => d.locationId === l.id))
+
+  // Dias filtrados pela localidade selecionada
+  const locationFilteredDays = selectedLocation
+    ? unpaidWorkDays.filter(d => d.locationId === selectedLocation)
+    : unpaidWorkDays
+
+  const filtered        = locationFilteredDays
   const totalEarnings   = filtered.reduce((s, d) => s + d.earnings, 0)
   const weekdayEarnings = filtered.filter(d => !d.isWeekend).reduce((s, d) => s + d.earnings, 0)
   const weekendEarnings = filtered.filter(d => d.isWeekend).reduce((s, d) => s + d.earnings, 0)
 
-  const workerSummary = applySorting(workers.map(w => {
-    const s = getWorkerStats(w.id, unpaidWorkDays)
-    return { ...w, ...s }
-  }))
+  const workerSummary = applySorting(
+    workers
+      .map(w => ({ ...w, ...getWorkerStats(w.id, locationFilteredDays) }))
+      .filter(w => w.totalDays > 0)
+  )
 
   // Para exportação: usa todos os dias (pagos + pendentes)
   const allWorkerSummary = applySorting(
@@ -1206,22 +1305,50 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
     { name: t.weekendDaysLabel, value: weekendEarnings, color: '#f59e0b' },
   ]
 
-  const handleMarkPaid = (worker, workDayIds, amount) => {
+  const handleMarkPaid = async (worker, workDayIds, amount) => {
+    const paidDate = format(new Date(), 'yyyy-MM-dd')
+    const workDates = workDays
+      .filter(d => workDayIds.includes(d.id))
+      .map(d => d.date.split('-').reverse().join('/'))
+
     setPaymentRecords(prev => [
       ...(prev || []),
       {
         id: `payment-${worker.id}-${Date.now()}`,
         workerId: worker.id,
         total: amount,
-        paidDate: format(new Date(), 'yyyy-MM-dd'),
+        paidDate,
         workDayIds,
       },
     ])
     setSelectedPixWorker(null)
+
+    const email = getWorkerEmail(worker)
+    if (!email) {
+      showToast('Pagamento registrado. E-mail do diarista não encontrado para envio de comprovante.', 'info')
+      return
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('send-payment-receipt', {
+        body: {
+          email,
+          workerName: worker.name,
+          amount,
+          paidDate,
+          workDates,
+        },
+      })
+      if (error) throw error
+      showToast('Pagamento confirmado e comprovante enviado por e-mail.', 'success')
+    } catch (error) {
+      console.error('Erro ao enviar comprovante:', error)
+      showToast('Pagamento confirmado, mas não foi possível enviar o e-mail.', 'error')
+    }
   }
 
-  const handleUndoPayment = (workerId) => {
-    setPaymentRecords(prev => (prev || []).filter(r => r.workerId !== workerId))
+  const handleUndoPayment = (recordId) => {
+    setPaymentRecords(prev => (prev || []).filter(r => r.id !== recordId))
   }
 
   const openPixModal = (worker) => {
@@ -1231,6 +1358,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
       pendingWorkDayIds: pendingDays.map(d => d.id),
       pendingAmount: pendingDays.reduce((s, d) => s + d.earnings, 0),
       overtimeAmount: pendingDays.reduce((s, d) => s + (d.overtime || 0), 0),
+      bonusAmount: pendingDays.reduce((s, d) => s + (d.bonus || 0), 0),
     })
   }
 
@@ -1356,9 +1484,61 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
       {/* Worker payment table */}
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', boxShadow: 'var(--card-shadow)', borderRadius: 20, overflow: 'hidden' }}>
-        <div style={{ padding: '24px 28px', borderBottom: '1px solid var(--card-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--card-heading)' }}>{t.summaryByWorker}</h2>
-          <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{workerSummary.length} {t.workersLabel.toLowerCase()}</span>
+        <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--card-border)' }}>
+          {/* Título + contador */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: activeLocations.length > 0 ? 16 : 0 }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--card-heading)' }}>{t.summaryByWorker}</h2>
+            <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{workerSummary.filter(w => w.totalDays > 0).length} {t.workersLabel.toLowerCase()}</span>
+          </div>
+
+          {/* Filtros de localidade */}
+          {activeLocations.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSelectedLocation(null)}
+                style={{
+                  padding: '6px 14px', borderRadius: 20, cursor: 'pointer',
+                  fontSize: 12, fontWeight: 700, transition: 'all 0.18s',
+                  background: !selectedLocation ? '#6366f1' : 'var(--inner-bg)',
+                  color: !selectedLocation ? 'white' : 'var(--card-muted)',
+                  border: `1.5px solid ${!selectedLocation ? '#6366f1' : 'var(--card-border)'}`,
+                }}
+              >
+                Todos
+              </motion.button>
+              {activeLocations.map(loc => {
+                const locDays   = unpaidWorkDays.filter(d => d.locationId === loc.id)
+                const locTotal  = locDays.reduce((s, d) => s + d.earnings, 0)
+                const isActive  = selectedLocation === loc.id
+                return (
+                  <motion.button
+                    key={loc.id}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSelectedLocation(isActive ? null : loc.id)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 20, cursor: 'pointer',
+                      fontSize: 12, fontWeight: 700, transition: 'all 0.18s',
+                      background: isActive ? `${loc.color}22` : 'var(--inner-bg)',
+                      color: isActive ? loc.color : 'var(--card-muted)',
+                      border: `1.5px solid ${isActive ? loc.color + '80' : 'var(--card-border)'}`,
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: loc.color, flexShrink: 0 }} />
+                    {loc.name}
+                    <span style={{
+                      fontSize: 10, fontWeight: 800, padding: '1px 6px', borderRadius: 10,
+                      background: isActive ? `${loc.color}30` : 'rgba(255,255,255,0.06)',
+                      color: isActive ? loc.color : 'var(--card-muted)',
+                    }}>
+                      R${locTotal.toLocaleString('pt-BR')}
+                    </span>
+                  </motion.button>
+                )
+              })}
+            </div>
+          )}
         </div>
         {isMobile ? (
           <>
@@ -1390,7 +1570,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worker.name}</div>
                     <div style={{ fontSize: 10, color: 'var(--card-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{worker.jobTitle}</div>
                   </div>
-                  {worker.pixKey && !paidWorkerIds.has(worker.id) && (
+                  {worker.pixKey && worker.totalEarnings > 0 && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -1416,6 +1596,11 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                       {worker.totalOvertime > 0 && (
                         <div style={{ fontSize: 9, fontWeight: 600, color: '#f59e0b', marginTop: 2 }}>
                           +R${worker.totalOvertime.toLocaleString('pt-BR')} HE
+                        </div>
+                      )}
+                      {worker.totalBonus > 0 && (
+                        <div style={{ fontSize: 9, fontWeight: 600, color: '#10b981', marginTop: 2 }}>
+                          +R${worker.totalBonus.toLocaleString('pt-BR')} Bonif.
                         </div>
                       )}
                     </>
@@ -1478,7 +1663,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--card-heading)' }}>{worker.name}</div>
                     <div style={{ fontSize: 11, color: 'var(--card-muted)' }}>{worker.jobTitle}</div>
                   </div>
-                  {worker.pixKey && !paidWorkerIds.has(worker.id) && (
+                  {worker.pixKey && worker.totalEarnings > 0 && (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -1507,6 +1692,11 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                       {worker.totalOvertime > 0 && (
                         <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', marginTop: 2 }}>
                           +R$ {worker.totalOvertime.toLocaleString('pt-BR')} {t.overtimeExtra}
+                        </div>
+                      )}
+                      {worker.totalBonus > 0 && (
+                        <div style={{ fontSize: 10, fontWeight: 600, color: '#10b981', marginTop: 2 }}>
+                          +R$ {worker.totalBonus.toLocaleString('pt-BR')} {t.bonusRegistered}
                         </div>
                       )}
                     </>
@@ -1610,7 +1800,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => handleUndoPayment(worker.id)}
+                      onClick={() => setUndoConfirmWorker(worker)}
                       style={{
                         width: 26, height: 26, borderRadius: 7, border: 'none', cursor: 'pointer',
                         background: 'rgba(245,158,11,0.1)', flexShrink: 0,
@@ -1682,7 +1872,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={() => handleUndoPayment(worker.id)}
+                      onClick={() => setUndoConfirmWorker(worker)}
                       style={{
                         width: 30, height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: 'rgba(245,158,11,0.1)', flexShrink: 0,
@@ -1738,11 +1928,262 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
             worker={selectedPixWorker.worker}
             pendingAmount={selectedPixWorker.pendingAmount}
             overtimeAmount={selectedPixWorker.overtimeAmount}
+            bonusAmount={selectedPixWorker.bonusAmount}
             pendingWorkDayIds={selectedPixWorker.pendingWorkDayIds}
             onMarkPaid={handleMarkPaid}
             onClose={() => setSelectedPixWorker(null)}
             t={t}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Modal: selecionar qual pagamento desfazer */}
+      <AnimatePresence>
+        {undoConfirmWorker && (() => {
+          const workerRecords = (paymentRecords || [])
+            .filter(r => r.workerId === undoConfirmWorker.id)
+            .sort((a, b) => (b.paidDate || '').localeCompare(a.paidDate || ''))
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setUndoConfirmWorker(null)}
+              style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(6px)', padding: 16,
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 20 }}
+                transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+                onClick={e => e.stopPropagation()}
+                style={{
+                  background: 'var(--card-bg)',
+                  border: '1px solid rgba(245,158,11,0.25)',
+                  borderRadius: 20, padding: 28, width: 420, maxWidth: '94vw',
+                  boxShadow: '0 0 60px rgba(245,158,11,0.1)',
+                  maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+                }}
+              >
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                    background: `${undoConfirmWorker.avatarColor}20`,
+                    border: `2px solid ${undoConfirmWorker.avatarColor}45`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 15, fontWeight: 800, color: undoConfirmWorker.avatarColor,
+                  }}>
+                    {undoConfirmWorker.avatar}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+                      {undoConfirmWorker.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--card-muted)', marginTop: 2 }}>
+                      Selecione o pagamento que deseja desfazer
+                    </div>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setUndoConfirmWorker(null)}
+                    style={{
+                      marginLeft: 'auto', width: 30, height: 30, borderRadius: 8,
+                      border: '1px solid var(--card-border)', background: 'var(--inner-bg)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: 'var(--card-muted)', flexShrink: 0,
+                    }}
+                  >
+                    <X size={14} />
+                  </motion.button>
+                </div>
+
+                {/* Lista de pagamentos */}
+                <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                  {workerRecords.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--card-muted)', fontSize: 14 }}>
+                      Nenhum pagamento encontrado.
+                    </div>
+                  ) : workerRecords.map((record, i) => {
+                    const dias = record.workDayIds?.length ?? record.totalDays ?? '—'
+                    const total = record.total ?? 0
+                    const dataPago = record.paidDate ? format(parseISO(record.paidDate), "dd/MM/yyyy", { locale: ptBR }) : '—'
+                    const periodo = record.monthStr || record.period || null
+                    return (
+                      <div
+                        key={record.id}
+                        style={{
+                          padding: '16px', borderRadius: 14,
+                          background: 'var(--inner-bg)',
+                          border: '1px solid var(--card-border)',
+                          display: 'flex', alignItems: 'center', gap: 14,
+                        }}
+                      >
+                        {/* Número */}
+                        <div style={{
+                          width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                          background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 13, fontWeight: 800, color: '#f59e0b',
+                        }}>
+                          {workerRecords.length - i}
+                        </div>
+
+                        {/* Infos */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {periodo && (
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--card-heading)', marginBottom: 3, textTransform: 'capitalize' }}>
+                              {periodo}
+                            </div>
+                          )}
+                          <div style={{ fontSize: 12, color: 'var(--card-muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <span>📅 Pago em {dataPago}</span>
+                            <span>📆 {dias} {typeof dias === 'number' && dias !== 1 ? 'dias' : 'dia'}</span>
+                          </div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: '#10b981', marginTop: 4 }}>
+                            R$ {total.toLocaleString('pt-BR')}
+                          </div>
+                        </div>
+
+                        {/* Botão desfazer */}
+                        <motion.button
+                          whileHover={{ scale: 1.04, boxShadow: '0 4px 16px rgba(245,158,11,0.25)' }}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setUndoConfirmRecord(record)}
+                          style={{
+                            padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                            color: 'white', fontSize: 12, fontWeight: 700, flexShrink: 0,
+                            display: 'flex', alignItems: 'center', gap: 6,
+                          }}
+                        >
+                          <RotateCcw size={12} />
+                          Desfazer
+                        </motion.button>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Rodapé */}
+                <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--card-border)' }}>
+                  <p style={{ margin: '0 0 12px', fontSize: 11, color: 'rgba(245,158,11,0.7)', fontWeight: 500 }}>
+                    ⚠ Ao desfazer, os dias daquele pagamento voltarão para pendentes.
+                  </p>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => setUndoConfirmWorker(null)}
+                    style={{
+                      width: '100%', padding: '12px', borderRadius: 12, cursor: 'pointer',
+                      background: 'var(--inner-bg)', border: '1px solid var(--card-border)',
+                      color: 'var(--card-sub)', fontSize: 14, fontWeight: 600,
+                    }}
+                  >
+                    Cancelar
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
+
+      {/* Confirmação final de desfazer um registro específico */}
+      <AnimatePresence>
+        {undoConfirmRecord && undoConfirmWorker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setUndoConfirmRecord(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(4px)', padding: 16,
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--card-bg)',
+                border: '1px solid rgba(245,158,11,0.3)',
+                borderRadius: 20, padding: 28, width: 380, maxWidth: '92vw',
+                boxShadow: '0 0 60px rgba(245,158,11,0.15)',
+              }}
+            >
+              <div style={{
+                width: 52, height: 52, borderRadius: 14, marginBottom: 18,
+                background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <RotateCcw size={22} color="#f59e0b" />
+              </div>
+
+              <h3 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 700, color: 'var(--card-heading)' }}>
+                Desfazer pagamento?
+              </h3>
+
+              <div style={{
+                margin: '12px 0 16px', padding: '14px', borderRadius: 12,
+                background: 'var(--inner-bg)', border: '1px solid var(--card-border)',
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--card-heading)', marginBottom: 6 }}>
+                  {undoConfirmWorker.name}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--card-muted)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <span>📅 Pago em {undoConfirmRecord.paidDate ? format(parseISO(undoConfirmRecord.paidDate), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</span>
+                  <span>📆 {undoConfirmRecord.workDayIds?.length ?? undoConfirmRecord.totalDays ?? '—'} dias</span>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#10b981', marginTop: 6 }}>
+                  R$ {(undoConfirmRecord.total ?? 0).toLocaleString('pt-BR')}
+                </div>
+              </div>
+
+              <p style={{ margin: '0 0 20px', fontSize: 12, color: 'rgba(245,158,11,0.8)', fontWeight: 500 }}>
+                ⚠ Os dias deste pagamento voltarão para pendentes.
+              </p>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <motion.button
+                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => setUndoConfirmRecord(null)}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer',
+                    background: 'var(--inner-bg)', border: '1px solid var(--card-border)',
+                    color: 'var(--card-sub)', fontSize: 14, fontWeight: 600,
+                  }}
+                >
+                  Cancelar
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(245,158,11,0.3)' }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    handleUndoPayment(undoConfirmRecord.id)
+                    setUndoConfirmRecord(null)
+                    setUndoConfirmWorker(null)
+                  }}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer', border: 'none',
+                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                    color: 'white', fontSize: 14, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  }}
+                >
+                  <RotateCcw size={14} />
+                  Sim, desfazer
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

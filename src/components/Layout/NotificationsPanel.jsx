@@ -1,55 +1,78 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Bell, CheckCheck, Users, CreditCard, AlertCircle, Info, Trash2 } from 'lucide-react'
+import { format, parseISO, differenceInCalendarDays } from 'date-fns'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
-export const INITIAL_NOTIFICATIONS = [
-  {
-    id: 1,
-    type: 'worker',
-    icon: Users,
-    iconColor: '#6366f1',
-    iconBg: 'rgba(99,102,241,0.12)',
-    title: 'Novo dia registrado',
-    body: 'Carlos Eduardo trabalhou no Galpão 1 hoje.',
-    time: '2 min atrás',
-    read: false,
-  },
-  {
-    id: 2,
-    type: 'payment',
-    icon: CreditCard,
-    iconColor: '#f59e0b',
-    iconBg: 'rgba(245,158,11,0.12)',
-    title: 'Pagamento pendente',
-    body: 'Fernanda Souza tem R$ 2.880 pendente neste mês.',
-    time: '1h atrás',
-    read: false,
-  },
-  {
-    id: 3,
-    type: 'alert',
-    icon: AlertCircle,
-    iconColor: '#f43f5e',
-    iconBg: 'rgba(244,63,94,0.12)',
-    title: 'Diarista inativo',
-    body: 'Luciana Santos está inativa há mais de 30 dias.',
-    time: '3h atrás',
-    read: false,
-  },
-  {
-    id: 4,
-    type: 'info',
-    icon: Info,
-    iconColor: '#06b6d4',
-    iconBg: 'rgba(6,182,212,0.12)',
-    title: 'Atualização do sistema',
-    body: 'Diária Pro v2.1 — histórico de pagamentos disponível.',
-    time: 'Ontem',
-    read: true,
-  },
-]
+// Gera notificações a partir dos dados reais da conta.
+// IDs são estáveis por dia — o estado lida/excluída é persistido no Sidebar.
+export function buildNotifications({ workers = [], workDays = [], paymentRecords = [] }) {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  const notes = []
 
-export default function NotificationsPanel({ onClose, theme, notes, setNotes }) {
+  // Conta nova, sem diaristas
+  if (workers.length === 0) {
+    notes.push({
+      id: 'welcome',
+      icon: Info, iconColor: '#06b6d4', iconBg: 'rgba(6,182,212,0.12)',
+      title: 'Bem-vindo ao Diária Pro',
+      body: 'Cadastre seu primeiro diarista na tela de Trabalhadores para começar.',
+      time: 'Agora',
+    })
+    return notes
+  }
+
+  // Presenças registradas hoje
+  const todayCount = workDays.filter(d => d.date === today).length
+  if (todayCount > 0) {
+    notes.push({
+      id: `today-${today}`,
+      icon: Users, iconColor: '#6366f1', iconBg: 'rgba(99,102,241,0.12)',
+      title: 'Presenças de hoje',
+      body: `${todayCount} ${todayCount === 1 ? 'diarista registrado' : 'diaristas registrados'} hoje.`,
+      time: 'Hoje',
+    })
+  }
+
+  // Pagamentos pendentes (dias sem registro de pagamento)
+  const paidIds = new Set((paymentRecords || []).flatMap(r => r.workDayIds || []))
+  const pending = workDays.filter(d => !paidIds.has(d.id))
+  const pendingTotal = pending.reduce((s, d) => s + (d.earnings || 0), 0)
+  const pendingWorkers = new Set(pending.map(d => d.workerId)).size
+  if (pendingTotal > 0) {
+    notes.push({
+      id: `pending-${today}`,
+      icon: CreditCard, iconColor: '#f59e0b', iconBg: 'rgba(245,158,11,0.12)',
+      title: 'Pagamentos pendentes',
+      body: `R$ ${pendingTotal.toLocaleString('pt-BR')} a pagar para ${pendingWorkers} diarista${pendingWorkers !== 1 ? 's' : ''}.`,
+      time: 'Hoje',
+    })
+  }
+
+  // Diaristas ativos sem registro há mais de 30 dias
+  const lastByWorker = {}
+  for (const d of workDays) {
+    if (!lastByWorker[d.workerId] || d.date > lastByWorker[d.workerId]) lastByWorker[d.workerId] = d.date
+  }
+  const stale = workers.filter(w => {
+    if (w.status !== 'active') return false
+    const last = lastByWorker[w.id]
+    return last && differenceInCalendarDays(new Date(), parseISO(last)) > 30
+  })
+  if (stale.length > 0) {
+    const names = stale.slice(0, 3).map(w => w.name.split(' ')[0]).join(', ')
+    notes.push({
+      id: `stale-${today}`,
+      icon: AlertCircle, iconColor: '#f43f5e', iconBg: 'rgba(244,63,94,0.12)',
+      title: 'Diaristas sem registro recente',
+      body: `${names}${stale.length > 3 ? ` e mais ${stale.length - 3}` : ''} sem registro há mais de 30 dias.`,
+      time: 'Hoje',
+    })
+  }
+
+  return notes
+}
+
+export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, onMarkAllRead, onRemove }) {
   const isMobile = useIsMobile()
 
   const isLight = theme === 'light'
@@ -79,15 +102,6 @@ export default function NotificationsPanel({ onClose, theme, notes, setNotes }) 
   }
 
   const unreadCount = notes.filter(n => !n.read).length
-
-  const markRead = (id) =>
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
-
-  const markAllRead = () =>
-    setNotes(prev => prev.map(n => ({ ...n, read: true })))
-
-  const remove = (id) =>
-    setNotes(prev => prev.filter(n => n.id !== id))
 
   return (
     <>
@@ -164,7 +178,7 @@ export default function NotificationsPanel({ onClose, theme, notes, setNotes }) 
             <motion.button
               whileHover={{ background: 'rgba(99,102,241,0.12)' }}
               whileTap={{ scale: 0.97 }}
-              onClick={markAllRead}
+              onClick={onMarkAllRead}
               style={{
                 marginTop: 12, width: '100%', padding: '8px 12px', borderRadius: 9,
                 border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.07)',
@@ -202,7 +216,7 @@ export default function NotificationsPanel({ onClose, theme, notes, setNotes }) 
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -20, transition: { duration: 0.18 } }}
                     transition={{ delay: i * 0.04 }}
-                    onClick={() => markRead(n.id)}
+                    onClick={() => { if (!n.read) onMarkRead(n.id) }}
                     style={{
                       position: 'relative', padding: '14px', borderRadius: 13, marginBottom: 8,
                       background: n.read ? np.itemReadBg : np.itemUnreadBg,
@@ -253,7 +267,7 @@ export default function NotificationsPanel({ onClose, theme, notes, setNotes }) 
                     <motion.button
                       whileHover={{ scale: 1.15, background: 'rgba(244,63,94,0.15)' }}
                       whileTap={{ scale: 0.9 }}
-                      onClick={e => { e.stopPropagation(); remove(n.id) }}
+                      onClick={e => { e.stopPropagation(); onRemove(n.id) }}
                       style={{
                         position: 'absolute', bottom: 12, right: 12,
                         width: 24, height: 24, borderRadius: 6, border: 'none',

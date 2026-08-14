@@ -7,3 +7,13 @@ dist/
 npm-debug.log*
 .DS_Store
 Thumbs.db
+
+# Zip de deploy (gerado por Compress-Archive a partir de dist/)
+hostgator-upload.zip
+
+# Supabase CLI — estado local
+supabase/.temp/
+
+# Claude Code — memória e config local do agente
+.claude/projects/
+.claude/settings.local.json

@@ -1,15 +1,18 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Users, CalendarDays, DollarSign, Plus, X, Building2, Trash2, AlertTriangle } from 'lucide-react'
-import { getWorkerStats } from '../../data/mockData'
+import { MapPin, Plus, Building2, Trash2, AlertTriangle, Pencil, X, Layers, Briefcase } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
+  ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell
 } from 'recharts'
 import i18n from '../../i18n'
 
-export default function LocationManager({ lang = 'pt', locations, setLocations, workers, workDays }) {
+export default function LocationManager({
+  lang = 'pt', locations, setLocations, workers, workDays,
+  locationDepartments = [], setLocationDepartments,
+  locationJobTitles = [], setLocationJobTitles,
+}) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const [selected, setSelected] = useState(locations[0])
@@ -18,6 +21,8 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
   const [newName, setNewName] = useState('')
   const [newCity, setNewCity] = useState('')
   const [newAddress, setNewAddress] = useState('')
+  const [editingLoc, setEditingLoc] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', city: '', address: '' })
 
   const getLocStats = (locId) => {
     const days = workDays.filter(d => d.locationId === locId)
@@ -40,14 +45,13 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
   const selStats = selected ? getLocStats(selected.id) : null
   const selWorkers = selected ? getLocWorkers(selected.id) : []
 
-  // Radar data for comparison
-  const radarData = locations.map(loc => {
+  // Dados de comparação entre locais (barras de total pago)
+  const comparisonData = locations.map(loc => {
     const s = getLocStats(loc.id)
     return {
-      loc: loc.shortName,
-      Dias: s.totalDays,
-      Diaristas: s.workerCount * 5,
-      Ganhos: Math.round(s.totalEarnings / 1000),
+      name: loc.shortName || loc.name,
+      total: Math.round(s.totalEarnings),
+      color: loc.color,
     }
   })
 
@@ -77,6 +81,25 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
     if (selected?.id === locId) {
       setSelected(remaining[0] || null)
     }
+  }
+
+  const startEdit = (loc) => {
+    setEditingLoc(loc)
+    setEditForm({ name: loc.name, city: loc.city || '', address: loc.address || '' })
+  }
+
+  const handleSaveEdit = () => {
+    if (!editForm.name.trim()) return
+    const updated = {
+      ...editingLoc,
+      name: editForm.name.trim(),
+      city: editForm.city.trim(),
+      address: editForm.address.trim(),
+      shortName: editForm.name.trim().slice(0, 2).toUpperCase(),
+    }
+    setLocations(prev => prev.map(l => (l.id === editingLoc.id ? updated : l)))
+    if (selected?.id === editingLoc.id) setSelected(updated)
+    setEditingLoc(null)
   }
 
   const allStats = locations.map(loc => {
@@ -338,6 +361,25 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                     </div>
                   </div>
 
+                  {/* Edit from detail panel */}
+                  <motion.button
+                    whileHover={{ scale: 1.05, background: 'rgba(99,102,241,0.15)' }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => startEdit(selected)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: isMobile ? '8px' : '9px 16px', borderRadius: 10,
+                      border: '1px solid rgba(99,102,241,0.25)',
+                      background: 'rgba(99,102,241,0.08)', color: '#818cf8',
+                      cursor: 'pointer', fontSize: 13, fontWeight: 600, flexShrink: 0,
+                      width: isMobile ? 36 : 'auto', height: isMobile ? 36 : 'auto',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Pencil size={14} />
+                    {!isMobile && t.editLocation}
+                  </motion.button>
+
                   {/* Delete from detail panel */}
                   <motion.button
                     whileHover={{ scale: 1.05, background: 'rgba(244,63,94,0.15)' }}
@@ -377,11 +419,38 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                 </div>
               </div>
 
-              {/* Workers assigned */}
+              {/* Comparison bar chart */}
               <div style={{
                 background: 'var(--card-bg)', border: '1px solid var(--card-border)',
                 boxShadow: 'var(--card-shadow)',
                 borderRadius: 18, padding: '22px', marginBottom: 16,
+              }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+                  {t.locationComparison}
+                </h3>
+                <div style={{ fontSize: 12, color: 'var(--card-muted)', marginBottom: 16 }}>{t.totalPaidStatLabel}</div>
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={comparisonData} margin={{ top: 10, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--inner-border)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fill: 'var(--card-sub)', fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fill: 'var(--card-muted)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(99,102,241,0.06)' }}
+                      contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 12, fontSize: 12 }}
+                      formatter={(v) => [`R$ ${Number(v).toLocaleString('pt-BR')}`, t.totalPaidStatLabel]}
+                    />
+                    <Bar dataKey="total" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                      {comparisonData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Workers assigned */}
+              <div style={{
+                background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                boxShadow: 'var(--card-shadow)',
+                borderRadius: 18, padding: '22px',
               }}>
                 <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
                   {t.assignedWorkers} ({selWorkers.length})
@@ -418,28 +487,334 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                 </div>
               </div>
 
-              {/* Comparison radar */}
+              {/* Departamentos do local */}
               <div style={{
                 background: 'var(--card-bg)', border: '1px solid var(--card-border)',
                 boxShadow: 'var(--card-shadow)',
-                borderRadius: 18, padding: '22px',
+                borderRadius: 18, padding: '22px', marginTop: 16,
               }}>
-                <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
-                  {t.locationComparison}
-                </h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
-                    <PolarGrid stroke="var(--card-border)" />
-                    <PolarAngleAxis dataKey="loc" tick={{ fill: 'var(--card-sub)', fontSize: 12 }} />
-                    <Radar name="Dias" dataKey="Dias" stroke="#6366f1" fill="#6366f1" fillOpacity={0.15} />
-                    <Radar name="Ganhos" dataKey="Ganhos" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.1} />
-                  </RadarChart>
-                </ResponsiveContainer>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={13} color="#818cf8" />
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+                    {t.departmentsSection}
+                  </h3>
+                </div>
+                <DepartmentManager
+                  t={t}
+                  items={locationDepartments.filter(d => d.locationId === selected.id)}
+                  onAdd={name => setLocationDepartments(prev => [...prev, { id: `dept${Date.now()}`, locationId: selected.id, name }])}
+                  onDelete={id => setLocationDepartments(prev => prev.filter(d => d.id !== id))}
+                />
+              </div>
+
+              {/* Cargos do local */}
+              <div style={{
+                background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                boxShadow: 'var(--card-shadow)',
+                borderRadius: 18, padding: '22px', marginTop: 16,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Briefcase size={13} color="#f59e0b" />
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+                    {t.jobTitlesSection}
+                  </h3>
+                </div>
+                <JobTitleManager
+                  t={t}
+                  isMobile={isMobile}
+                  items={locationJobTitles.filter(j => j.locationId === selected.id)}
+                  onAdd={payload => setLocationJobTitles(prev => [...prev, { id: `job${Date.now()}`, locationId: selected.id, ...payload }])}
+                  onEdit={(id, payload) => setLocationJobTitles(prev => prev.map(j => j.id === id ? { ...j, ...payload } : j))}
+                  onDelete={id => setLocationJobTitles(prev => prev.filter(j => j.id !== id))}
+                />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Edit location modal */}
+      <AnimatePresence>
+        {editingLoc && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setEditingLoc(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.94, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.94, y: 16 }}
+              transition={{ duration: 0.25 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: 440, background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 20, padding: '24px', boxShadow: '0 40px 80px rgba(0,0,0,0.4)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                <h3 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 800, color: 'var(--card-heading)' }}>{t.editLocationTitle}</h3>
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setEditingLoc(null)}
+                  style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid var(--card-border)', background: 'var(--inner-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--card-muted)' }}>
+                  <X size={15} />
+                </motion.button>
+              </div>
+              <input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} placeholder={t.locationNamePlaceholder} className="input-premium" style={{ width: '100%', padding: '11px 13px', borderRadius: 11, fontSize: 14, marginBottom: 10, boxSizing: 'border-box' }} />
+              <input value={editForm.city} onChange={e => setEditForm(f => ({ ...f, city: e.target.value }))} placeholder={t.cityPlaceholder} className="input-premium" style={{ width: '100%', padding: '11px 13px', borderRadius: 11, fontSize: 14, marginBottom: 10, boxSizing: 'border-box' }} />
+              <input value={editForm.address} onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))} placeholder={t.addressPlaceholder} className="input-premium" style={{ width: '100%', padding: '11px 13px', borderRadius: 11, fontSize: 14, marginBottom: 16, boxSizing: 'border-box' }} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setEditingLoc(null)} style={{ flex: 1, padding: '11px', borderRadius: 11, border: '1px solid var(--card-border)', background: 'var(--inner-bg)', color: 'var(--card-sub)', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>{t.cancel}</button>
+                <motion.button whileTap={{ scale: 0.97 }} onClick={handleSaveEdit} className="btn-primary" style={{ flex: 2, padding: '11px', borderRadius: 11, fontSize: 14, fontWeight: 700 }}>{t.saveChanges}</motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Departamentos do local (lista + adicionar + excluir) ────────────────────
+function DepartmentManager({ t, items, onAdd, onDelete }) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [name, setName] = useState('')
+  const [deletingId, setDeletingId] = useState(null)
+
+  const handleAdd = () => {
+    if (!name.trim()) return
+    onAdd(name.trim())
+    setName('')
+    setShowAdd(false)
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: (showAdd || items.length > 0) ? 12 : 0 }}>
+        {items.map(dep => {
+          const confirming = deletingId === dep.id
+          return (
+            <div key={dep.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 8px 8px 14px', borderRadius: 10,
+              background: confirming ? 'rgba(244,63,94,0.08)' : 'var(--inner-bg)',
+              border: `1px solid ${confirming ? 'rgba(244,63,94,0.3)' : 'var(--inner-border)'}`,
+            }}>
+              {confirming ? (
+                <>
+                  <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{t.deleteDepartment}?</span>
+                  <button onClick={() => setDeletingId(null)} style={{ border: 'none', background: 'transparent', color: 'var(--card-muted)', cursor: 'pointer', fontSize: 12 }}>{t.cancel}</button>
+                  <button onClick={() => { onDelete(dep.id); setDeletingId(null) }} style={{ border: 'none', borderRadius: 6, padding: '4px 8px', background: '#f43f5e', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>{t.deleteBtn}</button>
+                </>
+              ) : (
+                <>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-heading)' }}>{dep.name}</span>
+                  <button onClick={() => setDeletingId(dep.id)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--card-muted)' }}>
+                    <Trash2 size={12} />
+                  </button>
+                </>
+              )}
+            </div>
+          )
+        })}
+        {items.length === 0 && !showAdd && (
+          <div style={{ color: 'var(--card-muted)', fontSize: 13 }}>{t.noDepartmentsYet}</div>
+        )}
+      </div>
+
+      {showAdd ? (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder={t.newDepartmentPlaceholder}
+            className="input-premium"
+            autoFocus
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 10, fontSize: 13, boxSizing: 'border-box' }}
+          />
+          <button onClick={() => { setShowAdd(false); setName('') }} style={{ padding: '0 14px', borderRadius: 10, border: '1px solid var(--card-border)', background: 'var(--inner-bg)', color: 'var(--card-sub)', cursor: 'pointer', fontSize: 13 }}>{t.cancel}</button>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={handleAdd} className="btn-primary" style={{ padding: '0 16px', borderRadius: 10, fontSize: 13, fontWeight: 600 }}>{t.addBtn}</motion.button>
+        </div>
+      ) : (
+        <motion.button
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          onClick={() => setShowAdd(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 10, border: '1px dashed var(--card-border)',
+            background: 'transparent', color: '#818cf8', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+          }}
+        >
+          <Plus size={13} /> {t.newDepartmentTitle}
+        </motion.button>
+      )}
+    </div>
+  )
+}
+
+// ─── Cargos do local (lista com diária + adicionar + excluir) ────────────────
+function JobTitleManager({ t, isMobile, items, onAdd, onEdit, onDelete }) {
+  const [showAdd, setShowAdd] = useState(false)
+  const [name, setName] = useState('')
+  const [weekdayRate, setWeekdayRate] = useState(150)
+  const [saturdayRate, setSaturdayRate] = useState(220)
+  const [sundayRate, setSundayRate] = useState(220)
+  const [deletingId, setDeletingId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', weekdayRate: 0, saturdayRate: 0, sundayRate: 0 })
+
+  const handleAdd = () => {
+    if (!name.trim()) return
+    onAdd({
+      name: name.trim(),
+      weekdayRate: parseFloat(weekdayRate) || 0,
+      saturdayRate: parseFloat(saturdayRate) || 0,
+      sundayRate: parseFloat(sundayRate) || 0,
+    })
+    setName(''); setWeekdayRate(150); setSaturdayRate(220); setSundayRate(220)
+    setShowAdd(false)
+  }
+
+  const startEdit = (job) => {
+    setDeletingId(null)
+    setEditingId(job.id)
+    setEditForm({
+      name: job.name,
+      weekdayRate: job.weekdayRate ?? 0,
+      saturdayRate: job.saturdayRate ?? 0,
+      sundayRate: job.sundayRate ?? 0,
+    })
+  }
+
+  const saveEdit = () => {
+    if (!editForm.name.trim()) return
+    onEdit(editingId, {
+      name: editForm.name.trim(),
+      weekdayRate: parseFloat(editForm.weekdayRate) || 0,
+      saturdayRate: parseFloat(editForm.saturdayRate) || 0,
+      sundayRate: parseFloat(editForm.sundayRate) || 0,
+    })
+    setEditingId(null)
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: (showAdd || items.length > 0) ? 14 : 0 }}>
+        {items.map(job => {
+          const confirming = deletingId === job.id
+          const editing = editingId === job.id
+          return (
+            <div key={job.id} style={{
+              padding: editing ? '14px' : '10px 14px', borderRadius: 10,
+              background: confirming ? 'rgba(244,63,94,0.08)' : editing ? 'rgba(245,158,11,0.06)' : 'var(--inner-bg)',
+              border: `1px solid ${confirming ? 'rgba(244,63,94,0.3)' : editing ? 'rgba(245,158,11,0.25)' : 'var(--inner-border)'}`,
+            }}>
+              {editing ? (
+                <div>
+                  <input
+                    value={editForm.name}
+                    onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder={t.newJobTitlePlaceholder}
+                    className="input-premium"
+                    autoFocus
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: 'var(--card-muted)', marginBottom: 5 }}>{t.weekdayRateLabel}</label>
+                      <input type="number" min="0" value={editForm.weekdayRate} onChange={e => setEditForm(f => ({ ...f, weekdayRate: e.target.value }))} className="input-premium" style={{ width: '100%', padding: '9px 11px', borderRadius: 9, fontSize: 13, boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.8)', marginBottom: 5 }}>Sábado (R$)</label>
+                      <input type="number" min="0" value={editForm.saturdayRate} onChange={e => setEditForm(f => ({ ...f, saturdayRate: e.target.value }))} className="input-premium" style={{ width: '100%', padding: '9px 11px', borderRadius: 9, fontSize: 13, boxSizing: 'border-box', borderColor: 'rgba(245,158,11,0.25)' }} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.8)', marginBottom: 5 }}>Domingo (R$)</label>
+                      <input type="number" min="0" value={editForm.sundayRate} onChange={e => setEditForm(f => ({ ...f, sundayRate: e.target.value }))} className="input-premium" style={{ width: '100%', padding: '9px 11px', borderRadius: 9, fontSize: 13, boxSizing: 'border-box', borderColor: 'rgba(245,158,11,0.25)' }} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setEditingId(null)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--card-border)', background: 'var(--inner-bg)', color: 'var(--card-sub)', cursor: 'pointer', fontSize: 13 }}>{t.cancel}</button>
+                    <motion.button whileTap={{ scale: 0.97 }} onClick={saveEdit} className="btn-primary" style={{ flex: 2, padding: '9px', borderRadius: 9, fontSize: 13, fontWeight: 600 }}>{t.saveChanges}</motion.button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-heading)' }}>{job.name}</span>
+                  {confirming ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{t.deleteJobTitle}?</span>
+                      <button onClick={() => setDeletingId(null)} style={{ border: 'none', background: 'transparent', color: 'var(--card-muted)', cursor: 'pointer', fontSize: 12 }}>{t.cancel}</button>
+                      <button onClick={() => { onDelete(job.id); setDeletingId(null) }} style={{ border: 'none', borderRadius: 6, padding: '4px 8px', background: '#f43f5e', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>{t.deleteBtn}</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                      <div style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--card-muted)' }}>
+                        <span>Seg-Sex <strong style={{ color: 'var(--card-heading)' }}>R${Number(job.weekdayRate ?? 0).toLocaleString('pt-BR')}</strong></span>
+                        <span>Sáb <strong style={{ color: 'var(--card-heading)' }}>R${Number(job.saturdayRate ?? 0).toLocaleString('pt-BR')}</strong></span>
+                        <span>Dom <strong style={{ color: 'var(--card-heading)' }}>R${Number(job.sundayRate ?? 0).toLocaleString('pt-BR')}</strong></span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <button onClick={() => startEdit(job)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--card-muted)' }}>
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => setDeletingId(job.id)} style={{ width: 22, height: 22, borderRadius: 6, border: 'none', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--card-muted)' }}>
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {items.length === 0 && !showAdd && (
+          <div style={{ color: 'var(--card-muted)', fontSize: 13 }}>{t.noJobTitlesYet}</div>
+        )}
+      </div>
+
+      {showAdd ? (
+        <div style={{ padding: '14px', borderRadius: 12, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder={t.newJobTitlePlaceholder}
+            className="input-premium"
+            autoFocus
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 13, marginBottom: 10, boxSizing: 'border-box' }}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'var(--card-muted)', marginBottom: 5 }}>{t.weekdayRateLabel}</label>
+              <input type="number" min="0" value={weekdayRate} onChange={e => setWeekdayRate(e.target.value)} className="input-premium" style={{ width: '100%', padding: '9px 11px', borderRadius: 9, fontSize: 13, boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.8)', marginBottom: 5 }}>Sábado (R$)</label>
+              <input type="number" min="0" value={saturdayRate} onChange={e => setSaturdayRate(e.target.value)} className="input-premium" style={{ width: '100%', padding: '9px 11px', borderRadius: 9, fontSize: 13, boxSizing: 'border-box', borderColor: 'rgba(245,158,11,0.25)' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.8)', marginBottom: 5 }}>Domingo (R$)</label>
+              <input type="number" min="0" value={sundayRate} onChange={e => setSundayRate(e.target.value)} className="input-premium" style={{ width: '100%', padding: '9px 11px', borderRadius: 9, fontSize: 13, boxSizing: 'border-box', borderColor: 'rgba(245,158,11,0.25)' }} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setShowAdd(false)} style={{ flex: 1, padding: '9px', borderRadius: 9, border: '1px solid var(--card-border)', background: 'var(--inner-bg)', color: 'var(--card-sub)', cursor: 'pointer', fontSize: 13 }}>{t.cancel}</button>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={handleAdd} className="btn-primary" style={{ flex: 2, padding: '9px', borderRadius: 9, fontSize: 13, fontWeight: 600 }}>{t.addBtn}</motion.button>
+          </div>
+        </div>
+      ) : (
+        <motion.button
+          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+          onClick={() => setShowAdd(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 10, border: '1px dashed var(--card-border)',
+            background: 'transparent', color: '#f59e0b', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+          }}
+        >
+          <Plus size={13} /> {t.newJobTitleTitle}
+        </motion.button>
+      )}
     </div>
   )
 }

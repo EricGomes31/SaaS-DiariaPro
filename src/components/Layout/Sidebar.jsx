@@ -1,36 +1,69 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, Users, CalendarDays, CreditCard,
-  MapPin, BarChart3, Settings, Bell, LogOut, Zap, AlertTriangle, X, Shield,
+  LayoutDashboard, Users, CalendarDays, CreditCard, UtensilsCrossed,
+  MapPin, BarChart3, Settings, Bell, LogOut, Zap, AlertTriangle, X, Shield, Sparkles, Upload,
 } from 'lucide-react'
-import NotificationsPanel, { INITIAL_NOTIFICATIONS } from './NotificationsPanel'
+import NotificationsPanel, { buildNotifications } from './NotificationsPanel'
 import SettingsPanel from './SettingsPanel'
 import i18n from '../../i18n'
+
+// Estado lida/excluída das notificações persistido no navegador
+const NOTIF_READ_KEY = 'diaria-notif-read'
+const NOTIF_DELETED_KEY = 'diaria-notif-deleted'
+const loadIds = (key) => {
+  try {
+    const v = JSON.parse(localStorage.getItem(key))
+    return Array.isArray(v) ? v : []
+  } catch { return [] }
+}
 
 const NAV_ITEMS = [
   { id: 'dashboard', icon: LayoutDashboard },
   { id: 'workers',   icon: Users },
   { id: 'tracking',  icon: CalendarDays },
+  { id: 'expenses',  icon: UtensilsCrossed },
   { id: 'payments',  icon: CreditCard },
   { id: 'locations', icon: MapPin },
   { id: 'reports',   icon: BarChart3 },
   { id: 'audit',     icon: Shield },
+  { id: 'migration', icon: Upload },
 ]
 
 const NAV_LABELS = {
-  pt: { dashboard: 'Dashboard', workers: 'Trabalhadores', tracking: 'Controle de Dias', payments: 'Pagamentos', locations: 'Locais', reports: 'Relatórios', audit: 'Auditoria', notifications: 'Notificações', settings: 'Configurações' },
-  en: { dashboard: 'Dashboard', workers: 'Workers', tracking: 'Time Tracking', payments: 'Payments', locations: 'Locations', reports: 'Reports', audit: 'Audit Log', notifications: 'Notifications', settings: 'Settings' },
-  es: { dashboard: 'Dashboard', workers: 'Trabajadores', tracking: 'Control de Días', payments: 'Pagos', locations: 'Lugares', reports: 'Informes', audit: 'Auditoría', notifications: 'Notificaciones', settings: 'Configuración' },
+  pt: { dashboard: 'Dashboard', workers: 'Trabalhadores', tracking: 'Controle de Dias', expenses: 'Gastos Diários', payments: 'Pagamentos', locations: 'Locais', reports: 'Relatórios', audit: 'Auditoria', migration: 'Importar CSV', notifications: 'Notificações', settings: 'Configurações', upgrade: 'Fazer upgrade', upgradeSub: 'Desbloqueie mais recursos' },
+  en: { dashboard: 'Dashboard', workers: 'Workers', tracking: 'Time Tracking', expenses: 'Daily Expenses', payments: 'Payments', locations: 'Locations', reports: 'Reports', audit: 'Audit Log', migration: 'Import CSV', notifications: 'Notifications', settings: 'Settings', upgrade: 'Upgrade', upgradeSub: 'Unlock more features' },
+  es: { dashboard: 'Dashboard', workers: 'Trabajadores', tracking: 'Control de Días', expenses: 'Gastos Diarios', payments: 'Pagos', locations: 'Lugares', reports: 'Informes', audit: 'Auditoría', migration: 'Importar CSV', notifications: 'Notificaciones', settings: 'Configuración', upgrade: 'Mejorar plan', upgradeSub: 'Desbloquea más recursos' },
 }
 
-export default function Sidebar({ activePage, setActivePage, onLogout, theme, setTheme, lang = 'pt', setLang, holidays = [], setHolidays, isMobile = false, sidebarOpen = false, setSidebarOpen, currentUser }) {
+export default function Sidebar({ activePage, setActivePage, onLogout, theme, setTheme, lang = 'pt', setLang, holidays = [], setHolidays, isMobile = false, sidebarOpen = false, setSidebarOpen, currentUser, onUpgrade, workers = [], workDays = [], paymentRecords = [] }) {
   const t = i18n[lang] ?? i18n.pt
   const [showNotifications, setShowNotifications] = useState(false)
   const [showSettings, setShowSettings]           = useState(false)
   const [confirmLogout, setConfirmLogout]         = useState(false)
-  const [notes, setNotes]                         = useState(INITIAL_NOTIFICATIONS)
+
+  // ── Notificações geradas dos dados reais ──
+  const [readIds, setReadIds]       = useState(() => loadIds(NOTIF_READ_KEY))
+  const [deletedIds, setDeletedIds] = useState(() => loadIds(NOTIF_DELETED_KEY))
+
+  const allNotes = useMemo(
+    () => buildNotifications({ workers, workDays, paymentRecords }),
+    [workers, workDays, paymentRecords],
+  )
+  const notes = allNotes
+    .filter(n => !deletedIds.includes(n.id))
+    .map(n => ({ ...n, read: readIds.includes(n.id) }))
   const unreadCount = notes.filter(n => !n.read).length
+
+  // Persiste apenas IDs que ainda existem (IDs mudam por dia — evita acumular lixo)
+  const persistIds = (key, ids, setter) => {
+    const valid = [...new Set(ids)].filter(id => allNotes.some(n => n.id === id))
+    setter(valid)
+    try { localStorage.setItem(key, JSON.stringify(valid)) } catch { /* storage indisponível */ }
+  }
+  const markNotifRead    = (id) => persistIds(NOTIF_READ_KEY, [...readIds, id], setReadIds)
+  const markAllNotifRead = ()   => persistIds(NOTIF_READ_KEY, [...readIds, ...notes.map(n => n.id)], setReadIds)
+  const removeNotif      = (id) => persistIds(NOTIF_DELETED_KEY, [...deletedIds, id], setDeletedIds)
 
   const handleLogout = () => {
     setConfirmLogout(false)
@@ -97,7 +130,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
         animate={isMobile ? { x: sidebarOpen ? 0 : -260 } : { x: 0 }}
         transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         style={{
-          position: 'fixed', top: 0, left: 0, height: '100vh', width: 260,
+          position: 'fixed', top: 0, left: 0, height: '100dvh', width: 260,
           background: sb.bg,
           borderRight: `1px solid ${sb.border}`,
           display: 'flex', flexDirection: 'column',
@@ -106,7 +139,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
         }}
       >
         {/* ── Logo ── */}
-        <div style={{ padding: '28px 24px 24px' }}>
+        <div style={{ padding: '28px 24px 24px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <motion.div
               whileHover={{ scale: 1.02 }}
@@ -150,14 +183,14 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
         </div>
 
         {/* ── Section label ── */}
-        <div style={{ padding: '0 24px 12px' }}>
+        <div style={{ padding: '0 24px 12px', flexShrink: 0 }}>
           <span style={{ fontSize: 10, fontWeight: 600, color: sb.sectionLabel, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             {t.menuPrincipal}
           </span>
         </div>
 
         {/* ── Nav items ── */}
-        <nav style={{ flex: 1, padding: '0 12px' }}>
+        <nav style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 12px' }}>
           {NAV_ITEMS.map((item, i) => {
             const isActive = activePage === item.id
             const Icon = item.icon
@@ -218,8 +251,39 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
         </nav>
 
         {/* ── Bottom section ── */}
-        <div style={{ padding: '16px 12px 24px' }}>
+        <div style={{ padding: '16px 12px 24px', flexShrink: 0 }}>
           <div style={{ height: 1, background: sb.divider, marginBottom: 16 }} />
+
+          {/* Upgrade CTA */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => { onUpgrade?.(); setConfirmLogout(false) }}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 11,
+              padding: '12px 14px', borderRadius: 12, marginBottom: 12,
+              border: '1px solid rgba(139,92,246,0.3)', cursor: 'pointer',
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
+              transition: 'all 0.2s',
+            }}
+          >
+            <div style={{
+              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 10px rgba(99,102,241,0.4)',
+            }}>
+              <Sparkles size={15} color="white" />
+            </div>
+            <div style={{ textAlign: 'left', overflow: 'hidden' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: sb.logoText, whiteSpace: 'nowrap' }}>
+                {NAV_LABELS[lang]?.upgrade ?? NAV_LABELS.pt.upgrade}
+              </div>
+              <div style={{ fontSize: 10, color: sb.navText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {NAV_LABELS[lang]?.upgradeSub ?? NAV_LABELS.pt.upgradeSub}
+              </div>
+            </div>
+          </motion.button>
 
           {/* Notifications */}
           <motion.button
@@ -376,7 +440,9 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
             onClose={() => setShowNotifications(false)}
             theme={theme}
             notes={notes}
-            setNotes={setNotes}
+            onMarkRead={markNotifRead}
+            onMarkAllRead={markAllNotifRead}
+            onRemove={removeNotif}
           />
         )}
       </AnimatePresence>
@@ -395,6 +461,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           />
         )}
       </AnimatePresence>
+
     </>
   )
 }

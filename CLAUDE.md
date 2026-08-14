@@ -5,19 +5,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev       # Start Vite dev server (hot reload)
+npm run dev       # Start Vite dev server (hot reload) — http://localhost:5173
 npm run build     # Production build → dist/
 npm run preview   # Preview the production build locally
+```
+
+After `npm run build`, generate the deploy zip:
+```powershell
+Compress-Archive -Path 'dist/*' -DestinationPath 'hostgator-upload.zip' -Force
 ```
 
 There are no test or lint commands configured.
 
 ## Project Overview
 
-**Diária Pro** is a SaaS for managing Brazilian day laborers (*diaristas*). It is a frontend-only React SPA — there is no backend, API, or database. All data comes from `src/data/mockData.js`.
+**Diária Pro** is a SaaS for managing Brazilian day laborers (*diaristas*). It uses React + Supabase (auth, PostgreSQL, realtime).
 
-- Primary language: Brazilian Portuguese (pt-BR), with English (en) and Spanish (es) i18n via a simple labels object in `Sidebar.jsx`
-- Demo credentials (hardcoded in `LoginScreen.jsx`): `admin@diariapro.com` / `admin123`
+- Primary language: Brazilian Portuguese (pt-BR), with English (en) and Spanish (es) i18n
+- Auth: Supabase Auth — real login, invite flow, idle timeout (1h)
+- Data: Supabase PostgreSQL with Row Level Security (RLS)
+
+## Landing Page
+
+`public/apresentacao-diaria-pro.html` — standalone HTML landing page (no React).
+
+- Served at the domain root via `.htaccess` `RewriteRule ^$ ...`
+- CTA buttons link to `/entrar`, which `.htaccess` rewrites to `index.html` (React app)
+- Edit directly in `public/` — Vite copies it to `dist/` on build
+- Test locally: `npm run dev` → `http://localhost:5173/apresentacao-diaria-pro.html`
+- Contact form uses Formspree (`xqeodkbr`), email: `diarias.pro@gmail.com`
+
+## Deployment (Hostgator)
+
+Upload `hostgator-upload.zip` → extract into `public_html/`. The `.htaccess` handles:
+- `/` → `apresentacao-diaria-pro.html` (landing page)
+- `/entrar` → `index.html` (React app / login)
+- All other routes → `index.html` (SPA fallback)
 
 ## Architecture
 
@@ -34,14 +57,20 @@ All state is prop-drilled from `App.jsx` through `Sidebar.jsx` and into page com
 
 ### Data Layer
 
-`src/data/mockData.js` is the single source of truth. It exports:
+Persistence is **Supabase PostgreSQL** with Row Level Security, accessed through `src/lib/db.js`:
 
-- `WORKERS`, `WORK_DAYS`, `LOCATIONS`, `DEPARTMENTS`, `JOB_TITLES` — static arrays
-- `isWeekendOrHoliday(date)` — Brazilian holidays for 2025 are hardcoded
-- `getWorkerStats(workerId)` — computes earnings, days worked, etc. from `WORK_DAYS`
-- `getDashboardStats()` — aggregated stats for the Dashboard
+- `fetchAll()` loads workers, work days, locations, payment records, holidays, expenses and subscription on login; row↔object mappers (`workerFromRow`/`workerToRow`, etc.) convert between snake_case columns and camelCase app objects.
+- Writes flow through sync effects in `App.jsx`: each collection (`workers`, `workDays`, `paymentRecords`, `locations`) has a `useEffect` that diffs the previous array against the new one and calls `db.upsertX`/`db.deleteX`. Components mutate state via `setWorkers`/`setWorkDays`/etc. (prop-drilled) and persistence happens automatically.
+- Realtime: postgres_changes subscriptions in `App.jsx` reload data when another session writes.
+- Schema lives in `supabase/schema.sql`; incremental migrations in `supabase/add-*.sql` / `fix-*.sql` (run manually in the Supabase SQL Editor).
 
-Any feature that reads or writes data must go through this file since there is no persistence layer.
+`src/data/mockData.js` remains as the **calculation/constants module** (no longer a data store):
+
+- `isWeekendOrHoliday(date, holidays)`, `getWorkerDayRate(worker, date, holidays)` — rate rules
+- `getWorkerStats(workerId, workDays)`, `getDashboardStats(...)` — aggregations over passed-in data
+- `PIX_KEY_TYPES`, `JOB_TITLES` and other UI constants (note: department filters derive options from registered workers, not from the static `DEPARTMENTS`)
+
+Edge functions in `supabase/functions/` (send-weekly-report, send-payment-receipt, create-checkout, asaas-webhook) are deployed separately via the Supabase dashboard/CLI.
 
 ### Styling System
 

@@ -1,4 +1,4 @@
-import { subDays, format, getDay, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns'
+import { subDays, format, getDay, parseISO, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export const PIX_KEY_TYPES = [
@@ -404,12 +404,14 @@ export function getWorkerStats(workerId, allWorkDays = WORK_DAYS) {
   const days = allWorkDays.filter(d => d.workerId === workerId)
   const totalEarnings = days.reduce((sum, d) => sum + d.earnings, 0)
   const totalOvertime = days.reduce((sum, d) => sum + (d.overtime || 0), 0)
+  const totalBonus = days.reduce((sum, d) => sum + (d.bonus || 0), 0)
   const weekdayDays = days.filter(d => !d.isWeekend)
   const weekendDays = days.filter(d => d.isWeekend)
   return {
     totalDays: days.length,
     totalEarnings,
     totalOvertime,
+    totalBonus,
     weekdayDays: weekdayDays.length,
     weekendDays: weekendDays.length,
     weekdayEarnings: weekdayDays.reduce((sum, d) => sum + d.earnings, 0),

@@ -20,7 +20,7 @@ function load(key, fallback) {
 function save(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value))
-  } catch {}
+  } catch { /* ignora erros de quota/serialização */ }
 }
 
 export const loadWorkers   = () => load(KEYS.WORKERS,   WORKERS)

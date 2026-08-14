@@ -2,11 +2,14 @@
 -- Execute este arquivo no SQL Editor do seu projeto Supabase.
 
 -- ─── Drop (ordem inversa de dependências) ───────────────────────────────────
-drop table if exists public.holidays        cascade;
-drop table if exists public.payment_records cascade;
-drop table if exists public.work_days       cascade;
-drop table if exists public.workers         cascade;
-drop table if exists public.locations       cascade;
+drop table if exists public.daily_expenses      cascade;
+drop table if exists public.holidays            cascade;
+drop table if exists public.payment_records     cascade;
+drop table if exists public.work_days           cascade;
+drop table if exists public.workers             cascade;
+drop table if exists public.location_job_titles cascade;
+drop table if exists public.location_departments cascade;
+drop table if exists public.locations           cascade;
 
 -- ─── Locations ──────────────────────────────────────────────────────────────
 create table public.locations (
@@ -26,6 +29,39 @@ create policy "Usuários gerenciam seus locais"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- ─── Departamentos por local ─────────────────────────────────────────────────
+create table public.location_departments (
+  id           text primary key,
+  location_id  text not null references public.locations(id) on delete cascade,
+  name         text not null,
+  user_id      uuid references auth.users(id) on delete cascade not null default auth.uid()
+);
+
+alter table public.location_departments enable row level security;
+
+create policy "Usuários gerenciam seus departamentos"
+  on public.location_departments for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- ─── Cargos por local (com valor de diária) ─────────────────────────────────
+create table public.location_job_titles (
+  id             text primary key,
+  location_id    text not null references public.locations(id) on delete cascade,
+  name           text not null,
+  weekday_rate   numeric,
+  saturday_rate  numeric,
+  sunday_rate    numeric,
+  user_id        uuid references auth.users(id) on delete cascade not null default auth.uid()
+);
+
+alter table public.location_job_titles enable row level security;
+
+create policy "Usuários gerenciam seus cargos"
+  on public.location_job_titles for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- ─── Workers ────────────────────────────────────────────────────────────────
 create table public.workers (
   id            text primary key,
@@ -40,6 +76,7 @@ create table public.workers (
   avatar        text,
   avatar_color  text,
   phone         text,
+  email         text,
   start_date    text,
   pix_key_type  text,
   pix_key       text,
@@ -62,6 +99,8 @@ create table public.work_days (
   is_weekend   boolean default false,
   rate         numeric,
   earnings     numeric,
+  overtime     numeric default 0,
+  bonus        numeric default 0,
   user_id      uuid references auth.users(id) on delete cascade not null default auth.uid()
 );
 
@@ -111,9 +150,33 @@ create policy "Usuários gerenciam seus feriados"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- ─── Daily Expenses (gastos de refeições) ───────────────────────────────────
+-- id = 'default' guarda os preços padrão por pessoa; id = 'yyyy-MM-dd' é o override de um dia.
+create table public.daily_expenses (
+  id               text not null,
+  date             text not null,
+  breakfast_price  numeric,
+  lunch_price      numeric,
+  snack_price      numeric,
+  snack_active     boolean,   -- linha 'default': lanche todo dia? · linha do dia: override (null = herda)
+  snack_excluded   text[],    -- worker_ids que NÃO recebem o lanche naquele dia (null/vazio = todos)
+  user_id          uuid references auth.users(id) on delete cascade not null default auth.uid(),
+  primary key (user_id, id)  -- PK composta: cada usuário tem seus próprios 'default'/'yyyy-MM-dd'
+);
+
+alter table public.daily_expenses enable row level security;
+
+create policy "Usuários gerenciam seus gastos diários"
+  on public.daily_expenses for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- ─── Realtime ────────────────────────────────────────────────────────────────
 alter publication supabase_realtime add table public.workers;
 alter publication supabase_realtime add table public.work_days;
 alter publication supabase_realtime add table public.locations;
+alter publication supabase_realtime add table public.location_departments;
+alter publication supabase_realtime add table public.location_job_titles;
 alter publication supabase_realtime add table public.payment_records;
 alter publication supabase_realtime add table public.holidays;
+alter publication supabase_realtime add table public.daily_expenses;

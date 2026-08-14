@@ -1,7 +1,16 @@
 Options -MultiViews
 RewriteEngine On
+
+# Raiz do domínio → landing page
+RewriteRule ^$ apresentacao-diaria-pro.html [L]
+
+# /entrar → React app (tela de login)
+RewriteRule ^entrar$ index.html [L]
+
+# SPA fallback — rotas do React que não são arquivos reais
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/apresentacao-diaria-pro\.html$
 RewriteRule ^ index.html [QSA,L]
 
 # ── Security Headers ────────────────────────────────────────────────────────

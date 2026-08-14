@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { log } from '../../lib/logger'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, User, Bell, Shield, Info, CalendarDays, Plus, Trash2,
@@ -236,6 +237,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
     if (error) {
       setPwdMsg({ text: error.message, error: true })
     } else {
+      log('change_password', 'Senha alterada')
       setPwdMsg({ text: 'Senha atualizada com sucesso!', error: false })
       setPwdForm({ current: '', newPwd: '', confirm: '' })
       setTimeout(() => setPwdMsg({ text: '', error: false }), 3000)
@@ -246,6 +248,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
     setSaving(true)
     setSaveMsg('')
     await supabase.auth.updateUser({ data: { name: profile.name } })
+    log('update_profile', `Perfil atualizado: nome="${profile.name}", idioma=${draftLang}, tema=${draftTheme}`)
     setLang(draftLang)
     setTheme(draftTheme)
     setSaving(false)
@@ -432,23 +435,48 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
 
                     <SectionTitle color={sp.sectionTitle}>{t.displayPrefs}</SectionTitle>
                     <Row label={t.language} sub={t.languageSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
-                      <select
-                        value={draftLang}
-                        onChange={e => setDraftLang(e.target.value)}
-                        className="input-premium"
-                        style={{ padding: '8px 12px', borderRadius: 9, fontSize: 13, cursor: 'pointer' }}
-                      >
-                        {LANG_OPTIONS.map(o => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
+                      <div style={{ display: 'flex', gap: 5 }}>
+                        {LANG_OPTIONS.map(o => {
+                          const sel = draftLang === o.value
+                          return (
+                            <motion.button
+                              key={o.value}
+                              type="button"
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setDraftLang(o.value)}
+                              style={{
+                                padding: '7px 12px', borderRadius: 9, cursor: 'pointer', fontSize: 13,
+                                border: `1.5px solid ${sel ? 'rgba(99,102,241,0.5)' : sp.inputBorder ?? 'rgba(255,255,255,0.08)'}`,
+                                background: sel ? 'rgba(99,102,241,0.15)' : 'transparent',
+                                color: sel ? '#818cf8' : sp.rowLabel ?? 'rgba(255,255,255,0.5)',
+                                fontWeight: sel ? 700 : 400, transition: 'all 0.15s',
+                              }}
+                            >
+                              {o.label}
+                            </motion.button>
+                          )
+                        })}
+                      </div>
                     </Row>
                     <Row label={t.dateFormat} sub={t.dateFormatSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
-                      <select className="input-premium" style={{ padding: '8px 12px', borderRadius: 9, fontSize: 13, cursor: 'pointer' }}>
-                        <option>DD/MM/AAAA</option>
-                        <option>MM/DD/AAAA</option>
-                        <option>AAAA-MM-DD</option>
-                      </select>
+                      <div style={{ display: 'flex', gap: 5 }}>
+                        {['DD/MM/AAAA', 'MM/DD/AAAA', 'AAAA-MM-DD'].map(fmt => (
+                          <motion.button
+                            key={fmt}
+                            type="button"
+                            whileTap={{ scale: 0.95 }}
+                            style={{
+                              padding: '7px 10px', borderRadius: 9, cursor: 'pointer', fontSize: 12,
+                              border: `1.5px solid ${fmt === 'DD/MM/AAAA' ? 'rgba(99,102,241,0.5)' : sp.inputBorder ?? 'rgba(255,255,255,0.08)'}`,
+                              background: fmt === 'DD/MM/AAAA' ? 'rgba(99,102,241,0.15)' : 'transparent',
+                              color: fmt === 'DD/MM/AAAA' ? '#818cf8' : sp.rowLabel ?? 'rgba(255,255,255,0.5)',
+                              fontWeight: fmt === 'DD/MM/AAAA' ? 700 : 400, transition: 'all 0.15s',
+                            }}
+                          >
+                            {fmt}
+                          </motion.button>
+                        ))}
+                      </div>
                     </Row>
                     <Row label={t.appearance} sub={t.appearanceSub} rowBorder={sp.rowBorder} rowLabel={sp.rowLabel} rowSub={sp.rowSub}>
                       <motion.button
@@ -456,7 +484,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                         onClick={() => setDraftTheme(draftTheme === 'dark' ? 'light' : 'dark')}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 8,
-                          padding: '7px 14px', borderRadius: 9, border: 'none', cursor: 'pointer',
+                          padding: '7px 14px', borderRadius: 9, cursor: 'pointer',
                           background: draftTheme === 'light' ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)',
                           border: `1px solid ${draftTheme === 'light' ? 'rgba(245,158,11,0.3)' : 'rgba(99,102,241,0.25)'}`,
                           transition: 'all 0.25s',
