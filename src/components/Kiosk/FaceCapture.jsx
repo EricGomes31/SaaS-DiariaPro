@@ -1,5 +1,5 @@
-import { forwardRef, useEffect, useRef, useState, useImperativeHandle } from 'react'
 import { CameraOff } from 'lucide-react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 // Componente "burro" de câmera: só pede acesso, mostra o preview e expõe o
 // elemento <video> por ref. Quem detecta/compara o rosto é o componente pai
@@ -20,13 +20,19 @@ const FaceCapture = forwardRef(function FaceCapture({ active = true, mirrored = 
 
     let cancelled = false
     setError(null)
-    navigator.mediaDevices?.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+    navigator.mediaDevices
+      ?.getUserMedia({ video: { facingMode: 'user' }, audio: false })
       .then(stream => {
-        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+        if (cancelled) {
+          stream.getTracks().forEach(t => t.stop())
+          return
+        }
         streamRef.current = stream
         if (videoRef.current) videoRef.current.srcObject = stream
       })
-      .catch(err => { if (!cancelled) setError(err) })
+      .catch(err => {
+        if (!cancelled) setError(err)
+      })
 
     return () => {
       cancelled = true
@@ -37,12 +43,27 @@ const FaceCapture = forwardRef(function FaceCapture({ active = true, mirrored = 
 
   if (error) {
     return (
-      <div style={{
-        height, borderRadius: 16, background: 'rgba(176,65,62,0.06)', border: '1px solid rgba(176,65,62,0.2)',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20,
-      }}>
+      <div
+        style={{
+          height,
+          borderRadius: 16,
+          background: 'rgba(176,65,62,0.06)',
+          border: '1px solid rgba(176,65,62,0.2)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+          padding: 20,
+        }}>
         <CameraOff size={28} color="#B0413E" />
-        <span style={{ fontSize: 13, color: '#B0413E', textAlign: 'center', fontWeight: 600 }}>
+        <span
+          style={{
+            fontSize: 13,
+            color: '#B0413E',
+            textAlign: 'center',
+            fontWeight: 600,
+          }}>
           Não foi possível acessar a câmera. Verifique a permissão do navegador.
         </span>
       </div>
@@ -56,8 +77,12 @@ const FaceCapture = forwardRef(function FaceCapture({ active = true, mirrored = 
       playsInline
       muted
       style={{
-        width: '100%', height, borderRadius: 16, background: '#000',
-        objectFit: 'cover', transform: mirrored ? 'scaleX(-1)' : 'none',
+        width: '100%',
+        height,
+        borderRadius: 16,
+        background: '#000',
+        objectFit: 'cover',
+        transform: mirrored ? 'scaleX(-1)' : 'none',
       }}
     />
   )

@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Zap, Eye, EyeOff, ArrowRight, Shield, Users, BarChart3, Sun, Moon } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowRight, BarChart3, Eye, EyeOff, Moon, Shield, Sun, Users, Zap } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
-import PrivacyModal from './PrivacyModal'
 import Captcha from './Captcha'
+import PrivacyModal from './PrivacyModal'
 
 const FEATURES = [
   { icon: Users, text: 'Gestão completa de diaristas' },
@@ -25,38 +25,39 @@ export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
   const [captchaToken, setCaptchaToken] = useState(null)
   const captchaRef = useRef(null)
 
-  const resetCaptcha = () => { captchaRef.current?.resetCaptcha(); setCaptchaToken(null) }
+  const resetCaptcha = () => {
+    captchaRef.current?.resetCaptcha()
+    setCaptchaToken(null)
+  }
 
   const isLight = theme === 'light'
   const c = {
-    bg:            isLight ? '#f1f5f9'                        : '#07070f',
-    cardBg:        isLight ? 'rgba(255,255,255,0.92)'         : 'rgba(17,17,34,0.85)',
-    cardBorder:    isLight ? 'rgba(0,0,0,0.1)'                : 'rgba(255,255,255,0.07)',
-    cardShadow:    isLight ? '0 32px 80px rgba(0,0,0,0.1)'    : '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset',
-    panelBorder:   isLight ? '1px solid rgba(0,0,0,0.06)'     : '1px solid rgba(255,255,255,0.04)',
-    text:          isLight ? '#0f172a'                        : '#f1f5f9',
-    sub:           isLight ? 'rgba(15,23,42,0.55)'            : 'rgba(255,255,255,0.4)',
-    subMid:        isLight ? 'rgba(15,23,42,0.5)'             : 'rgba(255,255,255,0.35)',
-    muted:         isLight ? 'rgba(15,23,42,0.38)'            : 'rgba(255,255,255,0.25)',
-    dim:           isLight ? 'rgba(15,23,42,0.22)'            : 'rgba(255,255,255,0.18)',
-    divider:       isLight ? 'rgba(0,0,0,0.08)'               : 'rgba(255,255,255,0.06)',
-    grid:          isLight ? 'rgba(0,0,0,0.04)'               : 'rgba(255,255,255,0.015)',
-    featureText:   isLight ? 'rgba(15,23,42,0.6)'             : 'rgba(255,255,255,0.55)',
-    logoSub:       isLight ? 'rgba(15,23,42,0.3)'             : 'rgba(255,255,255,0.25)',
-    footer:        isLight ? 'rgba(15,23,42,0.25)'            : 'rgba(255,255,255,0.18)',
-    backBtnBorder: isLight ? 'rgba(0,0,0,0.1)'                : 'rgba(255,255,255,0.08)',
-    backBtnColor:  isLight ? 'rgba(15,23,42,0.5)'             : 'rgba(255,255,255,0.4)',
-    accentLine:    isLight
-      ? 'linear-gradient(90deg, transparent, rgba(99,102,241,0.35), transparent)'
-      : 'linear-gradient(90deg, transparent, rgba(129,140,248,0.6), transparent)',
-    toggleBg:      isLight ? 'rgba(0,0,0,0.06)'               : 'rgba(255,255,255,0.07)',
-    toggleBorder:  isLight ? 'rgba(0,0,0,0.1)'                : 'rgba(255,255,255,0.1)',
-    toggleColor:   isLight ? '#64748b'                        : 'rgba(255,255,255,0.45)',
-    eyeBtnColor:   isLight ? 'rgba(15,23,42,0.3)'             : 'rgba(255,255,255,0.25)',
-    eyeBtnHover:   isLight ? 'rgba(15,23,42,0.6)'             : 'rgba(255,255,255,0.6)',
+    bg: isLight ? '#f1f5f9' : '#07070f',
+    cardBg: isLight ? 'rgba(255,255,255,0.92)' : 'rgba(17,17,34,0.85)',
+    cardBorder: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.07)',
+    cardShadow: isLight ? '0 32px 80px rgba(0,0,0,0.1)' : '0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset',
+    panelBorder: isLight ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.04)',
+    text: isLight ? '#0f172a' : '#f1f5f9',
+    sub: isLight ? 'rgba(15,23,42,0.55)' : 'rgba(255,255,255,0.4)',
+    subMid: isLight ? 'rgba(15,23,42,0.5)' : 'rgba(255,255,255,0.35)',
+    muted: isLight ? 'rgba(15,23,42,0.38)' : 'rgba(255,255,255,0.25)',
+    dim: isLight ? 'rgba(15,23,42,0.22)' : 'rgba(255,255,255,0.18)',
+    divider: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)',
+    grid: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.015)',
+    featureText: isLight ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.55)',
+    logoSub: isLight ? 'rgba(15,23,42,0.3)' : 'rgba(255,255,255,0.25)',
+    footer: isLight ? 'rgba(15,23,42,0.25)' : 'rgba(255,255,255,0.18)',
+    backBtnBorder: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)',
+    backBtnColor: isLight ? 'rgba(15,23,42,0.5)' : 'rgba(255,255,255,0.4)',
+    accentLine: isLight ? 'linear-gradient(90deg, transparent, rgba(99,102,241,0.35), transparent)' : 'linear-gradient(90deg, transparent, rgba(129,140,248,0.6), transparent)',
+    toggleBg: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)',
+    toggleBorder: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+    toggleColor: isLight ? '#64748b' : 'rgba(255,255,255,0.45)',
+    eyeBtnColor: isLight ? 'rgba(15,23,42,0.3)' : 'rgba(255,255,255,0.25)',
+    eyeBtnHover: isLight ? 'rgba(15,23,42,0.6)' : 'rgba(255,255,255,0.6)',
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault()
     setError('')
 
@@ -72,233 +73,358 @@ export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
     setIsLoading(true)
 
     const { error: signInErr } = await supabase.auth.signInWithPassword({
-      email, password, options: { captchaToken },
+      email,
+      password,
+      options: { captchaToken },
     })
 
     if (signInErr) {
       setIsLoading(false)
-      resetCaptcha()  // token é de uso único
+      resetCaptcha() // token é de uso único
       setError('E-mail ou senha incorretos.')
       return
     }
     // Auth state change in App.jsx handles the rest
   }
 
-  const handleForgotPassword = async (e) => {
+  const handleForgotPassword = async e => {
     e.preventDefault()
     setError('')
-    if (!email) { setError('Digite seu e-mail.'); return }
-    if (!captchaToken) { setError('Confirme que você não é um robô.'); return }
+    if (!email) {
+      setError('Digite seu e-mail.')
+      return
+    }
+    if (!captchaToken) {
+      setError('Confirme que você não é um robô.')
+      return
+    }
     setIsLoading(true)
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + '/entrar',
       captchaToken,
     })
     setIsLoading(false)
-    resetCaptcha()  // token é de uso único
-    if (err) { setError(err.message); return }
+    resetCaptcha() // token é de uso único
+    if (err) {
+      setError(err.message)
+      return
+    }
     setView('forgot-sent')
   }
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex',
-      backgroundColor: c.bg, position: 'relative', overflow: 'hidden',
-      transition: 'background-color 0.3s',
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        backgroundColor: c.bg,
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'background-color 0.3s',
+      }}>
       {/* ── Theme toggle button ── */}
       {setTheme && (
         <button
           onClick={() => setTheme(isLight ? 'dark' : 'light')}
           title={isLight ? 'Modo escuro' : 'Modo claro'}
           style={{
-            position: 'fixed', top: 16, right: 16, zIndex: 100,
-            width: 38, height: 38, borderRadius: 10,
-            background: c.toggleBg, border: `1px solid ${c.toggleBorder}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: c.toggleColor,
+            position: 'fixed',
+            top: 16,
+            right: 16,
+            zIndex: 100,
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            background: c.toggleBg,
+            border: `1px solid ${c.toggleBorder}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: c.toggleColor,
             transition: 'background 0.2s, border-color 0.2s, color 0.2s',
             backdropFilter: 'blur(8px)',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = c.toggleBg }}
-        >
+          onMouseEnter={e => {
+            e.currentTarget.style.background = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = c.toggleBg
+          }}>
           {isLight ? <Moon size={16} /> : <Sun size={16} />}
         </button>
       )}
 
       {/* ── Ambient background orbs ── */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-        <div className="orb" style={{
-          position: 'absolute', width: 700, height: 700,
-          background: 'radial-gradient(circle, rgba(99,102,241,0.13) 0%, transparent 65%)',
-          top: -250, left: -200, animationDelay: '0s',
-        }} />
-        <div className="orb" style={{
-          position: 'absolute', width: 500, height: 500,
-          background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 65%)',
-          bottom: -150, right: -100, animationDelay: '4s',
-        }} />
-        <div className="orb" style={{
-          position: 'absolute', width: 350, height: 350,
-          background: 'radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 70%)',
-          top: '55%', left: '38%', animationDelay: '7s',
-        }} />
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}>
+        <div
+          className="orb"
+          style={{
+            position: 'absolute',
+            width: 700,
+            height: 700,
+            background: 'radial-gradient(circle, rgba(99,102,241,0.13) 0%, transparent 65%)',
+            top: -250,
+            left: -200,
+            animationDelay: '0s',
+          }}
+        />
+        <div
+          className="orb"
+          style={{
+            position: 'absolute',
+            width: 500,
+            height: 500,
+            background: 'radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 65%)',
+            bottom: -150,
+            right: -100,
+            animationDelay: '4s',
+          }}
+        />
+        <div
+          className="orb"
+          style={{
+            position: 'absolute',
+            width: 350,
+            height: 350,
+            background: 'radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 70%)',
+            top: '55%',
+            left: '38%',
+            animationDelay: '7s',
+          }}
+        />
       </div>
 
       {/* ── Fine grid texture ── */}
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-        backgroundImage: `linear-gradient(${c.grid} 1px, transparent 1px),
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: 'none',
+          backgroundImage: `linear-gradient(${c.grid} 1px, transparent 1px),
                           linear-gradient(90deg, ${c.grid} 1px, transparent 1px)`,
-        backgroundSize: '60px 60px',
-      }} />
+          backgroundSize: '60px 60px',
+        }}
+      />
 
       {/* ════════════════════════════
           LEFT PANEL — Brand panel (desktop only)
       ════════════════════════════ */}
-      {!isMobile && <motion.div
-        initial={{ opacity: 0, x: -40 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-        style={{
-          width: '44%', minHeight: '100vh', position: 'relative', zIndex: 1,
-          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-          padding: '48px 56px',
-          borderRight: c.panelBorder,
-        }}
-      >
-        {/* Logo */}
+      {!isMobile && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.5 }}
-          style={{ display: 'flex', alignItems: 'center', gap: 12 }}
-        >
-          <div style={{
-            width: 42, height: 42, borderRadius: 12,
-            background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(99,102,241,0.45)',
+          initial={{ opacity: 0, x: -40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+          style={{
+            width: '44%',
+            minHeight: '100vh',
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '48px 56px',
+            borderRight: c.panelBorder,
           }}>
-            <Zap size={20} color="white" fill="white" />
-          </div>
-          <div>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 20, color: c.text, letterSpacing: '-0.02em' }}>
-              Diária Pro
-            </div>
-            <div style={{ fontSize: 10, color: c.logoSub, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              Gestão de Diaristas
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Hero text */}
-        <div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-          >
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              padding: '5px 14px', borderRadius: 100, marginBottom: 28,
-              background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
-              fontSize: 12, fontWeight: 600, color: '#818cf8', letterSpacing: '0.05em',
-            }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
-              Plataforma online
-            </div>
-
-            <h1 style={{
-              fontFamily: 'Syne, sans-serif',
-              fontSize: 'clamp(2.4rem, 3.5vw, 3.2rem)',
-              fontWeight: 800, color: c.text,
-              margin: '0 0 20px', letterSpacing: '-0.03em', lineHeight: 1.1,
-            }}>
-              Controle total{' '}
-              <span style={{
-                background: 'linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+          {/* Logo */}
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 20px rgba(99,102,241,0.45)',
               }}>
-                das suas<br />equipes diárias.
-              </span>
-            </h1>
-            <p style={{
-              fontSize: 16, color: c.subMid, lineHeight: 1.65,
-              margin: 0, maxWidth: 360,
-            }}>
-              Gerencie diaristas, controle jornadas, visualize pagamentos por turno e gere relatórios instantâneos.
-            </p>
+              <Zap size={20} color="white" fill="white" />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontFamily: 'Syne, sans-serif',
+                  fontWeight: 800,
+                  fontSize: 20,
+                  color: c.text,
+                  letterSpacing: '-0.02em',
+                }}>
+                Diária Pro
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: c.logoSub,
+                  fontWeight: 500,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}>
+                Gestão de Diaristas
+              </div>
+            </div>
           </motion.div>
 
-          {/* Feature list */}
-          <div style={{ marginTop: 44 }}>
-            {FEATURES.map((f, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, x: -16 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.45 + i * 0.1, duration: 0.5 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}
-              >
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                  background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.18)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+          {/* Hero text */}
+          <div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6 }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '5px 14px',
+                  borderRadius: 100,
+                  marginBottom: 28,
+                  background: 'rgba(99,102,241,0.1)',
+                  border: '1px solid rgba(99,102,241,0.2)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#818cf8',
+                  letterSpacing: '0.05em',
                 }}>
-                  <f.icon size={16} color="#818cf8" />
-                </div>
-                <span style={{ fontSize: 14, color: c.featureText, fontWeight: 500 }}>
-                  {f.text}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-        </div>
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    display: 'inline-block',
+                  }}
+                />
+                Plataforma online
+              </div>
 
-        {/* Footer note */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.5 }}
-          style={{ fontSize: 12, color: c.footer, lineHeight: 1.6 }}
-        >
-          © 2025 Diária Pro. Todos os direitos reservados.
+              <h1
+                style={{
+                  fontFamily: 'Syne, sans-serif',
+                  fontSize: 'clamp(2.4rem, 3.5vw, 3.2rem)',
+                  fontWeight: 800,
+                  color: c.text,
+                  margin: '0 0 20px',
+                  letterSpacing: '-0.03em',
+                  lineHeight: 1.1,
+                }}>
+                Controle total{' '}
+                <span
+                  style={{
+                    background: 'linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c084fc 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                  }}>
+                  das suas
+                  <br />
+                  equipes diárias.
+                </span>
+              </h1>
+              <p
+                style={{
+                  fontSize: 16,
+                  color: c.subMid,
+                  lineHeight: 1.65,
+                  margin: 0,
+                  maxWidth: 360,
+                }}>
+                Gerencie diaristas, controle jornadas, visualize pagamentos por turno e gere relatórios instantâneos.
+              </p>
+            </motion.div>
+
+            {/* Feature list */}
+            <div style={{ marginTop: 44 }}>
+              {FEATURES.map((f, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.45 + i * 0.1, duration: 0.5 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    marginBottom: 18,
+                  }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      flexShrink: 0,
+                      background: 'rgba(99,102,241,0.1)',
+                      border: '1px solid rgba(99,102,241,0.18)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                    <f.icon size={16} color="#818cf8" />
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: c.featureText,
+                      fontWeight: 500,
+                    }}>
+                    {f.text}
+                  </span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer note */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 0.5 }} style={{ fontSize: 12, color: c.footer, lineHeight: 1.6 }}>
+            © 2025 Diária Pro. Todos os direitos reservados.
+          </motion.div>
         </motion.div>
-      </motion.div>}
+      )}
 
       {/* ════════════════════════════
           RIGHT PANEL — Login form
       ════════════════════════════ */}
-      <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        position: 'relative', zIndex: 1,
-        padding: isMobile ? '24px 16px' : '40px 48px',
-        minHeight: '100vh',
-      }}>
-        <motion.div
-          initial={{ opacity: 0, y: 24, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.2, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-          style={{ width: '100%', maxWidth: 420 }}
-        >
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+          zIndex: 1,
+          padding: isMobile ? '24px 16px' : '40px 48px',
+          minHeight: '100vh',
+        }}>
+        <motion.div initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ delay: 0.2, duration: 0.6, ease: [0.4, 0, 0.2, 1] }} style={{ width: '100%', maxWidth: 420 }}>
           {/* Card */}
-          <div style={{
-            background: c.cardBg,
-            border: `1px solid ${c.cardBorder}`,
-            borderRadius: 24, padding: isMobile ? '28px 24px' : '40px',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            boxShadow: c.cardShadow,
-            position: 'relative', overflow: 'hidden',
-            transition: 'background 0.3s, border-color 0.3s, box-shadow 0.3s',
-          }}>
+          <div
+            style={{
+              background: c.cardBg,
+              border: `1px solid ${c.cardBorder}`,
+              borderRadius: 24,
+              padding: isMobile ? '28px 24px' : '40px',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              boxShadow: c.cardShadow,
+              position: 'relative',
+              overflow: 'hidden',
+              transition: 'background 0.3s, border-color 0.3s, box-shadow 0.3s',
+            }}>
             {/* Top accent line */}
-            <div style={{
-              position: 'absolute', top: 0, left: '20%', right: '20%', height: 1,
-              background: c.accentLine,
-            }} />
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: '20%',
+                right: '20%',
+                height: 1,
+                background: c.accentLine,
+              }}
+            />
 
             {/* Mobile logo */}
             {isMobile && (
@@ -306,22 +432,45 @@ export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.4 }}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}
-              >
-                <div style={{
-                  width: 36, height: 36, borderRadius: 10,
-                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
-                  flexShrink: 0,
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  marginBottom: 28,
                 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+                    flexShrink: 0,
+                  }}>
                   <Zap size={16} color="white" fill="white" />
                 </div>
                 <div>
-                  <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: c.text, letterSpacing: '-0.02em' }}>
+                  <div
+                    style={{
+                      fontFamily: 'Syne, sans-serif',
+                      fontWeight: 800,
+                      fontSize: 17,
+                      color: c.text,
+                      letterSpacing: '-0.02em',
+                    }}>
                     Diária Pro
                   </div>
-                  <div style={{ fontSize: 9, color: c.logoSub, fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      color: c.logoSub,
+                      fontWeight: 500,
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                    }}>
                     Gestão de Diaristas
                   </div>
                 </div>
@@ -333,32 +482,104 @@ export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
               <AnimatePresence mode="wait">
                 <motion.div key="forgot" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
                   <div style={{ marginBottom: 28 }}>
-                    <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 22 : 24, fontWeight: 800, color: c.text, margin: '0 0 8px' }}>
+                    <h2
+                      style={{
+                        fontFamily: 'Syne, sans-serif',
+                        fontSize: isMobile ? 22 : 24,
+                        fontWeight: 800,
+                        color: c.text,
+                        margin: '0 0 8px',
+                      }}>
                       Redefinir senha
                     </h2>
-                    <p style={{ margin: 0, fontSize: 14, color: c.subMid }}>
-                      Enviaremos um link para seu e-mail.
-                    </p>
+                    <p style={{ margin: 0, fontSize: 14, color: c.subMid }}>Enviaremos um link para seu e-mail.</p>
                   </div>
                   <form onSubmit={handleForgotPassword}>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: c.sub, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>E-mail</label>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: c.sub,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        marginBottom: 8,
+                      }}>
+                      E-mail
+                    </label>
                     <input
-                      type="email" value={email}
-                      onChange={e => { setEmail(e.target.value); setError('') }}
-                      placeholder="seu@email.com" autoComplete="email"
+                      type="email"
+                      value={email}
+                      onChange={e => {
+                        setEmail(e.target.value)
+                        setError('')
+                      }}
+                      placeholder="seu@email.com"
+                      autoComplete="email"
                       className="input-premium"
-                      style={{ width: '100%', padding: '14px 16px', borderRadius: 13, fontSize: 15, marginBottom: 14 }}
+                      style={{
+                        width: '100%',
+                        padding: '14px 16px',
+                        borderRadius: 13,
+                        fontSize: 15,
+                        marginBottom: 14,
+                      }}
                     />
                     {error && (
-                      <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 14, background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)', fontSize: 13, color: '#fb7185', fontWeight: 500 }}>{error}</div>
+                      <div
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          marginBottom: 14,
+                          background: 'rgba(244,63,94,0.08)',
+                          border: '1px solid rgba(244,63,94,0.2)',
+                          fontSize: 13,
+                          color: '#fb7185',
+                          fontWeight: 500,
+                        }}>
+                        {error}
+                      </div>
                     )}
                     <Captcha ref={captchaRef} theme={theme} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
-                    <motion.button type="submit" disabled={isLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                      style={{ width: '100%', padding: '14px', borderRadius: 13, fontSize: 14, fontWeight: 700, border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', background: isLoading ? 'rgba(99,102,241,0.4)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)', color: 'white', fontFamily: 'Inter, sans-serif', marginBottom: 12 }}>
+                    <motion.button
+                      type="submit"
+                      disabled={isLoading}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      style={{
+                        width: '100%',
+                        padding: '14px',
+                        borderRadius: 13,
+                        fontSize: 14,
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        background: isLoading ? 'rgba(99,102,241,0.4)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                        color: 'white',
+                        fontFamily: 'Inter, sans-serif',
+                        marginBottom: 12,
+                      }}>
                       {isLoading ? 'Enviando...' : 'Enviar link de redefinição'}
                     </motion.button>
-                    <button type="button" onClick={() => { setView('login'); setError(''); setCaptchaToken(null) }}
-                      style={{ width: '100%', padding: '12px', borderRadius: 13, fontSize: 14, fontWeight: 600, border: `1px solid ${c.backBtnBorder}`, background: 'transparent', color: c.backBtnColor, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView('login')
+                        setError('')
+                        setCaptchaToken(null)
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: 13,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        border: `1px solid ${c.backBtnBorder}`,
+                        background: 'transparent',
+                        color: c.backBtnColor,
+                        cursor: 'pointer',
+                        fontFamily: 'Inter, sans-serif',
+                      }}>
                       Voltar ao login
                     </button>
                   </form>
@@ -369,15 +590,56 @@ export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
             {view === 'forgot-sent' && (
               <AnimatePresence mode="wait">
                 <motion.div key="sent" initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3 }} style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <div
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 16,
+                      background: 'rgba(16,185,129,0.12)',
+                      border: '1px solid rgba(16,185,129,0.25)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 20px',
+                    }}>
                     <span style={{ fontSize: 26 }}>📬</span>
                   </div>
-                  <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: 20, fontWeight: 800, color: c.text, margin: '0 0 10px' }}>Link enviado!</h2>
-                  <p style={{ fontSize: 14, color: c.sub, lineHeight: 1.6, margin: '0 0 24px' }}>
+                  <h2
+                    style={{
+                      fontFamily: 'Syne, sans-serif',
+                      fontSize: 20,
+                      fontWeight: 800,
+                      color: c.text,
+                      margin: '0 0 10px',
+                    }}>
+                    Link enviado!
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      color: c.sub,
+                      lineHeight: 1.6,
+                      margin: '0 0 24px',
+                    }}>
                     Verifique sua caixa de entrada em <strong style={{ color: c.subMid }}>{email}</strong> e clique no link para redefinir sua senha.
                   </p>
-                  <button onClick={() => { setView('login'); setError(''); setCaptchaToken(null) }}
-                    style={{ padding: '12px 24px', borderRadius: 12, fontSize: 14, fontWeight: 600, border: `1px solid ${c.backBtnBorder}`, background: 'transparent', color: c.backBtnColor, cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  <button
+                    onClick={() => {
+                      setView('login')
+                      setError('')
+                      setCaptchaToken(null)
+                    }}
+                    style={{
+                      padding: '12px 24px',
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      border: `1px solid ${c.backBtnBorder}`,
+                      background: 'transparent',
+                      color: c.backBtnColor,
+                      cursor: 'pointer',
+                      fontFamily: 'Inter, sans-serif',
+                    }}>
                     Voltar ao login
                   </button>
                 </motion.div>
@@ -385,222 +647,290 @@ export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
             )}
 
             {/* ── Normal login ── */}
-            {view === 'login' && <>
-            {/* Card header */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.45 }}
-              style={{ marginBottom: isMobile ? 24 : 36 }}
-            >
-              <h2 style={{
-                fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 22 : 26, fontWeight: 800,
-                color: c.text, margin: '0 0 8px', letterSpacing: '-0.025em',
-              }}>
-                Bem-vindo de volta
-              </h2>
-              <p style={{ margin: 0, fontSize: 14, color: c.subMid }}>
-                Acesse o painel com suas credenciais
-              </p>
-            </motion.div>
+            {view === 'login' && (
+              <>
+                {/* Card header */}
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, duration: 0.45 }} style={{ marginBottom: isMobile ? 24 : 36 }}>
+                  <h2
+                    style={{
+                      fontFamily: 'Syne, sans-serif',
+                      fontSize: isMobile ? 22 : 26,
+                      fontWeight: 800,
+                      color: c.text,
+                      margin: '0 0 8px',
+                      letterSpacing: '-0.025em',
+                    }}>
+                    Bem-vindo de volta
+                  </h2>
+                  <p style={{ margin: 0, fontSize: 14, color: c.subMid }}>Acesse o painel com suas credenciais</p>
+                </motion.div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit}>
-              {/* Email field */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.4 }}
-                style={{ marginBottom: 14 }}
-              >
-                <label style={{
-                  display: 'block', fontSize: 12, fontWeight: 600,
-                  color: c.sub, marginBottom: 8,
-                  letterSpacing: '0.06em', textTransform: 'uppercase',
-                }}>
-                  E-mail
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setError('') }}
-                    onFocus={() => setFocusedField('email')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="seu@email.com"
-                    autoComplete="email"
-                    className="input-premium"
-                    style={{
-                      width: '100%', padding: '14px 16px',
-                      borderRadius: 13, fontSize: 15,
-                      boxShadow: focusedField === 'email'
-                        ? '0 0 0 3px rgba(99,102,241,0.15)'
-                        : 'none',
-                    }}
-                  />
-                </div>
-              </motion.div>
-
-              {/* Password field */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.46, duration: 0.4 }}
-                style={{ marginBottom: 10 }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label style={{
-                    fontSize: 12, fontWeight: 600, color: c.sub,
-                    letterSpacing: '0.06em', textTransform: 'uppercase',
-                  }}>
-                    Senha
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => { setView('forgot'); setError(''); setCaptchaToken(null) }}
-                    style={{
-                      background: 'none', border: 'none', fontSize: 12,
-                      color: '#818cf8', cursor: 'pointer', fontWeight: 600,
-                      fontFamily: 'Inter, sans-serif', padding: 0,
-                    }}
-                  >
-                    Esqueceu a senha?
-                  </button>
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => { setPassword(e.target.value); setError('') }}
-                    onFocus={() => setFocusedField('password')}
-                    onBlur={() => setFocusedField(null)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    className="input-premium"
-                    style={{
-                      width: '100%', padding: '14px 46px 14px 16px',
-                      borderRadius: 13, fontSize: 15,
-                      boxShadow: focusedField === 'password'
-                        ? '0 0 0 3px rgba(99,102,241,0.15)'
-                        : 'none',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(p => !p)}
-                    style={{
-                      position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: c.eyeBtnColor, display: 'flex', alignItems: 'center',
-                      transition: 'color 0.2s', padding: 0,
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.color = c.eyeBtnHover}
-                    onMouseLeave={e => e.currentTarget.style.color = c.eyeBtnColor}
-                  >
-                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-                  </button>
-                </div>
-              </motion.div>
-
-              {/* Error message */}
-              <AnimatePresence>
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, y: -4, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      padding: '10px 14px', borderRadius: 10, marginBottom: 14,
-                      background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)',
-                      fontSize: 13, color: '#fb7185', fontWeight: 500, lineHeight: 1.4,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {error}
+                {/* Form */}
+                <form onSubmit={handleSubmit}>
+                  {/* Email field */}
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.4 }} style={{ marginBottom: 14 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: c.sub,
+                        marginBottom: 8,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                      }}>
+                      E-mail
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => {
+                          setEmail(e.target.value)
+                          setError('')
+                        }}
+                        onFocus={() => setFocusedField('email')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="seu@email.com"
+                        autoComplete="email"
+                        className="input-premium"
+                        style={{
+                          width: '100%',
+                          padding: '14px 16px',
+                          borderRadius: 13,
+                          fontSize: 15,
+                          boxShadow: focusedField === 'email' ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
+                        }}
+                      />
+                    </div>
                   </motion.div>
-                )}
-              </AnimatePresence>
 
-              {/* CAPTCHA */}
-              <Captcha ref={captchaRef} theme={theme} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+                  {/* Password field */}
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46, duration: 0.4 }} style={{ marginBottom: 10 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 8,
+                      }}>
+                      <label
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: c.sub,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                        }}>
+                        Senha
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setView('forgot')
+                          setError('')
+                          setCaptchaToken(null)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          fontSize: 12,
+                          color: '#818cf8',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontFamily: 'Inter, sans-serif',
+                          padding: 0,
+                        }}>
+                        Esqueceu a senha?
+                      </button>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={e => {
+                          setPassword(e.target.value)
+                          setError('')
+                        }}
+                        onFocus={() => setFocusedField('password')}
+                        onBlur={() => setFocusedField(null)}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        className="input-premium"
+                        style={{
+                          width: '100%',
+                          padding: '14px 46px 14px 16px',
+                          borderRadius: 13,
+                          fontSize: 15,
+                          boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(p => !p)}
+                        style={{
+                          position: 'absolute',
+                          right: 14,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: c.eyeBtnColor,
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'color 0.2s',
+                          padding: 0,
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.color = c.eyeBtnHover)}
+                        onMouseLeave={e => (e.currentTarget.style.color = c.eyeBtnColor)}>
+                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
+                    </div>
+                  </motion.div>
 
-              {/* Submit button */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.52, duration: 0.4 }}
-                style={{ marginTop: 22 }}
-              >
-                <motion.button
-                  type="submit"
-                  disabled={isLoading}
-                  whileHover={!isLoading ? { scale: 1.02, boxShadow: '0 12px 32px rgba(99,102,241,0.45)' } : {}}
-                  whileTap={!isLoading ? { scale: 0.98 } : {}}
-                  style={{
-                    width: '100%', padding: '15px',
-                    borderRadius: 13, fontSize: 15, fontWeight: 700,
-                    border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer',
-                    background: isLoading
-                      ? 'rgba(99,102,241,0.4)'
-                      : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    boxShadow: isLoading ? 'none' : '0 6px 20px rgba(99,102,241,0.35)',
-                    transition: 'background 0.3s, box-shadow 0.3s',
-                    fontFamily: 'Inter, sans-serif',
-                  }}
-                >
-                  <AnimatePresence mode="wait">
-                    {isLoading ? (
-                      <motion.span
-                        key="loading"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10 }}
-                      >
-                        <LoadingSpinner />
-                        Entrando...
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="idle"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
-                      >
-                        Entrar no Painel
-                        <ArrowRight size={16} />
-                      </motion.span>
+                  {/* Error message */}
+                  <AnimatePresence>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, height: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                        exit={{ opacity: 0, y: -4, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          marginBottom: 14,
+                          background: 'rgba(244,63,94,0.08)',
+                          border: '1px solid rgba(244,63,94,0.2)',
+                          fontSize: 13,
+                          color: '#fb7185',
+                          fontWeight: 500,
+                          lineHeight: 1.4,
+                          overflow: 'hidden',
+                        }}>
+                        {error}
+                      </motion.div>
                     )}
                   </AnimatePresence>
-                </motion.button>
-              </motion.div>
-            </form>
 
-            {/* Divider + link de cadastro */}
-            {onSignUp && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.58, duration: 0.4 }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '24px 0' }}>
-                  <div style={{ flex: 1, height: 1, background: c.divider }} />
-                  <span style={{ fontSize: 12, color: c.muted, fontWeight: 500 }}>ou</span>
-                  <div style={{ flex: 1, height: 1, background: c.divider }} />
-                </div>
-                <div style={{ textAlign: 'center', fontSize: 14, color: c.muted }}>
-                  Não tem uma conta?{' '}
-                  <button onClick={onSignUp} style={{ background: 'none', border: 'none', fontSize: 14, fontWeight: 700, color: '#818cf8', cursor: 'pointer', fontFamily: 'Inter, sans-serif', padding: 0 }}>
-                    Criar conta
-                  </button>
-                </div>
-              </motion.div>
+                  {/* CAPTCHA */}
+                  <Captcha ref={captchaRef} theme={theme} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+
+                  {/* Submit button */}
+                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52, duration: 0.4 }} style={{ marginTop: 22 }}>
+                    <motion.button
+                      type="submit"
+                      disabled={isLoading}
+                      whileHover={
+                        !isLoading
+                          ? {
+                              scale: 1.02,
+                              boxShadow: '0 12px 32px rgba(99,102,241,0.45)',
+                            }
+                          : {}
+                      }
+                      whileTap={!isLoading ? { scale: 0.98 } : {}}
+                      style={{
+                        width: '100%',
+                        padding: '15px',
+                        borderRadius: 13,
+                        fontSize: 15,
+                        fontWeight: 700,
+                        border: 'none',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        background: isLoading ? 'rgba(99,102,241,0.4)' : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 10,
+                        boxShadow: isLoading ? 'none' : '0 6px 20px rgba(99,102,241,0.35)',
+                        transition: 'background 0.3s, box-shadow 0.3s',
+                        fontFamily: 'Inter, sans-serif',
+                      }}>
+                      <AnimatePresence mode="wait">
+                        {isLoading ? (
+                          <motion.span
+                            key="loading"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                            }}>
+                            <LoadingSpinner />
+                            Entrando...
+                          </motion.span>
+                        ) : (
+                          <motion.span
+                            key="idle"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                            }}>
+                            Entrar no Painel
+                            <ArrowRight size={16} />
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </motion.button>
+                  </motion.div>
+                </form>
+
+                {/* Divider + link de cadastro */}
+                {onSignUp && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.58, duration: 0.4 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        margin: '24px 0',
+                      }}>
+                      <div style={{ flex: 1, height: 1, background: c.divider }} />
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: c.muted,
+                          fontWeight: 500,
+                        }}>
+                        ou
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: c.divider }} />
+                    </div>
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        fontSize: 14,
+                        color: c.muted,
+                      }}>
+                      Não tem uma conta?{' '}
+                      <button
+                        onClick={onSignUp}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: '#818cf8',
+                          cursor: 'pointer',
+                          fontFamily: 'Inter, sans-serif',
+                          padding: 0,
+                        }}>
+                        Criar conta
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </>
             )}
-
-            </>}
           </div>
 
           {/* Below-card note */}
@@ -608,22 +938,41 @@ export default function LoginScreen({ theme = 'dark', setTheme, onSignUp }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.75, duration: 0.4 }}
-            style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: c.dim, lineHeight: 1.5 }}
-          >
+            style={{
+              textAlign: 'center',
+              marginTop: 24,
+              fontSize: 13,
+              color: c.dim,
+              lineHeight: 1.5,
+            }}>
             Ao entrar, você concorda com os{' '}
-            <span onClick={() => setPrivacyModal('terms')} style={{ color: 'rgba(129,140,248,0.8)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(129,140,248,0.3)' }}>Termos de Uso</span>
-            {' '}e{' '}
-            <span onClick={() => setPrivacyModal('privacy')} style={{ color: 'rgba(129,140,248,0.8)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'rgba(129,140,248,0.3)' }}>Política de Privacidade</span>.
+            <span
+              onClick={() => setPrivacyModal('terms')}
+              style={{
+                color: 'rgba(129,140,248,0.8)',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textDecorationColor: 'rgba(129,140,248,0.3)',
+              }}>
+              Termos de Uso
+            </span>{' '}
+            e{' '}
+            <span
+              onClick={() => setPrivacyModal('privacy')}
+              style={{
+                color: 'rgba(129,140,248,0.8)',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textDecorationColor: 'rgba(129,140,248,0.3)',
+              }}>
+              Política de Privacidade
+            </span>
+            .
           </motion.p>
         </motion.div>
       </div>
 
-      {privacyModal && (
-        <PrivacyModal
-          initialTab={privacyModal}
-          onClose={() => setPrivacyModal(null)}
-        />
-      )}
+      {privacyModal && <PrivacyModal initialTab={privacyModal} onClose={() => setPrivacyModal(null)} />}
     </div>
   )
 }
@@ -634,7 +983,9 @@ function LoadingSpinner() {
       animate={{ rotate: 360 }}
       transition={{ duration: 0.9, ease: 'linear', repeat: Infinity }}
       style={{
-        width: 16, height: 16, borderRadius: '50%',
+        width: 16,
+        height: 16,
+        borderRadius: '50%',
         border: '2px solid rgba(255,255,255,0.2)',
         borderTopColor: 'white',
       }}

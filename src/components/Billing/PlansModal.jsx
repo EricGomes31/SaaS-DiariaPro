@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Zap, Check, Users, Sparkles, Crown, ArrowRight } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { ArrowRight, Check, Crown, Sparkles, Users, X, Zap } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 // ── Traduções (mesmo padrão local do SettingsPanel) ──────────────────
@@ -116,8 +116,12 @@ const PLANS = [
   },
 ]
 
-const formatBRL = (v) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2 })
+const formatBRL = v =>
+  v.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+  })
 
 function PlanCard({ plan, cycle, t, lang, sp, isMobile, isCurrent, onSelect }) {
   const Icon = plan.icon
@@ -125,9 +129,7 @@ function PlanCard({ plan, cycle, t, lang, sp, isMobile, isCurrent, onSelect }) {
   const price = isAnnual ? plan.annual : plan.monthly
   const monthlyEquivalent = plan.annual / 12
   const highlight = plan.recommended
-  const limitLabel = plan.limit === null
-    ? t.unlimited
-    : `${t.upTo} ${plan.limit}`
+  const limitLabel = plan.limit === null ? t.unlimited : `${t.upTo} ${plan.limit}`
 
   return (
     <motion.div
@@ -144,32 +146,60 @@ function PlanCard({ plan, cycle, t, lang, sp, isMobile, isCurrent, onSelect }) {
         boxShadow: highlight ? '0 12px 40px rgba(139,92,246,0.25)' : 'none',
         display: 'flex',
         flexDirection: 'column',
-      }}
-    >
+      }}>
       {highlight && (
-        <div style={{
-          position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)',
-          padding: '4px 14px', borderRadius: 100,
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-          color: 'white', fontSize: 10, fontWeight: 800,
-          textTransform: 'uppercase', letterSpacing: '0.08em',
-          boxShadow: '0 4px 14px rgba(99,102,241,0.5)', whiteSpace: 'nowrap',
-        }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: -11,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '4px 14px',
+            borderRadius: 100,
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            color: 'white',
+            fontSize: 10,
+            fontWeight: 800,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            boxShadow: '0 4px 14px rgba(99,102,241,0.5)',
+            whiteSpace: 'nowrap',
+          }}>
           ★ {t.recommended}
         </div>
       )}
 
       {/* Ícone + nome */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <div style={{
-          width: 38, height: 38, borderRadius: 11,
-          background: `${plan.accent}22`, border: `1px solid ${plan.accent}44`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginBottom: 14,
         }}>
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 11,
+            background: `${plan.accent}22`,
+            border: `1px solid ${plan.accent}44`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
           <Icon size={18} color={plan.accent} />
         </div>
         <div>
-          <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, color: sp.cardTitle, textTransform: 'capitalize' }}>
+          <div
+            style={{
+              fontFamily: 'Syne, sans-serif',
+              fontSize: 17,
+              fontWeight: 800,
+              color: sp.cardTitle,
+              textTransform: 'capitalize',
+            }}>
             {plan.id}
           </div>
           <div style={{ fontSize: 11, color: sp.cardSub }}>
@@ -180,28 +210,60 @@ function PlanCard({ plan, cycle, t, lang, sp, isMobile, isCurrent, onSelect }) {
 
       {/* Preço */}
       <div style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: 'Syne, sans-serif', fontSize: 26, fontWeight: 800, color: sp.cardTitle, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 4,
+            flexWrap: 'wrap',
+          }}>
+          <span
+            style={{
+              fontFamily: 'Syne, sans-serif',
+              fontSize: 26,
+              fontWeight: 800,
+              color: sp.cardTitle,
+              letterSpacing: '-0.02em',
+              whiteSpace: 'nowrap',
+            }}>
             {formatBRL(price)}
           </span>
-          <span style={{ fontSize: 13, color: sp.cardSub, whiteSpace: 'nowrap' }}>
-            {isAnnual ? t.perYear : t.perMonth}
-          </span>
+          <span style={{ fontSize: 13, color: sp.cardSub, whiteSpace: 'nowrap' }}>{isAnnual ? t.perYear : t.perMonth}</span>
         </div>
-        <div style={{ fontSize: 11, color: sp.cardSub, marginTop: 3, minHeight: 15 }}>
+        <div
+          style={{
+            fontSize: 11,
+            color: sp.cardSub,
+            marginTop: 3,
+            minHeight: 15,
+          }}>
           {isAnnual && `${t.equivalent} ${formatBRL(monthlyEquivalent)}${t.perMonth}`}
         </div>
       </div>
 
       {/* Features */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginBottom: 22, flex: 1 }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 9,
+          marginBottom: 22,
+          flex: 1,
+        }}>
         {plan.features[lang]?.map((feat, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-            <div style={{
-              width: 16, height: 16, borderRadius: '50%', flexShrink: 0, marginTop: 1,
-              background: `${plan.accent}22`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <div
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                flexShrink: 0,
+                marginTop: 1,
+                background: `${plan.accent}22`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
               <Check size={10} color={plan.accent} strokeWidth={3} />
             </div>
             <span style={{ fontSize: 13, color: sp.featText, lineHeight: 1.35 }}>{feat}</span>
@@ -216,21 +278,24 @@ function PlanCard({ plan, cycle, t, lang, sp, isMobile, isCurrent, onSelect }) {
         disabled={isCurrent}
         onClick={() => onSelect(plan.id, cycle)}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-          padding: '12px', borderRadius: 12, border: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 7,
+          padding: '12px',
+          borderRadius: 12,
+          border: 'none',
           cursor: isCurrent ? 'default' : 'pointer',
-          fontSize: 14, fontWeight: 700,
-          background: isCurrent
-            ? sp.currentBtnBg
-            : highlight
-              ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-              : sp.ctaBg,
+          fontSize: 14,
+          fontWeight: 700,
+          background: isCurrent ? sp.currentBtnBg : highlight ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : sp.ctaBg,
           color: isCurrent ? sp.cardSub : highlight ? 'white' : sp.ctaColor,
           boxShadow: highlight && !isCurrent ? '0 6px 20px rgba(99,102,241,0.4)' : 'none',
           transition: 'all 0.2s',
-        }}
-      >
-        {isCurrent ? t.currentPlan : (
+        }}>
+        {isCurrent ? (
+          t.currentPlan
+        ) : (
           <>
             {t.choose}
             <ArrowRight size={15} />
@@ -245,8 +310,8 @@ export default function PlansModal({
   onClose,
   theme = 'dark',
   lang = 'pt',
-  currentPlan = null,      // ex.: 'basico' — marca o plano atual do usuário
-  onSelectPlan,            // (planId, cycle) => void — aqui você chama a API do Asaas
+  currentPlan = null, // ex.: 'basico' — marca o plano atual do usuário
+  onSelectPlan, // (planId, cycle) => void — aqui você chama a API do Asaas
 }) {
   const isMobile = useIsMobile()
   const [cycle, setCycle] = useState('annual')
@@ -254,33 +319,35 @@ export default function PlansModal({
   const isLight = theme === 'light'
 
   const sp = {
-    bg:              isLight ? 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(135deg, #131325 0%, #0f0f1e 100%)',
-    border:          isLight ? 'rgba(0,0,0,0.08)'        : 'rgba(255,255,255,0.08)',
-    shadow:          isLight ? '0 24px 64px rgba(0,0,0,0.15)' : '0 24px 64px rgba(0,0,0,0.8)',
-    headerBorder:    isLight ? 'rgba(0,0,0,0.07)'        : 'rgba(255,255,255,0.06)',
-    title:           isLight ? '#1e293b'                 : '#f1f5f9',
-    sub:             isLight ? 'rgba(0,0,0,0.4)'         : 'rgba(255,255,255,0.4)',
-    closeBg:         isLight ? 'rgba(0,0,0,0.04)'        : 'rgba(255,255,255,0.04)',
-    closeBorder:     isLight ? 'rgba(0,0,0,0.08)'        : 'rgba(255,255,255,0.08)',
-    closeColor:      isLight ? 'rgba(0,0,0,0.4)'         : 'rgba(255,255,255,0.4)',
-    toggleTrack:     isLight ? 'rgba(0,0,0,0.05)'        : 'rgba(255,255,255,0.05)',
-    toggleBorder:    isLight ? 'rgba(0,0,0,0.08)'        : 'rgba(255,255,255,0.08)',
-    toggleInactive:  isLight ? 'rgba(0,0,0,0.5)'         : 'rgba(255,255,255,0.5)',
-    cardBg:          isLight ? 'rgba(0,0,0,0.02)'        : 'rgba(255,255,255,0.03)',
-    cardHighlightBg: isLight ? 'rgba(99,102,241,0.06)'   : 'rgba(99,102,241,0.08)',
-    cardBorder:      isLight ? 'rgba(0,0,0,0.08)'        : 'rgba(255,255,255,0.08)',
-    cardTitle:       isLight ? '#1e293b'                 : '#f1f5f9',
-    cardSub:         isLight ? 'rgba(0,0,0,0.4)'         : 'rgba(255,255,255,0.4)',
-    featText:        isLight ? 'rgba(0,0,0,0.7)'         : 'rgba(255,255,255,0.75)',
-    ctaBg:           isLight ? 'rgba(0,0,0,0.05)'        : 'rgba(255,255,255,0.06)',
-    ctaColor:        isLight ? '#4f46e5'                 : '#c7d2fe',
-    currentBtnBg:    isLight ? 'rgba(0,0,0,0.04)'        : 'rgba(255,255,255,0.04)',
-    footnote:        isLight ? 'rgba(0,0,0,0.35)'        : 'rgba(255,255,255,0.3)',
+    bg: isLight ? 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(135deg, #131325 0%, #0f0f1e 100%)',
+    border: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+    shadow: isLight ? '0 24px 64px rgba(0,0,0,0.15)' : '0 24px 64px rgba(0,0,0,0.8)',
+    headerBorder: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.06)',
+    title: isLight ? '#1e293b' : '#f1f5f9',
+    sub: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
+    closeBg: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)',
+    closeBorder: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+    closeColor: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
+    toggleTrack: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)',
+    toggleBorder: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+    toggleInactive: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)',
+    cardBg: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.03)',
+    cardHighlightBg: isLight ? 'rgba(99,102,241,0.06)' : 'rgba(99,102,241,0.08)',
+    cardBorder: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+    cardTitle: isLight ? '#1e293b' : '#f1f5f9',
+    cardSub: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
+    featText: isLight ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.75)',
+    ctaBg: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)',
+    ctaColor: isLight ? '#4f46e5' : '#c7d2fe',
+    currentBtnBg: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)',
+    footnote: isLight ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.3)',
   }
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = '' }
+    return () => {
+      document.body.style.overflow = ''
+    }
   }, [])
 
   return (
@@ -289,12 +356,16 @@ export default function PlansModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       style={{
-        position: 'fixed', inset: 0, zIndex: 300,
-        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'fixed',
+        inset: 0,
+        zIndex: 300,
+        background: 'rgba(0,0,0,0.45)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         ...(isMobile ? { padding: 12 } : { paddingLeft: 272 }),
-      }}
-    >
+      }}>
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -307,54 +378,98 @@ export default function PlansModal({
           maxHeight: 'calc(100vh - 48px)',
           background: sp.bg,
           border: `1px solid ${sp.border}`,
-          borderRadius: 24, overflow: 'hidden',
+          borderRadius: 24,
+          overflow: 'hidden',
           boxShadow: sp.shadow,
-          display: 'flex', flexDirection: 'column',
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '22px 28px', borderBottom: `1px solid ${sp.headerBorder}`, flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
         }}>
+        {/* Header */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '22px 28px',
+            borderBottom: `1px solid ${sp.headerBorder}`,
+            flexShrink: 0,
+          }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 9,
-              background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                background: 'rgba(99,102,241,0.15)',
+                border: '1px solid rgba(99,102,241,0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
               <Zap size={15} color="#818cf8" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 18, fontWeight: 800, color: sp.title, letterSpacing: '-0.02em' }}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontFamily: 'Syne, sans-serif',
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: sp.title,
+                  letterSpacing: '-0.02em',
+                }}>
                 {t.title}
               </h2>
               <p style={{ margin: 0, fontSize: 11, color: sp.sub }}>{t.subtitle}</p>
             </div>
           </div>
           <motion.button
-            whileHover={{ scale: 1.1, background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}
+            whileHover={{
+              scale: 1.1,
+              background: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+            }}
             whileTap={{ scale: 0.9 }}
             onClick={onClose}
             style={{
-              width: 32, height: 32, borderRadius: 8,
-              border: `1px solid ${sp.closeBorder}`, background: sp.closeBg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: sp.closeColor,
-            }}
-          >
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: `1px solid ${sp.closeBorder}`,
+              background: sp.closeBg,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: sp.closeColor,
+            }}>
             <X size={15} />
           </motion.button>
         </div>
 
         {/* Conteúdo */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '20px 16px' : '28px' }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: isMobile ? '20px 16px' : '28px',
+          }}>
           {/* Toggle Mensal / Anual */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 26 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 4, padding: 4,
-              background: sp.toggleTrack, border: `1px solid ${sp.toggleBorder}`, borderRadius: 100,
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: 26,
             }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: 4,
+                background: sp.toggleTrack,
+                border: `1px solid ${sp.toggleBorder}`,
+                borderRadius: 100,
+              }}>
               {['monthly', 'annual'].map(c => {
                 const active = cycle === c
                 return (
@@ -363,21 +478,32 @@ export default function PlansModal({
                     onClick={() => setCycle(c)}
                     style={{
                       position: 'relative',
-                      display: 'flex', alignItems: 'center', gap: 7,
-                      padding: '8px 18px', borderRadius: 100, border: 'none', cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      padding: '8px 18px',
+                      borderRadius: 100,
+                      border: 'none',
+                      cursor: 'pointer',
                       background: active ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent',
                       color: active ? 'white' : sp.toggleInactive,
-                      fontSize: 13, fontWeight: 700, transition: 'all 0.2s',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      transition: 'all 0.2s',
                       boxShadow: active ? '0 4px 14px rgba(99,102,241,0.35)' : 'none',
-                    }}
-                  >
+                    }}>
                     {c === 'monthly' ? t.monthly : t.annual}
                     {c === 'annual' && (
-                      <span style={{
-                        fontSize: 9, fontWeight: 800, padding: '2px 6px', borderRadius: 100,
-                        background: active ? 'rgba(255,255,255,0.25)' : 'rgba(16,185,129,0.15)',
-                        color: active ? 'white' : '#10b981', whiteSpace: 'nowrap',
-                      }}>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 800,
+                          padding: '2px 6px',
+                          borderRadius: 100,
+                          background: active ? 'rgba(255,255,255,0.25)' : 'rgba(16,185,129,0.15)',
+                          color: active ? 'white' : '#10b981',
+                          whiteSpace: 'nowrap',
+                        }}>
                         {t.annualBadge}
                       </span>
                     )}
@@ -388,27 +514,26 @@ export default function PlansModal({
           </div>
 
           {/* Cards */}
-          <div style={{
-            display: 'flex', flexDirection: isMobile ? 'column' : 'row',
-            gap: 16, alignItems: 'stretch',
-          }}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: 16,
+              alignItems: 'stretch',
+            }}>
             {PLANS.map(plan => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                cycle={cycle}
-                t={t}
-                lang={lang}
-                sp={sp}
-                isMobile={isMobile}
-                isCurrent={currentPlan === plan.id}
-                onSelect={onSelectPlan}
-              />
+              <PlanCard key={plan.id} plan={plan} cycle={cycle} t={t} lang={lang} sp={sp} isMobile={isMobile} isCurrent={currentPlan === plan.id} onSelect={onSelectPlan} />
             ))}
           </div>
 
           {/* Rodapé */}
-          <div style={{ textAlign: 'center', marginTop: 22, fontSize: 12, color: sp.footnote }}>
+          <div
+            style={{
+              textAlign: 'center',
+              marginTop: 22,
+              fontSize: 12,
+              color: sp.footnote,
+            }}>
             {t.footnote}
           </div>
         </div>

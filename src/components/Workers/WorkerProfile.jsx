@@ -1,18 +1,11 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  ArrowLeft, Edit2, Phone, MapPin, Clock, Calendar, Sun, Sunset,
-  Mail,
-  QrCode, Copy, Check, CheckCircle2, Hourglass, AlertCircle, Ban,
-  ChevronDown, ChevronUp, Plus, Trash2, X,
-} from 'lucide-react'
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
-} from 'recharts'
-import { getWorkerStats, getPaymentHistory, PIX_KEY_TYPES, isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
-import { useIsMobile } from '../../hooks/useIsMobile'
-import { format, parseISO, getDay } from 'date-fns'
+import { format, getDay, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { AnimatePresence, motion } from 'framer-motion'
+import { AlertCircle, ArrowLeft, Ban, Calendar, Check, CheckCircle2, ChevronDown, ChevronUp, Clock, Copy, Edit2, Hourglass, Mail, MapPin, Phone, Plus, QrCode, Sun, Sunset, Trash2, X } from 'lucide-react'
+import { useState } from 'react'
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { getPaymentHistory, getWorkerDayRate, getWorkerStats, isWeekendOrHoliday, PIX_KEY_TYPES } from '../../data/mockData'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
 
 const STATUS_ICONS = {
@@ -22,17 +15,35 @@ const STATUS_ICONS = {
   'no-work': Ban,
 }
 const STATUS_COLORS = {
-  paid:       { color: '#10b981', bg: 'rgba(16,185,129,0.1)',  border: 'rgba(16,185,129,0.2)' },
-  processing: { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.18)' },
-  pending:    { color: '#818cf8', bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.18)' },
-  'no-work':  { color: '#475569', bg: 'rgba(71,85,105,0.08)',  border: 'rgba(71,85,105,0.15)' },
+  paid: {
+    color: '#10b981',
+    bg: 'rgba(16,185,129,0.1)',
+    border: 'rgba(16,185,129,0.2)',
+  },
+  processing: {
+    color: '#f59e0b',
+    bg: 'rgba(245,158,11,0.08)',
+    border: 'rgba(245,158,11,0.18)',
+  },
+  pending: {
+    color: '#818cf8',
+    bg: 'rgba(99,102,241,0.08)',
+    border: 'rgba(99,102,241,0.18)',
+  },
+  'no-work': {
+    color: '#475569',
+    bg: 'rgba(71,85,105,0.08)',
+    border: 'rgba(71,85,105,0.15)',
+  },
 }
 
 // ── Copy-to-clipboard button ───────────────────────────────
 function CopyButton({ text, copyTitle }) {
   const [copied, setCopied] = useState(false)
   const handle = () => {
-    navigator.clipboard.writeText(text).catch(() => {})
+    navigator.clipboard.writeText(text).catch(() => {
+      /* clipboard indisponível, UI já mostra "copiado" */
+    })
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -43,17 +54,28 @@ function CopyButton({ text, copyTitle }) {
       onClick={handle}
       title={copyTitle}
       style={{
-        width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        border: 'none',
+        cursor: 'pointer',
         background: copied ? 'rgba(16,185,129,0.15)' : 'rgba(6,182,212,0.12)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.2s', flexShrink: 0,
-      }}
-    >
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s',
+        flexShrink: 0,
+      }}>
       <AnimatePresence mode="wait">
-        {copied
-          ? <motion.span key="ok"   initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}><Check size={14} color="#10b981" /></motion.span>
-          : <motion.span key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}><Copy size={14} color="#06b6d4" /></motion.span>
-        }
+        {copied ? (
+          <motion.span key="ok" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+            <Check size={14} color="#10b981" />
+          </motion.span>
+        ) : (
+          <motion.span key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+            <Copy size={14} color="#06b6d4" />
+          </motion.span>
+        )}
       </AnimatePresence>
     </motion.button>
   )
@@ -68,7 +90,11 @@ function PaymentRow({ record, index, isMobile, t }) {
     pending: t.statusPending,
     'no-work': t.statusNoWork,
   }
-  const cfg = { ...STATUS_COLORS[record.status], label: statusLabels[record.status], Icon: STATUS_ICONS[record.status] }
+  const cfg = {
+    ...STATUS_COLORS[record.status],
+    label: statusLabels[record.status],
+    Icon: STATUS_ICONS[record.status],
+  }
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
   const daysText = record.totalDays === 1 ? t.daysWorkedSingular : t.daysWorkedPlural
 
@@ -77,35 +103,55 @@ function PaymentRow({ record, index, isMobile, t }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      style={{ borderRadius: 14, overflow: 'hidden', border: `1px solid ${cfg.border}`, marginBottom: 8 }}
-    >
+      style={{
+        borderRadius: 14,
+        overflow: 'hidden',
+        border: `1px solid ${cfg.border}`,
+        marginBottom: 8,
+      }}>
       {/* Row header */}
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 14,
-          padding: '14px 16px', background: cfg.bg, border: 'none', cursor: 'pointer',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          padding: '14px 16px',
+          background: cfg.bg,
+          border: 'none',
+          cursor: 'pointer',
           textAlign: 'left',
-        }}
-      >
-        {/* Status icon */}
-        <div style={{
-          width: 34, height: 34, borderRadius: 9, background: `${cfg.color}18`,
-          border: `1.5px solid ${cfg.color}30`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
+        {/* Status icon */}
+        <div
+          style={{
+            width: 34,
+            height: 34,
+            borderRadius: 9,
+            background: `${cfg.color}18`,
+            border: `1.5px solid ${cfg.color}30`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}>
           <cfg.Icon size={16} color={cfg.color} />
         </div>
 
         {/* Period label */}
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--card-heading)', textTransform: 'capitalize' }}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 700,
+              color: 'var(--card-heading)',
+              textTransform: 'capitalize',
+            }}>
             {cap(record.period)}
           </div>
           <div style={{ fontSize: 11, color: 'var(--card-muted)', marginTop: 2 }}>
-            {record.totalDays > 0
-              ? `${record.totalDays} ${daysText}`
-              : t.noDaysRegistered}
+            {record.totalDays > 0 ? `${record.totalDays} ${daysText}` : t.noDaysRegistered}
             {record.paidDate && ` · ${t.paidOnDate} ${record.paidDate}`}
           </div>
         </div>
@@ -113,60 +159,86 @@ function PaymentRow({ record, index, isMobile, t }) {
         {/* Amount */}
         {record.total > 0 && (
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: cfg.color }}>
-              R$ {record.total.toLocaleString('pt-BR')}
-            </div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: cfg.color }}>R$ {record.total.toLocaleString('pt-BR')}</div>
           </div>
         )}
 
         {/* Status badge */}
-        <span style={{
-          padding: '4px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700,
-          background: `${cfg.color}18`, color: cfg.color, flexShrink: 0,
-        }}>
+        <span
+          style={{
+            padding: '4px 10px',
+            borderRadius: 100,
+            fontSize: 11,
+            fontWeight: 700,
+            background: `${cfg.color}18`,
+            color: cfg.color,
+            flexShrink: 0,
+          }}>
           {cfg.label}
         </span>
 
         {/* Expand chevron */}
-        {record.totalDays > 0 && (
-          <div style={{ color: 'var(--card-dim)', flexShrink: 0 }}>
-            {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </div>
-        )}
+        {record.totalDays > 0 && <div style={{ color: 'var(--card-dim)', flexShrink: 0 }}>{open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</div>}
       </button>
 
       {/* Expandable breakdown */}
       <AnimatePresence>
         {open && record.totalDays > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{
-              padding: '12px 16px 16px',
-              background: 'rgba(0,0,0,0.15)',
-              borderTop: `1px solid ${cfg.border}`,
-              display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 10,
-            }}>
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }} style={{ overflow: 'hidden' }}>
+            <div
+              style={{
+                padding: '12px 16px 16px',
+                background: 'rgba(0,0,0,0.15)',
+                borderTop: `1px solid ${cfg.border}`,
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
+                gap: 10,
+              }}>
               {[
-                { label: t.weekdayBreakdown, days: record.weekdayDays, earnings: record.weekdayEarnings, color: '#818cf8' },
-                { label: t.weekendBreakdown, days: record.weekendDays, earnings: record.weekendEarnings, color: '#f59e0b' },
-                { label: t.periodTotal,      days: record.totalDays,   earnings: record.total,           color: cfg.color },
+                {
+                  label: t.weekdayBreakdown,
+                  days: record.weekdayDays,
+                  earnings: record.weekdayEarnings,
+                  color: '#818cf8',
+                },
+                {
+                  label: t.weekendBreakdown,
+                  days: record.weekendDays,
+                  earnings: record.weekendEarnings,
+                  color: '#f59e0b',
+                },
+                {
+                  label: t.periodTotal,
+                  days: record.totalDays,
+                  earnings: record.total,
+                  color: cfg.color,
+                },
               ].map((s, i) => (
-                <div key={i} style={{
-                  padding: '12px', borderRadius: 10,
-                  background: `${s.color}08`, border: `1px solid ${s.color}15`,
-                }}>
-                  <div style={{ fontSize: 10, color: 'var(--card-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div
+                  key={i}
+                  style={{
+                    padding: '12px',
+                    borderRadius: 10,
+                    background: `${s.color}08`,
+                    border: `1px solid ${s.color}15`,
+                  }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      color: 'var(--card-muted)',
+                      marginBottom: 6,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}>
                     {s.label}
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: s.color }}>
-                    R$ {s.earnings.toLocaleString('pt-BR')}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--card-muted)', marginTop: 3 }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: s.color }}>R$ {s.earnings.toLocaleString('pt-BR')}</div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--card-muted)',
+                      marginTop: 3,
+                    }}>
                     {s.days} {s.days !== 1 ? t.daysWorkedPlural : t.daysWorkedSingular}
                   </div>
                 </div>
@@ -197,8 +269,7 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
   const handleSave = () => {
     if (!date) return setError(t.selectDate)
     if (!locationId) return setError(t.selectLocationError)
-    if (workDays.some(d => d.workerId === worker.id && d.date === date))
-      return setError(t.alreadyRegistered)
+    if (workDays.some(d => d.workerId === worker.id && d.date === date)) return setError(t.alreadyRegistered)
     onAdd({
       id: `${worker.id}-${date}-${Date.now()}`,
       workerId: worker.id,
@@ -219,49 +290,105 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backdropFilter: 'blur(4px)', padding: 16,
-      }}
-    >
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.65)',
+        zIndex: 50,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backdropFilter: 'blur(4px)',
+        padding: 16,
+      }}>
       <motion.div
         initial={{ scale: 0.92, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.92, y: 20 }}
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-          borderRadius: 20, padding: 32, width: 400, maxWidth: '90vw',
-        }}
-      >
+          background: 'var(--card-bg)',
+          border: '1px solid var(--card-border)',
+          borderRadius: 20,
+          padding: 32,
+          width: 400,
+          maxWidth: '90vw',
+        }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--card-heading)' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 24,
+          }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 18,
+              fontWeight: 700,
+              color: 'var(--card-heading)',
+            }}>
             {t.registerWorkDay}
           </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--card-muted)', padding: 4, display: 'flex' }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              color: 'var(--card-muted)',
+              padding: 4,
+              display: 'flex',
+            }}>
             <X size={20} />
           </button>
         </div>
 
         {/* Date */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+          <label
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--card-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              display: 'block',
+              marginBottom: 8,
+            }}>
             {t.dateLabel}
           </label>
           <input
             type="date"
             value={date}
             max={today}
-            onChange={e => { setDate(e.target.value); setError('') }}
+            onChange={e => {
+              setDate(e.target.value)
+              setError('')
+            }}
             className="input-premium"
-            style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 14, boxSizing: 'border-box' }}
+            style={{
+              width: '100%',
+              padding: '11px 14px',
+              borderRadius: 12,
+              fontSize: 14,
+              boxSizing: 'border-box',
+            }}
           />
         </div>
 
         {/* Location */}
         <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+          <label
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--card-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              display: 'block',
+              marginBottom: 8,
+            }}>
             {t.workLocation}
           </label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -274,16 +401,30 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
                   whileTap={{ scale: 0.96 }}
                   onClick={() => setLocationId(loc.id)}
                   style={{
-                    flex: 1, minWidth: 'fit-content',
-                    padding: '10px 14px', borderRadius: 11, cursor: 'pointer',
+                    flex: 1,
+                    minWidth: 'fit-content',
+                    padding: '10px 14px',
+                    borderRadius: 11,
+                    cursor: 'pointer',
                     border: `1.5px solid ${sel ? loc.color + '70' : 'rgba(255,255,255,0.08)'}`,
                     background: sel ? `${loc.color}18` : 'rgba(255,255,255,0.02)',
                     color: sel ? loc.color : 'rgba(255,255,255,0.4)',
-                    fontSize: 13, fontWeight: sel ? 700 : 400,
-                    display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.15s',
-                  }}
-                >
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: sel ? loc.color : 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                    fontSize: 13,
+                    fontWeight: sel ? 700 : 400,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    transition: 'all 0.15s',
+                  }}>
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: sel ? loc.color : 'rgba(255,255,255,0.2)',
+                      flexShrink: 0,
+                    }}
+                  />
                   {loc.name}
                 </motion.button>
               )
@@ -292,23 +433,40 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
         </div>
 
         {/* Rate preview */}
-        <div style={{
-          padding: '14px 16px', borderRadius: 12, marginBottom: 20,
-          background: isSpecial ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.08)',
-          border: `1px solid ${isSpecial ? 'rgba(245,158,11,0.2)' : 'rgba(99,102,241,0.2)'}`,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 13, color: isSpecial ? '#f59e0b' : '#818cf8' }}>
-            {isSpecial ? t.weekendHolidayRate : t.weekdayRate}
-          </span>
-          <span style={{ fontSize: 20, fontWeight: 800, color: isSpecial ? '#f59e0b' : '#818cf8' }}>
+        <div
+          style={{
+            padding: '14px 16px',
+            borderRadius: 12,
+            marginBottom: 20,
+            background: isSpecial ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.08)',
+            border: `1px solid ${isSpecial ? 'rgba(245,158,11,0.2)' : 'rgba(99,102,241,0.2)'}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}>
+          <span style={{ fontSize: 13, color: isSpecial ? '#f59e0b' : '#818cf8' }}>{isSpecial ? t.weekendHolidayRate : t.weekdayRate}</span>
+          <span
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              color: isSpecial ? '#f59e0b' : '#818cf8',
+            }}>
             R$ {rate}
           </span>
         </div>
 
         {/* Overtime (optional) */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+          <label
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--card-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              display: 'block',
+              marginBottom: 8,
+            }}>
             {t.overtimeRegistered}
           </label>
           <input
@@ -319,18 +477,41 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
             onChange={e => setOvertimeHours(e.target.value)}
             placeholder="0"
             className="input-premium"
-            style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 14, boxSizing: 'border-box' }}
+            style={{
+              width: '100%',
+              padding: '11px 14px',
+              borderRadius: 12,
+              fontSize: 14,
+              boxSizing: 'border-box',
+            }}
           />
           {overtimeValue > 0 && (
-            <div style={{
-              marginTop: 10, padding: '10px 14px', borderRadius: 10,
-              background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#10b981', marginBottom: 4 }}>
+            <div
+              style={{
+                marginTop: 10,
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'rgba(16,185,129,0.08)',
+                border: '1px solid rgba(16,185,129,0.2)',
+              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: 12,
+                  color: '#10b981',
+                  marginBottom: 4,
+                }}>
                 <span>{t.overtimeRegistered}</span>
                 <span style={{ fontWeight: 700 }}>+ R$ {overtimeValue.toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
                 <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{t.totalCol}</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>R$ {(rate + overtimeValue).toFixed(2)}</span>
               </div>
@@ -340,7 +521,16 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
 
         {/* Bonus (optional) */}
         <div style={{ marginBottom: 20 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
+          <label
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: 'var(--card-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              display: 'block',
+              marginBottom: 8,
+            }}>
             {t.bonusLabel}
           </label>
           <input
@@ -351,18 +541,41 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
             onChange={e => setBonusAmount(e.target.value)}
             placeholder="0"
             className="input-premium"
-            style={{ width: '100%', padding: '11px 14px', borderRadius: 12, fontSize: 14, boxSizing: 'border-box' }}
+            style={{
+              width: '100%',
+              padding: '11px 14px',
+              borderRadius: 12,
+              fontSize: 14,
+              boxSizing: 'border-box',
+            }}
           />
           {bonusValue > 0 && (
-            <div style={{
-              marginTop: 10, padding: '10px 14px', borderRadius: 10,
-              background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#10b981', marginBottom: 4 }}>
+            <div
+              style={{
+                marginTop: 10,
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'rgba(16,185,129,0.08)',
+                border: '1px solid rgba(16,185,129,0.2)',
+              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: 12,
+                  color: '#10b981',
+                  marginBottom: 4,
+                }}>
                 <span>{t.bonusRegistered}</span>
                 <span style={{ fontWeight: 700 }}>+ R$ {bonusValue.toFixed(2)}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}>
                 <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{t.totalCol}</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: '#10b981' }}>R$ {(rate + overtimeValue + bonusValue).toFixed(2)}</span>
               </div>
@@ -372,11 +585,16 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
 
         {/* Error */}
         {error && (
-          <div style={{
-            marginBottom: 16, padding: '10px 14px', borderRadius: 10,
-            background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)',
-            fontSize: 13, color: '#f43f5e',
-          }}>
+          <div
+            style={{
+              marginBottom: 16,
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: 'rgba(244,63,94,0.08)',
+              border: '1px solid rgba(244,63,94,0.2)',
+              fontSize: 13,
+              color: '#f43f5e',
+            }}>
             {error}
           </div>
         )}
@@ -386,11 +604,16 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
           <button
             onClick={onClose}
             style={{
-              flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer',
-              border: '1px solid var(--card-border)', background: 'var(--inner-bg)',
-              color: 'var(--card-sub)', fontSize: 14, fontWeight: 600,
-            }}
-          >
+              flex: 1,
+              padding: '12px',
+              borderRadius: 12,
+              cursor: 'pointer',
+              border: '1px solid var(--card-border)',
+              background: 'var(--inner-bg)',
+              color: 'var(--card-sub)',
+              fontSize: 14,
+              fontWeight: 600,
+            }}>
             {t.cancel}
           </button>
           <motion.button
@@ -398,8 +621,13 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
             whileTap={{ scale: 0.98 }}
             onClick={handleSave}
             className="btn-primary"
-            style={{ flex: 2, padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 600 }}
-          >
+            style={{
+              flex: 2,
+              padding: '12px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+            }}>
             {t.register}
           </motion.button>
         </div>
@@ -425,57 +653,122 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
     .slice(0, 14)
 
   // Cor da barra pelo tipo de dia (mesma lógica de getWorkerDayRate)
-  const DAY_KIND_COLORS = { weekday: '#6366f1', saturday: '#f59e0b', sunday: '#ef4444' }
-  const chartData = recentDays.slice(0, 10).reverse().map(d => {
-    const dow = getDay(parseISO(d.date))
-    const kind = (holidays.includes(d.date) || dow === 0) ? 'sunday' : dow === 6 ? 'saturday' : 'weekday'
-    return {
-      date: format(parseISO(d.date), 'dd/MM'),
-      value: d.earnings,
-      isWeekend: d.isWeekend,
-      color: DAY_KIND_COLORS[kind],
-      location: workerLocations.find(l => l.id === d.locationId)?.shortName,
-    }
-  })
+  const DAY_KIND_COLORS = {
+    weekday: '#6366f1',
+    saturday: '#f59e0b',
+    sunday: '#ef4444',
+  }
+  const chartData = recentDays
+    .slice(0, 10)
+    .reverse()
+    .map(d => {
+      const dow = getDay(parseISO(d.date))
+      const kind = holidays.includes(d.date) || dow === 0 ? 'sunday' : dow === 6 ? 'saturday' : 'weekday'
+      return {
+        date: format(parseISO(d.date), 'dd/MM'),
+        value: d.earnings,
+        isWeekend: d.isWeekend,
+        color: DAY_KIND_COLORS[kind],
+        location: workerLocations.find(l => l.id === d.locationId)?.shortName,
+      }
+    })
 
-  const earningPercent = stats.totalEarnings > 0
-    ? Math.round((stats.weekendEarnings / stats.totalEarnings) * 100)
-    : 0
+  const earningPercent = stats.totalEarnings > 0 ? Math.round((stats.weekendEarnings / stats.totalEarnings) * 100) : 0
 
   const pixTypeLabel = PIX_KEY_TYPES.find(pt => pt.value === worker.pixKeyType)?.label || 'PIX'
 
   const kpiCards = [
-    { label: t.totalEarned,      value: `R$ ${stats.totalEarnings.toLocaleString('pt-BR')}`, color: '#10b981', sub: `${stats.totalDays} ${t.days}` },
-    { label: t.weekdayDaysLabel, value: stats.weekdayDays,  color: '#6366f1', sub: `R$ ${stats.weekdayEarnings.toLocaleString('pt-BR')}` },
-    { label: t.weekendDaysLabel, value: stats.weekendDays,  color: '#f59e0b', sub: `R$ ${stats.weekendEarnings.toLocaleString('pt-BR')}` },
-    { label: t.weekendPercent,   value: `${earningPercent}%`, color: '#8b5cf6', sub: t.ofTotalEarned },
+    {
+      label: t.totalEarned,
+      value: `R$ ${stats.totalEarnings.toLocaleString('pt-BR')}`,
+      color: '#10b981',
+      sub: `${stats.totalDays} ${t.days}`,
+    },
+    {
+      label: t.weekdayDaysLabel,
+      value: stats.weekdayDays,
+      color: '#6366f1',
+      sub: `R$ ${stats.weekdayEarnings.toLocaleString('pt-BR')}`,
+    },
+    {
+      label: t.weekendDaysLabel,
+      value: stats.weekendDays,
+      color: '#f59e0b',
+      sub: `R$ ${stats.weekendEarnings.toLocaleString('pt-BR')}`,
+    },
+    {
+      label: t.weekendPercent,
+      value: `${earningPercent}%`,
+      color: '#8b5cf6',
+      sub: t.ofTotalEarned,
+    },
   ]
-  if (stats.totalOvertime > 0) kpiCards.push({ label: t.overtimeRegistered, value: `R$ ${stats.totalOvertime.toLocaleString('pt-BR')}`, color: '#f59e0b', sub: t.includedInTotal })
-  if (stats.totalBonus > 0)    kpiCards.push({ label: t.bonusRegistered,    value: `R$ ${stats.totalBonus.toLocaleString('pt-BR')}`,    color: '#10b981', sub: t.includedInTotal })
+  if (stats.totalOvertime > 0)
+    kpiCards.push({
+      label: t.overtimeRegistered,
+      value: `R$ ${stats.totalOvertime.toLocaleString('pt-BR')}`,
+      color: '#f59e0b',
+      sub: t.includedInTotal,
+    })
+  if (stats.totalBonus > 0)
+    kpiCards.push({
+      label: t.bonusRegistered,
+      value: `R$ ${stats.totalBonus.toLocaleString('pt-BR')}`,
+      color: '#10b981',
+      sub: t.includedInTotal,
+    })
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35 }}>
-
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 24,
+          flexWrap: 'wrap',
+        }}>
         <motion.button
           whileHover={{ scale: 1.05, x: -2 }}
           whileTap={{ scale: 0.95 }}
           onClick={onBack}
           style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'var(--inner-bg)', border: '1px solid var(--card-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--card-sub)', flexShrink: 0,
-          }}
-        >
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            background: 'var(--inner-bg)',
+            border: '1px solid var(--card-border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: 'var(--card-sub)',
+            flexShrink: 0,
+          }}>
           <ArrowLeft size={18} />
         </motion.button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 22 : 28, fontWeight: 800, color: 'var(--card-heading)', margin: 0, letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <h1
+            style={{
+              fontFamily: 'Syne, sans-serif',
+              fontSize: isMobile ? 22 : 28,
+              fontWeight: 800,
+              color: 'var(--card-heading)',
+              margin: 0,
+              letterSpacing: '-0.02em',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
             {worker.name}
           </h1>
-          <p style={{ margin: '4px 0 0', color: 'var(--card-muted)', fontSize: 13 }}>
+          <p
+            style={{
+              margin: '4px 0 0',
+              color: 'var(--card-muted)',
+              fontSize: 13,
+            }}>
             {worker.jobTitle} · {worker.department}
           </p>
         </div>
@@ -484,12 +777,20 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
           whileTap={{ scale: 0.97 }}
           onClick={() => onEdit(worker)}
           style={{
-            padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600,
-            border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.1)',
-            color: '#818cf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-            transition: 'all 0.2s', flexShrink: 0,
-          }}
-        >
+            padding: '10px 18px',
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 600,
+            border: '1px solid rgba(99,102,241,0.3)',
+            background: 'rgba(99,102,241,0.1)',
+            color: '#818cf8',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            transition: 'all 0.2s',
+            flexShrink: 0,
+          }}>
           <Edit2 size={15} />
           {t.editBtn}
         </motion.button>
@@ -500,12 +801,20 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
             onClick={() => setShowDeleteConfirm(true)}
             title={t.deleteWorkerBtn}
             style={{
-              padding: '10px 18px', borderRadius: 12, fontSize: 13, fontWeight: 600,
-              border: '1px solid rgba(244,63,94,0.3)', background: 'rgba(244,63,94,0.08)',
-              color: '#f43f5e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-              transition: 'all 0.2s', flexShrink: 0,
-            }}
-          >
+              padding: '10px 18px',
+              borderRadius: 12,
+              fontSize: 13,
+              fontWeight: 600,
+              border: '1px solid rgba(244,63,94,0.3)',
+              background: 'rgba(244,63,94,0.08)',
+              color: '#f43f5e',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.2s',
+              flexShrink: 0,
+            }}>
             <Trash2 size={15} />
             {!isMobile && t.deleteWorkerBtn}
           </motion.button>
@@ -520,54 +829,122 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
         style={{
           background: `linear-gradient(135deg, ${worker.avatarColor}15 0%, var(--card-bg) 60%)`,
           border: `1px solid ${worker.avatarColor}25`,
-          borderRadius: 20, padding: '28px', marginBottom: 20,
-          position: 'relative', overflow: 'hidden',
-        }}
-      >
-        <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, background: `radial-gradient(circle, ${worker.avatarColor}20 0%, transparent 70%)`, borderRadius: '50%' }} />
+          borderRadius: 20,
+          padding: '28px',
+          marginBottom: 20,
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: -40,
+            right: -40,
+            width: 200,
+            height: 200,
+            background: `radial-gradient(circle, ${worker.avatarColor}20 0%, transparent 70%)`,
+            borderRadius: '50%',
+          }}
+        />
         <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: `${worker.avatarColor}25`, border: `3px solid ${worker.avatarColor}50`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, fontWeight: 800, color: worker.avatarColor, flexShrink: 0,
-          }}>
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 20,
+              background: `${worker.avatarColor}25`,
+              border: `3px solid ${worker.avatarColor}50`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 24,
+              fontWeight: 800,
+              color: worker.avatarColor,
+              flexShrink: 0,
+            }}>
             {worker.avatar}
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-              <span style={{
-                padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
-                background: worker.status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)',
-                color: worker.status === 'active' ? '#10b981' : '#64748b',
-                border: `1px solid ${worker.status === 'active' ? 'rgba(16,185,129,0.3)' : 'rgba(100,116,139,0.2)'}`,
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                marginBottom: 12,
+                flexWrap: 'wrap',
               }}>
+              <span
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 100,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: worker.status === 'active' ? 'rgba(16,185,129,0.15)' : 'rgba(100,116,139,0.15)',
+                  color: worker.status === 'active' ? '#10b981' : '#64748b',
+                  border: `1px solid ${worker.status === 'active' ? 'rgba(16,185,129,0.3)' : 'rgba(100,116,139,0.2)'}`,
+                }}>
                 {worker.status === 'active' ? t.statusActiveSmall : t.statusInactiveSmall}
               </span>
-              <span style={{
-                padding: '4px 12px', borderRadius: 100, fontSize: 12, fontWeight: 600,
-                background: 'var(--inner-bg)', color: 'var(--card-sub)',
-                border: '1px solid var(--card-border)',
-                display: 'flex', alignItems: 'center', gap: 5,
-              }}>
+              <span
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: 100,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'var(--inner-bg)',
+                  color: 'var(--card-sub)',
+                  border: '1px solid var(--card-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                }}>
                 <Clock size={10} />
                 {worker.schedule}
               </span>
             </div>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--card-sub)' }}>
-                <Phone size={13} />{worker.phone || t.notInformed}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: 'var(--card-sub)',
+                }}>
+                <Phone size={13} />
+                {worker.phone || t.notInformed}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--card-sub)' }}>
-                <Mail size={13} />{worker.email ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: 'var(--card-sub)',
+                }}>
+                <Mail size={13} />
+                {worker.email ? (
                   <a href={`mailto:${worker.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                     {worker.email}
                   </a>
-                ) : t.notInformed}
+                ) : (
+                  t.notInformed
+                )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--card-sub)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: 'var(--card-sub)',
+                }}>
                 <Calendar size={13} />
-                {t.since} {worker.startDate ? format(parseISO(worker.startDate), "MMM 'de' yyyy", { locale: ptBR }) : '—'}
+                {t.since}{' '}
+                {worker.startDate
+                  ? format(parseISO(worker.startDate), "MMM 'de' yyyy", {
+                      locale: ptBR,
+                    })
+                  : '—'}
               </div>
             </div>
           </div>
@@ -582,40 +959,94 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
         style={{
           background: 'rgba(6,182,212,0.05)',
           border: '1px solid rgba(6,182,212,0.18)',
-          borderRadius: 18, padding: '20px 22px', marginBottom: 20,
-          display: 'flex', alignItems: 'center', gap: 16,
-          position: 'relative', overflow: 'hidden',
-        }}
-      >
-        <div style={{ position: 'absolute', right: -30, top: -30, width: 120, height: 120, background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%)', borderRadius: '50%', pointerEvents: 'none' }} />
-
-        <div style={{
-          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-          background: 'rgba(6,182,212,0.12)', border: '1.5px solid rgba(6,182,212,0.25)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 18,
+          padding: '20px 22px',
+          marginBottom: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          position: 'relative',
+          overflow: 'hidden',
         }}>
+        <div
+          style={{
+            position: 'absolute',
+            right: -30,
+            top: -30,
+            width: 120,
+            height: 120,
+            background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%)',
+            borderRadius: '50%',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            flexShrink: 0,
+            background: 'rgba(6,182,212,0.12)',
+            border: '1.5px solid rgba(6,182,212,0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
           <QrCode size={20} color="#06b6d4" />
         </div>
 
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#06b6d4', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 5,
+            }}>
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#06b6d4',
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+              }}>
               {t.pixKeyLabel}
             </span>
-            <span style={{
-              padding: '2px 8px', borderRadius: 100, fontSize: 10, fontWeight: 700,
-              background: 'rgba(6,182,212,0.12)', color: '#06b6d4',
-              border: '1px solid rgba(6,182,212,0.2)',
-            }}>
+            <span
+              style={{
+                padding: '2px 8px',
+                borderRadius: 100,
+                fontSize: 10,
+                fontWeight: 700,
+                background: 'rgba(6,182,212,0.12)',
+                color: '#06b6d4',
+                border: '1px solid rgba(6,182,212,0.2)',
+              }}>
               {pixTypeLabel}
             </span>
           </div>
           {worker.pixKey ? (
-            <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 600, color: 'var(--card-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <div
+              style={{
+                fontFamily: 'monospace',
+                fontSize: 14,
+                fontWeight: 600,
+                color: 'var(--card-heading)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
               {worker.pixKey}
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: 'var(--card-dim)', fontStyle: 'italic' }}>
+            <div
+              style={{
+                fontSize: 13,
+                color: 'var(--card-dim)',
+                fontStyle: 'italic',
+              }}>
               {t.noPixKey}
             </div>
           )}
@@ -625,32 +1056,75 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
       </motion.div>
 
       {/* ── KPI stats ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          gap: 12,
+          marginBottom: 20,
+        }}>
         {kpiCards.map((s, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.05 }}
-            style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 16, padding: '20px' }}
-          >
-            <div style={{ fontSize: 11, color: 'var(--card-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-            <div style={{ fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+            style={{
+              background: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              borderRadius: 16,
+              padding: '20px',
+            }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: 'var(--card-muted)',
+                marginBottom: 8,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}>
+              {s.label}
+            </div>
+            <div
+              style={{
+                fontFamily: 'Syne, sans-serif',
+                fontSize: 22,
+                fontWeight: 800,
+                color: s.color,
+              }}>
+              {s.value}
+            </div>
             <div style={{ fontSize: 11, color: 'var(--card-muted)', marginTop: 4 }}>{s.sub}</div>
           </motion.div>
         ))}
       </div>
 
       {/* ── Chart + Locations row ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 280px', gap: 16, marginBottom: 20 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 280px',
+          gap: 16,
+          marginBottom: 20,
+        }}>
         {/* Bar chart */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 18, padding: '24px' }}
-        >
-          <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+          style={{
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 18,
+            padding: '24px',
+          }}>
+          <h3
+            style={{
+              margin: '0 0 20px',
+              fontSize: 16,
+              fontWeight: 700,
+              color: 'var(--card-heading)',
+            }}>
             {t.earningsHistory}
           </h3>
           <ResponsiveContainer width="100%" height={200}>
@@ -658,19 +1132,40 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
               <XAxis dataKey="date" tick={{ fill: 'var(--card-muted)', fontSize: 10 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fill: 'var(--card-muted)', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={v => `R$${v}`} />
-              <Tooltip content={({ active, payload }) => {
-                if (!active || !payload?.length) return null
-                const d = payload[0].payload
-                return (
-                  <div style={{ background: '#161628', border: '1px solid var(--card-border)', borderRadius: 10, padding: '10px 14px' }}>
-                    <div style={{ fontSize: 11, color: d.color, fontWeight: 600, marginBottom: 4 }}>
-                      {d.isWeekend ? t.weekendTooltip : t.weekdayTooltip}
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null
+                  const d = payload[0].payload
+                  return (
+                    <div
+                      style={{
+                        background: '#161628',
+                        border: '1px solid var(--card-border)',
+                        borderRadius: 10,
+                        padding: '10px 14px',
+                      }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: d.color,
+                          fontWeight: 600,
+                          marginBottom: 4,
+                        }}>
+                        {d.isWeekend ? t.weekendTooltip : t.weekdayTooltip}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          color: '#f1f5f9',
+                          fontWeight: 700,
+                        }}>
+                        R$ {d.value}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--card-sub)' }}>{d.location}</div>
                     </div>
-                    <div style={{ fontSize: 14, color: '#f1f5f9', fontWeight: 700 }}>R$ {d.value}</div>
-                    <div style={{ fontSize: 11, color: 'var(--card-sub)' }}>{d.location}</div>
-                  </div>
-                )
-              }} />
+                  )
+                }}
+              />
               <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                 {chartData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} />
@@ -680,15 +1175,38 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
           </ResponsiveContainer>
           <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#6366f1' }} />
-              <span style={{ fontSize: 11, color: 'var(--card-sub)' }}>{t.weekdayLegend} — R$ {worker.weekdayRate}</span>
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: '#6366f1',
+                }}
+              />
+              <span style={{ fontSize: 11, color: 'var(--card-sub)' }}>
+                {t.weekdayLegend} — R$ {worker.weekdayRate}
+              </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#f59e0b' }} />
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: '#f59e0b',
+                }}
+              />
               <span style={{ fontSize: 11, color: 'var(--card-sub)' }}>Sábado — R$ {worker.saturdayRate}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: '#ef4444' }} />
+              <div
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: '#ef4444',
+                }}
+              />
               <span style={{ fontSize: 11, color: 'var(--card-sub)' }}>Domingo — R$ {worker.sundayRate}</span>
             </div>
           </div>
@@ -699,13 +1217,51 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 18, padding: '24px' }}
-        >
-          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>{t.locationsTitle}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+          style={{
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 18,
+            padding: '24px',
+          }}>
+          <h3
+            style={{
+              margin: '0 0 16px',
+              fontSize: 16,
+              fontWeight: 700,
+              color: 'var(--card-heading)',
+            }}>
+            {t.locationsTitle}
+          </h3>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              marginBottom: 24,
+            }}>
             {workerLocations.map(loc => (
-              <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px', borderRadius: 12, background: `${loc.color}08`, border: `1px solid ${loc.color}20` }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: `${loc.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div
+                key={loc.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '12px',
+                  borderRadius: 12,
+                  background: `${loc.color}08`,
+                  border: `1px solid ${loc.color}20`,
+                }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: `${loc.color}20`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
                   <MapPin size={14} color={loc.color} />
                 </div>
                 <div>
@@ -715,18 +1271,87 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
               </div>
             ))}
           </div>
-          <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: 16 }}>
-            <div style={{ fontSize: 11, color: 'var(--card-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.dailiesTitle}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, color: '#818cf8', display: 'flex', alignItems: 'center', gap: 6 }}><Sun size={13} /> {t.weekdayLegend}</span>
+          <div
+            style={{
+              borderTop: '1px solid var(--card-border)',
+              paddingTop: 16,
+            }}>
+            <div
+              style={{
+                fontSize: 11,
+                color: 'var(--card-muted)',
+                marginBottom: 10,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+              }}>
+              {t.dailiesTitle}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(99,102,241,0.08)',
+                border: '1px solid rgba(99,102,241,0.15)',
+                marginBottom: 8,
+              }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: '#818cf8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
+                <Sun size={13} /> {t.weekdayLegend}
+              </span>
               <span style={{ fontSize: 16, fontWeight: 800, color: '#818cf8' }}>R$ {worker.weekdayRate}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6 }}><Sunset size={13} /> Sábado</span>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(245,158,11,0.08)',
+                border: '1px solid rgba(245,158,11,0.15)',
+                marginBottom: 8,
+              }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: '#f59e0b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
+                <Sunset size={13} /> Sábado
+              </span>
               <span style={{ fontSize: 16, fontWeight: 800, color: '#f59e0b' }}>R$ {worker.saturdayRate}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 10, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
-              <span style={{ fontSize: 12, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}><Sunset size={13} /> Domingo</span>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '10px 12px',
+                borderRadius: 10,
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.15)',
+              }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
+                <Sunset size={13} /> Domingo
+              </span>
               <span style={{ fontSize: 16, fontWeight: 800, color: '#ef4444' }}>R$ {worker.sundayRate}</span>
             </div>
           </div>
@@ -738,54 +1363,102 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 18, padding: '24px', marginBottom: 20 }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--card-border)',
+          borderRadius: 18,
+          padding: '24px',
+          marginBottom: 20,
+        }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+          }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--card-heading)' }}>
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 17,
+                fontWeight: 700,
+                color: 'var(--card-heading)',
+              }}>
               {t.paymentHistory}
             </h3>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--card-muted)' }}>
+            <p
+              style={{
+                margin: '4px 0 0',
+                fontSize: 13,
+                color: 'var(--card-muted)',
+              }}>
               {t.paymentHistorySubtitle}
             </p>
           </div>
           {/* Legend */}
           <div style={{ display: isMobile ? 'none' : 'flex', gap: 12 }}>
-            {Object.entries(STATUS_COLORS).filter(([k]) => k !== 'no-work').map(([key, cfg]) => {
-              const statusLabels = { paid: t.statusPaid, processing: t.statusProcessing, pending: t.statusPending }
-              return (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: 2, background: cfg.color }} />
-                  <span style={{ fontSize: 11, color: 'var(--card-muted)' }}>{statusLabels[key]}</span>
-                </div>
-              )
-            })}
+            {Object.entries(STATUS_COLORS)
+              .filter(([k]) => k !== 'no-work')
+              .map(([key, cfg]) => {
+                const statusLabels = {
+                  paid: t.statusPaid,
+                  processing: t.statusProcessing,
+                  pending: t.statusPending,
+                }
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 2,
+                        background: cfg.color,
+                      }}
+                    />
+                    <span style={{ fontSize: 11, color: 'var(--card-muted)' }}>{statusLabels[key]}</span>
+                  </div>
+                )
+              })}
           </div>
         </div>
 
         {history.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--card-dim)' }}>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '28px 0',
+              color: 'var(--card-dim)',
+            }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>📭</div>
             <div>{t.noPayments}</div>
           </div>
         ) : (
-          history.map((record, i) => (
-            <PaymentRow key={record.id} record={record} index={i} isMobile={isMobile} t={t} />
-          ))
+          history.map((record, i) => <PaymentRow key={record.id} record={record} index={i} isMobile={isMobile} t={t} />)
         )}
 
         {/* PIX reminder footer */}
         {worker.pixKey && (
-          <div style={{
-            marginTop: 16, padding: '12px 16px', borderRadius: 12,
-            background: 'rgba(6,182,212,0.05)', border: '1px solid rgba(6,182,212,0.12)',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
+          <div
+            style={{
+              marginTop: 16,
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: 'rgba(6,182,212,0.05)',
+              border: '1px solid rgba(6,182,212,0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+            }}>
             <QrCode size={15} color="#06b6d4" />
-            <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>
-              {t.pixPayments} —
-            </span>
-            <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#06b6d4', fontWeight: 600 }}>
+            <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{t.pixPayments} —</span>
+            <span
+              style={{
+                fontFamily: 'monospace',
+                fontSize: 12,
+                color: '#06b6d4',
+                fontWeight: 600,
+              }}>
               {worker.pixKey}
             </span>
             <CopyButton text={worker.pixKey} copyTitle={t.copyPixKey} />
@@ -798,10 +1471,26 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45 }}
-        style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 18, padding: '24px' }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+        style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--card-border)',
+          borderRadius: 18,
+          padding: '24px',
+        }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 18,
+          }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 16,
+              fontWeight: 700,
+              color: 'var(--card-heading)',
+            }}>
             {t.workDaysLog}
           </h3>
           <motion.button
@@ -809,22 +1498,39 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
             whileTap={{ scale: 0.97 }}
             onClick={() => setShowAddModal(true)}
             className="btn-primary"
-            style={{ padding: '9px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
-          >
+            style={{
+              padding: '9px 16px',
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
             <Plus size={14} />
             {t.registerDay}
           </motion.button>
         </div>
 
         {recentDays.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--card-dim)' }}>
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '32px 0',
+              color: 'var(--card-dim)',
+            }}>
             <div style={{ fontSize: 28, marginBottom: 8 }}>📋</div>
             <div style={{ fontSize: 14 }}>{t.noDaysLogged}</div>
             <div style={{ fontSize: 12, marginTop: 4 }}>{t.clickRegisterDay}</div>
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 8 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+            gap: 8,
+          }}>
           {recentDays.map((day, i) => {
             const loc = locations.find(l => l.id === day.locationId)
             return (
@@ -836,63 +1542,159 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
                 exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ delay: 0.5 + i * 0.03 }}
                 style={{
-                  padding: '12px 14px', borderRadius: 12, position: 'relative',
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  position: 'relative',
                   background: day.isWeekend ? 'rgba(245,158,11,0.06)' : 'rgba(99,102,241,0.06)',
                   border: `1px solid ${day.isWeekend ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.12)'}`,
-                }}
-              >
+                }}>
                 {confirmDeleteId === day.id && (
-                  <div style={{
-                    position: 'absolute', top: 6, right: 6, zIndex: 2,
-                    display: 'flex', gap: 4, alignItems: 'center',
-                    padding: '4px 6px', borderRadius: 8,
-                    background: 'var(--card-bg)', border: '1px solid var(--card-border)',
-                    boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
-                  }}>
-                    <span style={{ fontSize: 10, color: '#f43f5e', fontWeight: 600, whiteSpace: 'nowrap' }}>Excluir?</span>
-                    <button onClick={() => { onDeleteWorkDay(day.id); setConfirmDeleteId(null) }} style={{ padding: '3px 7px', borderRadius: 5, cursor: 'pointer', background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.35)', color: '#f43f5e', fontSize: 10, fontWeight: 700 }}>Sim</button>
-                    <button onClick={() => setConfirmDeleteId(null)} style={{ padding: '3px 7px', borderRadius: 5, cursor: 'pointer', background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)', color: 'var(--card-dim)', fontSize: 10, fontWeight: 700 }}>Não</button>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      zIndex: 2,
+                      display: 'flex',
+                      gap: 4,
+                      alignItems: 'center',
+                      padding: '4px 6px',
+                      borderRadius: 8,
+                      background: 'var(--card-bg)',
+                      border: '1px solid var(--card-border)',
+                      boxShadow: '0 6px 16px rgba(0,0,0,0.18)',
+                    }}>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: '#f43f5e',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}>
+                      Excluir?
+                    </span>
+                    <button
+                      onClick={() => {
+                        onDeleteWorkDay(day.id)
+                        setConfirmDeleteId(null)
+                      }}
+                      style={{
+                        padding: '3px 7px',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        background: 'rgba(244,63,94,0.15)',
+                        border: '1px solid rgba(244,63,94,0.35)',
+                        color: '#f43f5e',
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}>
+                      Sim
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      style={{
+                        padding: '3px 7px',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        background: 'rgba(100,116,139,0.1)',
+                        border: '1px solid rgba(100,116,139,0.2)',
+                        color: 'var(--card-dim)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}>
+                      Não
+                    </button>
                   </div>
                 )}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--card-heading)' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    marginBottom: 4,
+                  }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: 'var(--card-heading)',
+                    }}>
                     {format(parseISO(day.date), 'dd MMM', { locale: ptBR })}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    {day.isWeekend && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>FDS</span>}
+                    {day.isWeekend && (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          color: '#f59e0b',
+                          fontWeight: 600,
+                        }}>
+                        FDS
+                      </span>
+                    )}
                     <motion.button
                       whileHover={{ scale: 1.15 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => setConfirmDeleteId(day.id)}
                       title={t.removeRecord}
                       style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: 'var(--card-dim)', padding: 2, display: 'flex', alignItems: 'center',
-                        borderRadius: 4, transition: 'color 0.15s',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: 'var(--card-dim)',
+                        padding: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        borderRadius: 4,
+                        transition: 'color 0.15s',
                       }}
-                      onMouseEnter={e => e.currentTarget.style.color = '#f43f5e'}
-                      onMouseLeave={e => e.currentTarget.style.color = 'var(--card-dim)'}
-                    >
+                      onMouseEnter={e => (e.currentTarget.style.color = '#f43f5e')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--card-dim)')}>
                       <Trash2 size={11} />
                     </motion.button>
                   </div>
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: day.isWeekend ? '#f59e0b' : '#818cf8', marginBottom: 4 }}>
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: day.isWeekend ? '#f59e0b' : '#818cf8',
+                    marginBottom: 4,
+                  }}>
                   R$ {day.earnings}
                 </div>
                 {(day.overtime || 0) > 0 && (
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#f59e0b', marginBottom: 4 }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: '#f59e0b',
+                      marginBottom: 4,
+                    }}>
                     +R$ {day.overtime.toFixed(2)} HE
                   </div>
                 )}
                 {(day.bonus || 0) > 0 && (
-                  <div style={{ fontSize: 10, fontWeight: 600, color: '#10b981', marginBottom: 4 }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: '#10b981',
+                      marginBottom: 4,
+                    }}>
                     +R$ {day.bonus.toFixed(2)} Bonif.
                   </div>
                 )}
                 {loc && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: loc.color }} />
+                    <div
+                      style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: loc.color,
+                      }}
+                    />
                     <span style={{ fontSize: 11, color: 'var(--card-muted)' }}>{loc.shortName}</span>
                   </div>
                 )}
@@ -903,19 +1705,7 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
       </motion.div>
 
       {/* Add Work Day Modal */}
-      <AnimatePresence>
-        {showAddModal && (
-          <AddDayModal
-            worker={worker}
-            workDays={workDays}
-            locations={locations}
-            holidays={holidays}
-            onAdd={onAddWorkDay}
-            onClose={() => setShowAddModal(false)}
-            t={t}
-          />
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{showAddModal && <AddDayModal worker={worker} workDays={workDays} locations={locations} holidays={holidays} onAdd={onAddWorkDay} onClose={() => setShowAddModal(false)} t={t} />}</AnimatePresence>
 
       {/* Delete Worker Confirmation Modal */}
       <AnimatePresence>
@@ -926,42 +1716,81 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
             exit={{ opacity: 0 }}
             onClick={() => setShowDeleteConfirm(false)}
             style={{
-              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(4px)', padding: 16,
-            }}
-          >
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.65)',
+              zIndex: 50,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+              padding: 16,
+            }}>
             <motion.div
               initial={{ scale: 0.92, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.92, y: 20 }}
               onClick={e => e.stopPropagation()}
               style={{
-                background: 'var(--card-bg)', border: '1px solid rgba(244,63,94,0.25)',
-                borderRadius: 20, padding: 32, width: 420, maxWidth: '90vw',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                  background: 'rgba(244,63,94,0.12)', border: '1.5px solid rgba(244,63,94,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--card-bg)',
+                border: '1px solid rgba(244,63,94,0.25)',
+                borderRadius: 20,
+                padding: 32,
+                width: 420,
+                maxWidth: '90vw',
+              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  marginBottom: 18,
                 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    flexShrink: 0,
+                    background: 'rgba(244,63,94,0.12)',
+                    border: '1.5px solid rgba(244,63,94,0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
                   <Trash2 size={20} color="#f43f5e" />
                 </div>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--card-heading)' }}>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: 'var(--card-heading)',
+                  }}>
                   {t.deleteWorkerTitle}
                 </h3>
               </div>
 
-              <p style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--card-sub)', lineHeight: 1.5 }}>
+              <p
+                style={{
+                  margin: '0 0 10px',
+                  fontSize: 14,
+                  color: 'var(--card-sub)',
+                  lineHeight: 1.5,
+                }}>
                 {t.deleteWorkerQuestion} <strong style={{ color: 'var(--card-heading)' }}>{worker.name}</strong>?
               </p>
-              <div style={{
-                marginBottom: 24, padding: '10px 14px', borderRadius: 10,
-                background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)',
-                fontSize: 13, color: '#f43f5e', lineHeight: 1.5,
-              }}>
+              <div
+                style={{
+                  marginBottom: 24,
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  background: 'rgba(244,63,94,0.08)',
+                  border: '1px solid rgba(244,63,94,0.2)',
+                  fontSize: 13,
+                  color: '#f43f5e',
+                  lineHeight: 1.5,
+                }}>
                 {t.deleteWorkerWarning}
               </div>
 
@@ -969,24 +1798,40 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   style={{
-                    flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer',
-                    border: '1px solid var(--card-border)', background: 'var(--inner-bg)',
-                    color: 'var(--card-sub)', fontSize: 14, fontWeight: 600,
-                  }}
-                >
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    border: '1px solid var(--card-border)',
+                    background: 'var(--inner-bg)',
+                    color: 'var(--card-sub)',
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}>
                   {t.cancel}
                 </button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => { setShowDeleteConfirm(false); onDelete(worker) }}
-                  style={{
-                    flex: 1, padding: '12px', borderRadius: 12, cursor: 'pointer',
-                    border: '1px solid rgba(244,63,94,0.4)', background: 'rgba(244,63,94,0.15)',
-                    color: '#f43f5e', fontSize: 14, fontWeight: 700,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  onClick={() => {
+                    setShowDeleteConfirm(false)
+                    onDelete(worker)
                   }}
-                >
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: 12,
+                    cursor: 'pointer',
+                    border: '1px solid rgba(244,63,94,0.4)',
+                    background: 'rgba(244,63,94,0.15)',
+                    color: '#f43f5e',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                  }}>
                   <Trash2 size={15} />
                   {t.deleteBtn}
                 </motion.button>

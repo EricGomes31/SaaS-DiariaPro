@@ -1,30 +1,30 @@
-import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Search, Clock, Check, X, Gift } from 'lucide-react'
-import SearchableSelect from '../UI/SearchableSelect'
-import { getWorkerStats, isWeekendOrHoliday, getWorkerDayRate } from '../../data/mockData'
 import { format } from 'date-fns'
-import WorkerModal from './WorkerModal'
-import WorkerProfile from './WorkerProfile'
+import { AnimatePresence, motion } from 'framer-motion'
+import { Check, Clock, Gift, Plus, Search, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { getWorkerDayRate, getWorkerStats, isWeekendOrHoliday } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
 import { upsertWorkDays } from '../../lib/db'
 import { log } from '../../lib/logger'
+import SearchableSelect from '../UI/SearchableSelect'
 import { useToast } from '../UI/Toast'
+import WorkerModal from './WorkerModal'
+import WorkerProfile from './WorkerProfile'
 
 const TODAY = format(new Date(), 'yyyy-MM-dd')
 
 // Mensagem de limite atingido (padrão local, igual a outros componentes)
 const LIMIT_MSG = {
-  pt: (n) => `Limite de ${n} diaristas do seu plano atingido. Faça upgrade para adicionar mais.`,
-  en: (n) => `Your plan's limit of ${n} workers reached. Upgrade to add more.`,
-  es: (n) => `Límite de ${n} trabajadores de tu plan alcanzado. Mejora tu plan para agregar más.`,
+  pt: n => `Limite de ${n} diaristas do seu plano atingido. Faça upgrade para adicionar mais.`,
+  en: n => `Your plan's limit of ${n} workers reached. Upgrade to add more.`,
+  es: n => `Límite de ${n} trabajadores de tu plan alcanzado. Mejora tu plan para agregar más.`,
 }
 
 const DELETED_MSG = {
-  pt: (name) => `Diarista ${name} excluído com sucesso.`,
-  en: (name) => `Worker ${name} deleted successfully.`,
-  es: (name) => `Trabajador ${name} eliminado con éxito.`,
+  pt: name => `Diarista ${name} excluído com sucesso.`,
+  en: name => `Worker ${name} deleted successfully.`,
+  es: name => `Trabajador ${name} eliminado con éxito.`,
 }
 
 export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays, setWorkDays, locations, locationDepartments = [], locationJobTitles = [], locationSchedules = [], paymentRecords = [], setPaymentRecords, holidays = [], subscription = null, onUpgrade }) {
@@ -51,27 +51,33 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
   const [bonusValue, setBonusValue] = useState('')
 
   // Departamentos reais dos diaristas cadastrados (inclui os digitados livremente)
-  const departments = useMemo(
-    () => [...new Set(workers.map(w => w.department).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-    [workers],
-  )
+  const departments = useMemo(() => [...new Set(workers.map(w => w.department).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [workers])
 
-  const filtered = useMemo(() => workers.filter(w => {
-    const matchSearch = w.name.toLowerCase().includes(search.toLowerCase()) ||
-      w.jobTitle.toLowerCase().includes(search.toLowerCase())
-    const matchDept = filterDept === 'all' || w.department === filterDept
-    const matchStatus = filterStatus === 'all' || w.status === filterStatus
-    const matchLocation = filterLocation === 'all' || w.locations.includes(filterLocation)
-    return matchSearch && matchDept && matchStatus && matchLocation
-  }), [workers, search, filterDept, filterStatus, filterLocation])
+  const filtered = useMemo(
+    () =>
+      workers.filter(w => {
+        const matchSearch = w.name.toLowerCase().includes(search.toLowerCase()) || w.jobTitle.toLowerCase().includes(search.toLowerCase())
+        const matchDept = filterDept === 'all' || w.department === filterDept
+        const matchStatus = filterStatus === 'all' || w.status === filterStatus
+        const matchLocation = filterLocation === 'all' || w.locations.includes(filterLocation)
+        return matchSearch && matchDept && matchStatus && matchLocation
+      }),
+    [workers, search, filterDept, filterStatus, filterLocation],
+  )
 
   const handleAddOvertime = (worker, value) => {
     const amount = parseFloat(value) || 0
     const todayWD = workDays.find(d => d.workerId === worker.id && d.date === TODAY)
     if (!todayWD) return
-    const updatedWD = { ...todayWD, overtime: amount, earnings: todayWD.rate + amount + (todayWD.bonus || 0) }
-    setWorkDays(prev => prev.map(d => d.id === updatedWD.id ? updatedWD : d))
-    upsertWorkDays([updatedWD]).catch(() => {})
+    const updatedWD = {
+      ...todayWD,
+      overtime: amount,
+      earnings: todayWD.rate + amount + (todayWD.bonus || 0),
+    }
+    setWorkDays(prev => prev.map(d => (d.id === updatedWD.id ? updatedWD : d)))
+    upsertWorkDays([updatedWD]).catch(() => {
+      /* estado local já atualizado; realtime reconcilia depois */
+    })
     log('add_overtime', `Hora extra: ${worker.name} — R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em ${TODAY}`)
     setOvertimeWorker(null)
     setOvertimeValue('')
@@ -81,21 +87,25 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
     const amount = parseFloat(value) || 0
     const todayWD = workDays.find(d => d.workerId === worker.id && d.date === TODAY)
     if (!todayWD) return
-    const updatedWD = { ...todayWD, bonus: amount, earnings: todayWD.rate + (todayWD.overtime || 0) + amount }
-    setWorkDays(prev => prev.map(d => d.id === updatedWD.id ? updatedWD : d))
-    upsertWorkDays([updatedWD]).catch(() => {})
+    const updatedWD = {
+      ...todayWD,
+      bonus: amount,
+      earnings: todayWD.rate + (todayWD.overtime || 0) + amount,
+    }
+    setWorkDays(prev => prev.map(d => (d.id === updatedWD.id ? updatedWD : d)))
+    upsertWorkDays([updatedWD]).catch(() => {
+      /* estado local já atualizado; realtime reconcilia depois */
+    })
     log('add_overtime', `Bonificação: ${worker.name} — R$ ${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em ${TODAY}`)
     setBonusWorker(null)
     setBonusValue('')
   }
 
-  const handleAddWorkDay = (day) => setWorkDays(prev => [...prev, day])
-  const handleDeleteWorkDay = (dayId) => setWorkDays(prev => prev.filter(d => d.id !== dayId))
+  const handleAddWorkDay = day => setWorkDays(prev => [...prev, day])
+  const handleDeleteWorkDay = dayId => setWorkDays(prev => prev.filter(d => d.id !== dayId))
 
-  const handleToggleStatus = (workerId) => {
-    setWorkers(prev => prev.map(w =>
-      w.id === workerId ? { ...w, status: w.status === 'active' ? 'inactive' : 'active' } : w
-    ))
+  const handleToggleStatus = workerId => {
+    setWorkers(prev => prev.map(w => (w.id === workerId ? { ...w, status: w.status === 'active' ? 'inactive' : 'active' } : w)))
     setRegisteringWorker(null)
   }
 
@@ -137,7 +147,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
     setShowModal(true)
   }
 
-  const handleDeleteWorker = (worker) => {
+  const handleDeleteWorker = worker => {
     setWorkDays(prev => prev.filter(d => d.workerId !== worker.id))
     setPaymentRecords?.(prev => prev.filter(p => p.workerId !== worker.id))
     setWorkers(prev => prev.filter(w => w.id !== worker.id))
@@ -146,14 +156,19 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
     setSelectedWorker(null)
   }
 
-  const handleSave = (data) => {
+  const handleSave = data => {
     if (editWorker) {
-      setWorkers(prev => prev.map(w => w.id === editWorker.id ? { ...w, ...data } : w))
+      setWorkers(prev => prev.map(w => (w.id === editWorker.id ? { ...w, ...data } : w)))
     } else {
       const newWorker = {
         ...data,
         id: `w${Date.now()}`,
-        avatar: data.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase(),
+        avatar: data.name
+          .split(' ')
+          .map(n => n[0])
+          .join('')
+          .slice(0, 2)
+          .toUpperCase(),
         avatarColor: ['#6366f1', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6', '#06b6d4'][Math.floor(Math.random() * 6)],
       }
       setWorkers(prev => [...prev, newWorker])
@@ -173,35 +188,73 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
         onAddWorkDay={handleAddWorkDay}
         onDeleteWorkDay={handleDeleteWorkDay}
         onBack={() => setSelectedWorker(null)}
-        onEdit={(w) => { setEditWorker(w); setShowModal(true); setSelectedWorker(null) }}
+        onEdit={w => {
+          setEditWorker(w)
+          setShowModal(true)
+          setSelectedWorker(null)
+        }}
         onDelete={handleDeleteWorker}
       />
     )
   }
 
   return (
-    <div onClick={() => { setRegisteringWorker(null); setOvertimeWorker(null); setOvertimeValue(''); setBonusWorker(null); setBonusValue('') }}>
+    <div
+      onClick={() => {
+        setRegisteringWorker(null)
+        setOvertimeWorker(null)
+        setOvertimeValue('')
+        setBonusWorker(null)
+        setBonusValue('')
+      }}>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', flexWrap: 'wrap', gap: isMobile ? 16 : 0 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'flex-start' : 'flex-end',
+            flexWrap: 'wrap',
+            gap: isMobile ? 16 : 0,
+          }}>
           <div>
-            <h1 style={{
-              fontFamily: 'Syne, sans-serif', fontSize: isMobile ? 24 : 30, fontWeight: 800,
-              color: 'var(--page-heading)', margin: 0, letterSpacing: '-0.02em',
-            }}>
+            <h1
+              style={{
+                fontFamily: 'Syne, sans-serif',
+                fontSize: isMobile ? 24 : 30,
+                fontWeight: 800,
+                color: 'var(--page-heading)',
+                margin: 0,
+                letterSpacing: '-0.02em',
+              }}>
               {t.workersTitle}
             </h1>
-            <p style={{ margin: '8px 0 0', color: 'var(--page-sub)', fontSize: 15 }}>
+            <p
+              style={{
+                margin: '8px 0 0',
+                color: 'var(--page-sub)',
+                fontSize: 15,
+              }}>
               {workers.filter(w => w.status === 'active').length} {t.activeLabel} · {workers.length} {t.totalLabel}
             </p>
             {workerLimit != null && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
-                padding: '4px 12px', borderRadius: 100,
-                background: atLimit ? 'rgba(244,63,94,0.1)' : 'rgba(99,102,241,0.1)',
-                border: `1px solid ${atLimit ? 'rgba(244,63,94,0.25)' : 'rgba(99,102,241,0.2)'}`,
-              }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: atLimit ? '#f43f5e' : '#818cf8' }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 10,
+                  padding: '4px 12px',
+                  borderRadius: 100,
+                  background: atLimit ? 'rgba(244,63,94,0.1)' : 'rgba(99,102,241,0.1)',
+                  border: `1px solid ${atLimit ? 'rgba(244,63,94,0.25)' : 'rgba(99,102,241,0.2)'}`,
+                }}>
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: atLimit ? '#f43f5e' : '#818cf8',
+                  }}>
                   {workers.length} / {workerLimit}
                 </span>
               </div>
@@ -212,8 +265,15 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
             whileTap={{ scale: 0.97 }}
             onClick={handleNewWorker}
             className="btn-primary"
-            style={{ padding: '12px 22px', borderRadius: 12, fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}
-          >
+            style={{
+              padding: '12px 22px',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}>
             <Plus size={16} />
             {t.newWorker}
           </motion.button>
@@ -225,47 +285,44 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        style={{ display: 'flex', gap: 12, marginBottom: 24, alignItems: 'center', flexWrap: 'wrap' }}
-      >
+        style={{
+          display: 'flex',
+          gap: 12,
+          marginBottom: 24,
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}>
         {/* Search */}
         <div style={{ position: 'relative', flex: '1', minWidth: 220 }}>
-          <Search size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--card-muted)' }} />
+          <Search
+            size={15}
+            style={{
+              position: 'absolute',
+              left: 14,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--card-muted)',
+            }}
+          />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t.searchPlaceholder}
             className="input-premium"
-            style={{ width: '100%', padding: '11px 14px 11px 40px', borderRadius: 12, fontSize: 14 }}
+            style={{
+              width: '100%',
+              padding: '11px 14px 11px 40px',
+              borderRadius: 12,
+              fontSize: 14,
+            }}
           />
         </div>
 
         {/* Dept filter */}
-        <SearchableSelect
-          value={filterDept}
-          onChange={setFilterDept}
-          options={[
-            { value: 'all', label: t.allDepts },
-            ...departments.map(d => ({ value: d, label: d })),
-          ]}
-          placeholder={t.allDepts}
-          minWidth={160}
-          fontSize={14}
-          padding="11px 16px"
-        />
+        <SearchableSelect value={filterDept} onChange={setFilterDept} options={[{ value: 'all', label: t.allDepts }, ...departments.map(d => ({ value: d, label: d }))]} placeholder={t.allDepts} minWidth={160} fontSize={14} padding="11px 16px" />
 
         {/* Location filter */}
-        <SearchableSelect
-          value={filterLocation}
-          onChange={setFilterLocation}
-          options={[
-            { value: 'all', label: t.allLocations },
-            ...locations.map(loc => ({ value: loc.id, label: loc.name })),
-          ]}
-          placeholder={t.allLocations}
-          minWidth={160}
-          fontSize={14}
-          padding="11px 16px"
-        />
+        <SearchableSelect value={filterLocation} onChange={setFilterLocation} options={[{ value: 'all', label: t.allLocations }, ...locations.map(loc => ({ value: loc.id, label: loc.name }))]} placeholder={t.allLocations} minWidth={160} fontSize={14} padding="11px 16px" />
 
         {/* Status filter */}
         <div style={{ display: 'flex', gap: 6 }}>
@@ -275,23 +332,37 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
               whileTap={{ scale: 0.95 }}
               onClick={() => setFilterStatus(s)}
               style={{
-                padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 500,
+                padding: '10px 16px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 500,
                 border: `1px solid ${filterStatus === s ? 'rgba(99,102,241,0.4)' : 'var(--card-border)'}`,
                 background: filterStatus === s ? 'rgba(99,102,241,0.15)' : 'var(--inner-bg)',
                 color: filterStatus === s ? '#818cf8' : 'var(--card-sub)',
-                cursor: 'pointer', transition: 'all 0.2s',
-              }}
-            >
-              {{ all: t.filterAll, active: t.filterActive, inactive: t.filterInactive }[s]}
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}>
+              {
+                {
+                  all: t.filterAll,
+                  active: t.filterActive,
+                  inactive: t.filterInactive,
+                }[s]
+              }
             </motion.button>
           ))}
         </div>
       </motion.div>
 
       {/* Worker grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          gap: 16,
+        }}>
         <AnimatePresence>
-          {filtered.map((worker) => {
+          {filtered.map(worker => {
             const stats = getWorkerStats(worker.id, workDays)
             const workerDays = workDays.filter(d => d.workerId === worker.id)
             const paidEarnings = workerDays.filter(d => paidDayIds.has(d.id)).reduce((s, d) => s + d.earnings, 0)
@@ -314,110 +385,278 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.2 }}
                 className="card-hover"
-                onClick={() => { setRegisteringWorker(null); setSelectedWorker(worker) }}
+                onClick={() => {
+                  setRegisteringWorker(null)
+                  setSelectedWorker(worker)
+                }}
                 style={{
                   background: 'var(--card-bg)',
                   border: '1px solid var(--card-border)',
                   boxShadow: 'var(--card-shadow)',
-                  borderRadius: 18, padding: '22px',
-                  cursor: 'pointer', position: 'relative',
+                  borderRadius: 18,
+                  padding: '22px',
+                  cursor: 'pointer',
+                  position: 'relative',
                   backdropFilter: 'blur(20px)',
-                }}
-              >
+                }}>
                 {/* Top gradient line */}
-                <div style={{
-                  position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-                  background: `linear-gradient(90deg, ${worker.avatarColor}60, transparent)`,
-                  borderRadius: '18px 18px 0 0',
-                }} />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 2,
+                    background: `linear-gradient(90deg, ${worker.avatarColor}60, transparent)`,
+                    borderRadius: '18px 18px 0 0',
+                  }}
+                />
 
                 {/* Status badge */}
-                <div style={{
-                  position: 'absolute', top: 18, right: 18,
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '4px 10px', borderRadius: 100,
-                  background: worker.status === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
-                  border: `1px solid ${worker.status === 'active' ? 'rgba(16,185,129,0.25)' : 'rgba(100,116,139,0.2)'}`,
-                }}>
-                  <div style={{
-                    width: 6, height: 6, borderRadius: '50%',
-                    background: worker.status === 'active' ? '#10b981' : '#64748b',
-                  }} />
-                  <span style={{ fontSize: 11, fontWeight: 600, color: worker.status === 'active' ? '#10b981' : '#64748b' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 18,
+                    right: 18,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    padding: '4px 10px',
+                    borderRadius: 100,
+                    background: worker.status === 'active' ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
+                    border: `1px solid ${worker.status === 'active' ? 'rgba(16,185,129,0.25)' : 'rgba(100,116,139,0.2)'}`,
+                  }}>
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: worker.status === 'active' ? '#10b981' : '#64748b',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: worker.status === 'active' ? '#10b981' : '#64748b',
+                    }}>
                     {worker.status === 'active' ? t.statusActive : t.statusInactive}
                   </span>
                 </div>
 
                 {/* Avatar + info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
-                  <div style={{
-                    width: 50, height: 50, borderRadius: 14,
-                    background: `${worker.avatarColor}20`,
-                    border: `2px solid ${worker.avatarColor}40`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 15, fontWeight: 800, color: worker.avatarColor, flexShrink: 0,
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    marginBottom: 18,
                   }}>
-                    {(worker.avatar && worker.avatar.trim()) || worker.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                  <div
+                    style={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: 14,
+                      background: `${worker.avatarColor}20`,
+                      border: `2px solid ${worker.avatarColor}40`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 15,
+                      fontWeight: 800,
+                      color: worker.avatarColor,
+                      flexShrink: 0,
+                    }}>
+                    {(worker.avatar && worker.avatar.trim()) ||
+                      worker.name
+                        ?.split(' ')
+                        .map(n => n[0])
+                        .join('')
+                        .slice(0, 2)
+                        .toUpperCase()}
                   </div>
                   <div style={{ overflow: 'hidden', paddingRight: 60 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--card-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: 'var(--card-heading)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
                       {worker.name}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--card-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: 'var(--card-muted)',
+                        marginTop: 2,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
                       {worker.jobTitle}
                     </div>
                   </div>
                 </div>
 
                 {/* Stats row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                  <div style={{ background: 'var(--inner-bg)', borderRadius: 10, padding: '12px', border: '1px solid var(--inner-border)' }}>
-                    <div style={{ fontSize: 11, color: 'var(--card-muted)', marginBottom: 4 }}>{t.weekLabel}</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--card-heading)' }}>R$ {worker.weekdayRate}</div>
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 10,
+                    marginBottom: 16,
+                  }}>
+                  <div
+                    style={{
+                      background: 'var(--inner-bg)',
+                      borderRadius: 10,
+                      padding: '12px',
+                      border: '1px solid var(--inner-border)',
+                    }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--card-muted)',
+                        marginBottom: 4,
+                      }}>
+                      {t.weekLabel}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: 'var(--card-heading)',
+                      }}>
+                      R$ {worker.weekdayRate}
+                    </div>
                     <div style={{ fontSize: 10, color: 'var(--card-dim)' }}>{t.perDay}</div>
                   </div>
-                  <div style={{ background: 'rgba(245,158,11,0.05)', borderRadius: 10, padding: '12px', border: '1px solid rgba(245,158,11,0.1)' }}>
-                    <div style={{ fontSize: 11, color: 'rgba(245,158,11,0.6)', marginBottom: 4 }}>Sábado</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#f59e0b' }}>R$ {worker.saturdayRate}</div>
+                  <div
+                    style={{
+                      background: 'rgba(245,158,11,0.05)',
+                      borderRadius: 10,
+                      padding: '12px',
+                      border: '1px solid rgba(245,158,11,0.1)',
+                    }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'rgba(245,158,11,0.6)',
+                        marginBottom: 4,
+                      }}>
+                      Sábado
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: '#f59e0b',
+                      }}>
+                      R$ {worker.saturdayRate}
+                    </div>
                     <div style={{ fontSize: 10, color: 'rgba(245,158,11,0.4)' }}>{t.perDay}</div>
                   </div>
                 </div>
 
                 {/* Earnings summary */}
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 8,
-                  padding: '10px 12px', borderRadius: 10,
-                  background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.1)',
-                  marginBottom: 14,
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{stats.totalDays} {t.daysWorkedLabel}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#10b981' }}>R$ {stats.totalEarnings.toLocaleString('pt-BR')}</span>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: 'rgba(16,185,129,0.06)',
+                    border: '1px solid rgba(16,185,129,0.1)',
+                    marginBottom: 14,
+                  }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}>
+                    <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>
+                      {stats.totalDays} {t.daysWorkedLabel}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: '#10b981',
+                      }}>
+                      R$ {stats.totalEarnings.toLocaleString('pt-BR')}
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(16,185,129,0.12)', paddingTop: 8 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      borderTop: '1px solid rgba(16,185,129,0.12)',
+                      paddingTop: 8,
+                    }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 10, color: 'var(--card-muted)', marginBottom: 2 }}>{t.paidLabel}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--card-sub)' }}>R$ {paidEarnings.toLocaleString('pt-BR')}</div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: 'var(--card-muted)',
+                          marginBottom: 2,
+                        }}>
+                        {t.paidLabel}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: 'var(--card-sub)',
+                        }}>
+                        R$ {paidEarnings.toLocaleString('pt-BR')}
+                      </div>
                     </div>
                     <div style={{ flex: 1, textAlign: 'right' }}>
-                      <div style={{ fontSize: 10, color: 'var(--card-muted)', marginBottom: 2 }}>{t.toReceiveLabel}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: availableEarnings > 0 ? '#f59e0b' : 'var(--card-dim)' }}>R$ {availableEarnings.toLocaleString('pt-BR')}</div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: 'var(--card-muted)',
+                          marginBottom: 2,
+                        }}>
+                        {t.toReceiveLabel}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: availableEarnings > 0 ? '#f59e0b' : 'var(--card-dim)',
+                        }}>
+                        R$ {availableEarnings.toLocaleString('pt-BR')}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Locations */}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 6,
+                    flexWrap: 'wrap',
+                    marginBottom: 14,
+                  }}>
                   {workerLocations.map(loc => (
                     <span
                       key={loc.id}
                       style={{
-                        padding: '3px 9px', borderRadius: 100,
-                        fontSize: 11, fontWeight: 600,
-                        background: `${loc.color}15`, color: loc.color,
+                        padding: '3px 9px',
+                        borderRadius: 100,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: `${loc.color}15`,
+                        color: loc.color,
                         border: `1px solid ${loc.color}25`,
-                      }}
-                    >
+                      }}>
                       {loc.shortName}
                     </span>
                   ))}
@@ -426,20 +665,43 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                 {/* ── Bottom actions ── */}
                 <div
                   onClick={e => e.stopPropagation()}
-                  style={{ borderTop: '1px solid var(--inner-border)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}
-                >
+                  style={{
+                    borderTop: '1px solid var(--inner-border)',
+                    paddingTop: 12,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                  }}>
                   {worker.status === 'active' ? (
                     <>
                       {/* Attendance */}
                       {registeredToday ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                            padding: '9px 14px', borderRadius: 10,
-                            background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.25)',
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
                           }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 7,
+                              padding: '9px 14px',
+                              borderRadius: 10,
+                              background: 'rgba(16,185,129,0.1)',
+                              border: '1px solid rgba(16,185,129,0.25)',
+                            }}>
                             <Check size={14} color="#10b981" />
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#10b981' }}>{t.registeredToday}</span>
+                            <span
+                              style={{
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: '#10b981',
+                              }}>
+                              {t.registeredToday}
+                            </span>
                           </div>
 
                           {/* Overtime section */}
@@ -449,10 +711,25 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.15 }}
                               onClick={e => e.stopPropagation()}
-                              style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-                            >
-                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                <span style={{ fontSize: 11, color: 'var(--card-muted)', whiteSpace: 'nowrap' }}>R$:</span>
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 4,
+                              }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: 6,
+                                  alignItems: 'center',
+                                }}>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: 'var(--card-muted)',
+                                    whiteSpace: 'nowrap',
+                                  }}>
+                                  R$:
+                                </span>
                                 <input
                                   type="number"
                                   min="0"
@@ -463,35 +740,56 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                                   autoFocus
                                   onClick={e => e.stopPropagation()}
                                   style={{
-                                    flex: 1, padding: '6px 10px', borderRadius: 8,
+                                    flex: 1,
+                                    padding: '6px 10px',
+                                    borderRadius: 8,
                                     border: '1px solid rgba(99,102,241,0.3)',
-                                    background: 'var(--inner-bg)', color: 'var(--card-heading)',
-                                    fontSize: 13, outline: 'none', minWidth: 0,
+                                    background: 'var(--inner-bg)',
+                                    color: 'var(--card-heading)',
+                                    fontSize: 13,
+                                    outline: 'none',
+                                    minWidth: 0,
                                   }}
                                 />
                                 <button
                                   onClick={() => handleAddOvertime(worker, overtimeValue)}
                                   style={{
-                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
-                                    background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
-                                    color: '#10b981', display: 'flex', alignItems: 'center',
-                                  }}
-                                >
+                                    padding: '6px 8px',
+                                    borderRadius: 7,
+                                    cursor: 'pointer',
+                                    background: 'rgba(16,185,129,0.12)',
+                                    border: '1px solid rgba(16,185,129,0.3)',
+                                    color: '#10b981',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}>
                                   <Check size={13} />
                                 </button>
                                 <button
-                                  onClick={() => { setOvertimeWorker(null); setOvertimeValue('') }}
-                                  style={{
-                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
-                                    background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)',
-                                    color: 'var(--card-dim)', display: 'flex', alignItems: 'center',
+                                  onClick={() => {
+                                    setOvertimeWorker(null)
+                                    setOvertimeValue('')
                                   }}
-                                >
+                                  style={{
+                                    padding: '6px 8px',
+                                    borderRadius: 7,
+                                    cursor: 'pointer',
+                                    background: 'rgba(100,116,139,0.1)',
+                                    border: '1px solid rgba(100,116,139,0.2)',
+                                    color: 'var(--card-dim)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}>
                                   <X size={13} />
                                 </button>
                               </div>
                               {parseFloat(overtimeValue) > 0 && (
-                                <div style={{ fontSize: 11, color: '#10b981', paddingLeft: 2 }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#10b981',
+                                    paddingLeft: 2,
+                                  }}>
                                   + R$ {(parseFloat(overtimeValue) || 0).toFixed(2)}
                                 </div>
                               )}
@@ -500,21 +798,29 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                             <motion.button
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}
-                              onClick={e => { e.stopPropagation(); setOvertimeWorker(worker.id); setOvertimeValue(currentOvertime > 0 ? String(currentOvertime) : '') }}
+                              onClick={e => {
+                                e.stopPropagation()
+                                setOvertimeWorker(worker.id)
+                                setOvertimeValue(currentOvertime > 0 ? String(currentOvertime) : '')
+                              }}
                               style={{
-                                width: '100%', padding: '7px 14px', borderRadius: 9, cursor: 'pointer',
-                                fontSize: 12, fontWeight: 600,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                width: '100%',
+                                padding: '7px 14px',
+                                borderRadius: 9,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
                                 background: currentOvertime > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.06)',
                                 border: `1px solid ${currentOvertime > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(99,102,241,0.2)'}`,
                                 color: currentOvertime > 0 ? '#f59e0b' : 'var(--card-sub)',
                                 transition: 'all 0.2s',
-                              }}
-                            >
+                              }}>
                               <Clock size={12} />
-                              {currentOvertime > 0
-                                ? `${t.overtimeRegistered}: R$ ${currentOvertime.toLocaleString('pt-BR')}`
-                                : t.addOvertime}
+                              {currentOvertime > 0 ? `${t.overtimeRegistered}: R$ ${currentOvertime.toLocaleString('pt-BR')}` : t.addOvertime}
                             </motion.button>
                           )}
 
@@ -525,10 +831,25 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.15 }}
                               onClick={e => e.stopPropagation()}
-                              style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-                            >
-                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                <span style={{ fontSize: 11, color: 'var(--card-muted)', whiteSpace: 'nowrap' }}>R$:</span>
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 4,
+                              }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: 6,
+                                  alignItems: 'center',
+                                }}>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: 'var(--card-muted)',
+                                    whiteSpace: 'nowrap',
+                                  }}>
+                                  R$:
+                                </span>
                                 <input
                                   type="number"
                                   min="0"
@@ -539,35 +860,56 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                                   autoFocus
                                   onClick={e => e.stopPropagation()}
                                   style={{
-                                    flex: 1, padding: '6px 10px', borderRadius: 8,
+                                    flex: 1,
+                                    padding: '6px 10px',
+                                    borderRadius: 8,
                                     border: '1px solid rgba(16,185,129,0.3)',
-                                    background: 'var(--inner-bg)', color: 'var(--card-heading)',
-                                    fontSize: 13, outline: 'none', minWidth: 0,
+                                    background: 'var(--inner-bg)',
+                                    color: 'var(--card-heading)',
+                                    fontSize: 13,
+                                    outline: 'none',
+                                    minWidth: 0,
                                   }}
                                 />
                                 <button
                                   onClick={() => handleAddBonus(worker, bonusValue)}
                                   style={{
-                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
-                                    background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)',
-                                    color: '#10b981', display: 'flex', alignItems: 'center',
-                                  }}
-                                >
+                                    padding: '6px 8px',
+                                    borderRadius: 7,
+                                    cursor: 'pointer',
+                                    background: 'rgba(16,185,129,0.12)',
+                                    border: '1px solid rgba(16,185,129,0.3)',
+                                    color: '#10b981',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}>
                                   <Check size={13} />
                                 </button>
                                 <button
-                                  onClick={() => { setBonusWorker(null); setBonusValue('') }}
-                                  style={{
-                                    padding: '6px 8px', borderRadius: 7, cursor: 'pointer',
-                                    background: 'rgba(100,116,139,0.1)', border: '1px solid rgba(100,116,139,0.2)',
-                                    color: 'var(--card-dim)', display: 'flex', alignItems: 'center',
+                                  onClick={() => {
+                                    setBonusWorker(null)
+                                    setBonusValue('')
                                   }}
-                                >
+                                  style={{
+                                    padding: '6px 8px',
+                                    borderRadius: 7,
+                                    cursor: 'pointer',
+                                    background: 'rgba(100,116,139,0.1)',
+                                    border: '1px solid rgba(100,116,139,0.2)',
+                                    color: 'var(--card-dim)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}>
                                   <X size={13} />
                                 </button>
                               </div>
                               {parseFloat(bonusValue) > 0 && (
-                                <div style={{ fontSize: 11, color: '#10b981', paddingLeft: 2 }}>
+                                <div
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#10b981',
+                                    paddingLeft: 2,
+                                  }}>
                                   + R$ {(parseFloat(bonusValue) || 0).toFixed(2)}
                                 </div>
                               )}
@@ -576,42 +918,70 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                             <motion.button
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.98 }}
-                              onClick={e => { e.stopPropagation(); setBonusWorker(worker.id); setBonusValue(currentBonus > 0 ? String(currentBonus) : '') }}
+                              onClick={e => {
+                                e.stopPropagation()
+                                setBonusWorker(worker.id)
+                                setBonusValue(currentBonus > 0 ? String(currentBonus) : '')
+                              }}
                               style={{
-                                width: '100%', padding: '7px 14px', borderRadius: 9, cursor: 'pointer',
-                                fontSize: 12, fontWeight: 600,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                width: '100%',
+                                padding: '7px 14px',
+                                borderRadius: 9,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
                                 background: currentBonus > 0 ? 'rgba(16,185,129,0.08)' : 'rgba(99,102,241,0.06)',
                                 border: `1px solid ${currentBonus > 0 ? 'rgba(16,185,129,0.25)' : 'rgba(99,102,241,0.2)'}`,
                                 color: currentBonus > 0 ? '#10b981' : 'var(--card-sub)',
                                 transition: 'all 0.2s',
-                              }}
-                            >
+                              }}>
                               <Gift size={12} />
-                              {currentBonus > 0
-                                ? `${t.bonusRegistered}: R$ ${currentBonus.toLocaleString('pt-BR')}`
-                                : t.addBonus}
+                              {currentBonus > 0 ? `${t.bonusRegistered}: R$ ${currentBonus.toLocaleString('pt-BR')}` : t.addBonus}
                             </motion.button>
                           )}
                         </div>
                       ) : isPickingLocation ? (
-                        <motion.div
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.15 }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--card-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: 8,
+                            }}>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: 'var(--card-muted)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                              }}>
                               {t.selectLocation}
                             </span>
                             <button
                               onClick={() => setRegisteringWorker(null)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--card-dim)', display: 'flex', padding: 2 }}
-                            >
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: 'var(--card-dim)',
+                                display: 'flex',
+                                padding: 2,
+                              }}>
                               <X size={13} />
                             </button>
                           </div>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 6,
+                              flexWrap: 'wrap',
+                            }}>
                             {workerLocations.map(loc => (
                               <motion.button
                                 key={loc.id}
@@ -619,13 +989,17 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => confirmAttendance(worker, loc.id)}
                                 style={{
-                                  padding: '7px 12px', borderRadius: 9, cursor: 'pointer',
-                                  fontSize: 12, fontWeight: 700,
-                                  background: `${loc.color}18`, color: loc.color,
+                                  padding: '7px 12px',
+                                  borderRadius: 9,
+                                  cursor: 'pointer',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  background: `${loc.color}18`,
+                                  color: loc.color,
                                   border: `1px solid ${loc.color}35`,
-                                  flex: 1, minWidth: 'fit-content',
-                                }}
-                              >
+                                  flex: 1,
+                                  minWidth: 'fit-content',
+                                }}>
                                 {loc.shortName} — {loc.name}
                               </motion.button>
                             ))}
@@ -637,15 +1011,21 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                           whileTap={{ scale: 0.97 }}
                           onClick={e => handleAttendanceClick(e, worker, workerLocations)}
                           style={{
-                            width: '100%', padding: '9px 14px', borderRadius: 10, cursor: 'pointer',
-                            fontSize: 13, fontWeight: 600,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                            width: '100%',
+                            padding: '9px 14px',
+                            borderRadius: 10,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 7,
                             background: `${worker.avatarColor}12`,
                             border: `1px solid ${worker.avatarColor}30`,
                             color: worker.avatarColor,
                             transition: 'all 0.2s',
-                          }}
-                        >
+                          }}>
                           <Clock size={14} />
                           {t.registerToday}
                         </motion.button>
@@ -657,13 +1037,21 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleToggleStatus(worker.id)}
                         style={{
-                          width: '100%', padding: '7px 14px', borderRadius: 9, cursor: 'pointer',
-                          fontSize: 12, fontWeight: 600,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                          background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.15)',
-                          color: '#f43f5e', transition: 'all 0.2s',
-                        }}
-                      >
+                          width: '100%',
+                          padding: '7px 14px',
+                          borderRadius: 9,
+                          cursor: 'pointer',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          background: 'rgba(244,63,94,0.06)',
+                          border: '1px solid rgba(244,63,94,0.15)',
+                          color: '#f43f5e',
+                          transition: 'all 0.2s',
+                        }}>
                         {t.deactivate}
                       </motion.button>
                     </>
@@ -674,13 +1062,21 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                       whileTap={{ scale: 0.97 }}
                       onClick={() => handleToggleStatus(worker.id)}
                       style={{
-                        width: '100%', padding: '9px 14px', borderRadius: 10, cursor: 'pointer',
-                        fontSize: 13, fontWeight: 600,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                        background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)',
-                        color: '#10b981', transition: 'all 0.2s',
-                      }}
-                    >
+                        width: '100%',
+                        padding: '9px 14px',
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        background: 'rgba(16,185,129,0.08)',
+                        border: '1px solid rgba(16,185,129,0.25)',
+                        color: '#10b981',
+                        transition: 'all 0.2s',
+                      }}>
                       {t.activateWorker}
                     </motion.button>
                   )}
@@ -695,8 +1091,11 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          style={{ textAlign: 'center', padding: '60px 0', color: 'var(--card-muted)' }}
-        >
+          style={{
+            textAlign: 'center',
+            padding: '60px 0',
+            color: 'var(--card-muted)',
+          }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
           <div style={{ fontSize: 16, fontWeight: 500 }}>{t.noWorkersFound}</div>
           <div style={{ fontSize: 13, marginTop: 4 }}>{t.tryAdjustFilters}</div>
@@ -715,7 +1114,10 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
             locationJobTitles={locationJobTitles}
             locationSchedules={locationSchedules}
             onSave={handleSave}
-            onClose={() => { setShowModal(false); setEditWorker(null) }}
+            onClose={() => {
+              setShowModal(false)
+              setEditWorker(null)
+            }}
           />
         )}
       </AnimatePresence>

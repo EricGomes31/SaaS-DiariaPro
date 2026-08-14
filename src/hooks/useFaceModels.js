@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const MODELS_URL = '/models'
 
@@ -21,11 +21,7 @@ export function useFaceModels() {
     ;(async () => {
       try {
         const faceapi = await import('@vladmandic/face-api')
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URL),
-        ])
+        await Promise.all([faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL), faceapi.nets.faceLandmark68Net.loadFromUri(MODELS_URL), faceapi.nets.faceRecognitionNet.loadFromUri(MODELS_URL)])
         if (cancelled) return
         faceapiRef.current = faceapi
         setStatus('ready')
@@ -35,18 +31,17 @@ export function useFaceModels() {
         setStatus('error')
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Detecta um único rosto no elemento de vídeo e retorna o descritor
   // (vetor de 128 números) — ou null se nenhum rosto for encontrado.
-  const detectDescriptor = useCallback(async (videoEl) => {
+  const detectDescriptor = useCallback(async videoEl => {
     const faceapi = faceapiRef.current
     if (!faceapi || !videoEl) return null
-    const result = await faceapi
-      .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor()
+    const result = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor()
     return result ? Array.from(result.descriptor) : null
   }, [])
 
@@ -60,12 +55,10 @@ export function useFaceModels() {
   // Monta um "reconhecedor" 1:N a partir do rosto cadastrado de cada
   // diarista — usado pelo quiosque para identificar sozinho quem chegou,
   // sem precisar que a pessoa busque o próprio nome antes.
-  const buildMatcher = useCallback((workers) => {
+  const buildMatcher = useCallback(workers => {
     const faceapi = faceapiRef.current
     if (!faceapi) return null
-    const labeled = workers
-      .filter(w => w.faceDescriptor?.length)
-      .map(w => new faceapi.LabeledFaceDescriptors(w.id, [new Float32Array(w.faceDescriptor)]))
+    const labeled = workers.filter(w => w.faceDescriptor?.length).map(w => new faceapi.LabeledFaceDescriptors(w.id, [new Float32Array(w.faceDescriptor)]))
     if (labeled.length === 0) return null
     return new faceapi.FaceMatcher(labeled, FACE_MATCH_THRESHOLD)
   }, [])
@@ -76,14 +69,21 @@ export function useFaceModels() {
   const identifyFace = useCallback(async (videoEl, matcher) => {
     const faceapi = faceapiRef.current
     if (!faceapi || !videoEl || !matcher) return null
-    const result = await faceapi
-      .detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceDescriptor()
+    const result = await faceapi.detectSingleFace(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor()
     if (!result) return null
     const match = matcher.findBestMatch(result.descriptor)
-    return { workerId: match.label === 'unknown' ? null : match.label, distance: match.distance }
+    return {
+      workerId: match.label === 'unknown' ? null : match.label,
+      distance: match.distance,
+    }
   }, [])
 
-  return { status, error, detectDescriptor, euclideanDistance, buildMatcher, identifyFace }
+  return {
+    status,
+    error,
+    detectDescriptor,
+    euclideanDistance,
+    buildMatcher,
+    identifyFace,
+  }
 }

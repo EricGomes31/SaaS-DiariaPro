@@ -1,6 +1,6 @@
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Bell, CheckCheck, Users, CreditCard, AlertCircle, Info, Trash2 } from 'lucide-react'
-import { format, parseISO, differenceInCalendarDays } from 'date-fns'
+import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { AnimatePresence, motion } from 'framer-motion'
+import { AlertCircle, Bell, CheckCheck, CreditCard, Info, Trash2, Users, X } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 // Gera notificações a partir dos dados reais da conta.
@@ -13,7 +13,9 @@ export function buildNotifications({ workers = [], workDays = [], paymentRecords
   if (workers.length === 0) {
     notes.push({
       id: 'welcome',
-      icon: Info, iconColor: '#06b6d4', iconBg: 'rgba(6,182,212,0.12)',
+      icon: Info,
+      iconColor: '#06b6d4',
+      iconBg: 'rgba(6,182,212,0.12)',
       title: 'Bem-vindo ao Diária Pro',
       body: 'Cadastre seu primeiro diarista na tela de Trabalhadores para começar.',
       time: 'Agora',
@@ -26,7 +28,9 @@ export function buildNotifications({ workers = [], workDays = [], paymentRecords
   if (todayCount > 0) {
     notes.push({
       id: `today-${today}`,
-      icon: Users, iconColor: '#6366f1', iconBg: 'rgba(99,102,241,0.12)',
+      icon: Users,
+      iconColor: '#6366f1',
+      iconBg: 'rgba(99,102,241,0.12)',
       title: 'Presenças de hoje',
       body: `${todayCount} ${todayCount === 1 ? 'diarista registrado' : 'diaristas registrados'} hoje.`,
       time: 'Hoje',
@@ -41,7 +45,9 @@ export function buildNotifications({ workers = [], workDays = [], paymentRecords
   if (pendingTotal > 0) {
     notes.push({
       id: `pending-${today}`,
-      icon: CreditCard, iconColor: '#f59e0b', iconBg: 'rgba(245,158,11,0.12)',
+      icon: CreditCard,
+      iconColor: '#f59e0b',
+      iconBg: 'rgba(245,158,11,0.12)',
       title: 'Pagamentos pendentes',
       body: `R$ ${pendingTotal.toLocaleString('pt-BR')} a pagar para ${pendingWorkers} diarista${pendingWorkers !== 1 ? 's' : ''}.`,
       time: 'Hoje',
@@ -59,10 +65,15 @@ export function buildNotifications({ workers = [], workDays = [], paymentRecords
     return last && differenceInCalendarDays(new Date(), parseISO(last)) > 30
   })
   if (stale.length > 0) {
-    const names = stale.slice(0, 3).map(w => w.name.split(' ')[0]).join(', ')
+    const names = stale
+      .slice(0, 3)
+      .map(w => w.name.split(' ')[0])
+      .join(', ')
     notes.push({
       id: `stale-${today}`,
-      icon: AlertCircle, iconColor: '#f43f5e', iconBg: 'rgba(244,63,94,0.12)',
+      icon: AlertCircle,
+      iconColor: '#f43f5e',
+      iconBg: 'rgba(244,63,94,0.12)',
       title: 'Diaristas sem registro recente',
       body: `${names}${stale.length > 3 ? ` e mais ${stale.length - 3}` : ''} sem registro há mais de 30 dias.`,
       time: 'Hoje',
@@ -77,28 +88,28 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
 
   const isLight = theme === 'light'
   const np = {
-    bg:           isLight ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(180deg, #111122 0%, #0d0d1a 100%)',
-    border:       isLight ? 'rgba(0,0,0,0.08)'   : 'rgba(255,255,255,0.07)',
-    shadow:       isLight ? '8px 0 40px rgba(0,0,0,0.12)' : '8px 0 40px rgba(0,0,0,0.5)',
-    headerBorder: isLight ? 'rgba(0,0,0,0.07)'   : 'rgba(255,255,255,0.06)',
-    title:        isLight ? '#1e293b'             : '#f1f5f9',
-    sub:          isLight ? 'rgba(0,0,0,0.35)'   : 'rgba(255,255,255,0.3)',
-    closeBg:      isLight ? 'rgba(0,0,0,0.04)'   : 'rgba(255,255,255,0.04)',
-    closeBorder:  isLight ? 'rgba(0,0,0,0.08)'   : 'rgba(255,255,255,0.08)',
-    closeColor:   isLight ? 'rgba(0,0,0,0.4)'    : 'rgba(255,255,255,0.4)',
-    emptyColor:   isLight ? 'rgba(0,0,0,0.2)'    : 'rgba(255,255,255,0.2)',
-    itemReadBg:   isLight ? 'rgba(0,0,0,0.02)'   : 'rgba(255,255,255,0.02)',
-    itemUnreadBg: isLight ? '#ffffff'             : 'rgba(22,22,40,0.9)',
-    itemReadBorder:   isLight ? 'rgba(0,0,0,0.05)'  : 'rgba(255,255,255,0.04)',
-    itemUnreadBorder: isLight ? 'rgba(0,0,0,0.1)'   : 'rgba(255,255,255,0.08)',
-    notifTitle:   isLight ? '#1e293b'             : '#f1f5f9',
-    notifTitleRead: isLight ? 'rgba(0,0,0,0.4)'  : 'rgba(255,255,255,0.45)',
-    notifBody:    isLight ? 'rgba(0,0,0,0.45)'   : 'rgba(255,255,255,0.35)',
-    notifTime:    isLight ? 'rgba(0,0,0,0.3)'    : 'rgba(255,255,255,0.2)',
-    deleteBg:     isLight ? 'rgba(0,0,0,0.04)'   : 'rgba(255,255,255,0.04)',
-    deleteIcon:   isLight ? 'rgba(0,0,0,0.2)'    : 'rgba(255,255,255,0.2)',
-    footerBorder: isLight ? 'rgba(0,0,0,0.07)'   : 'rgba(255,255,255,0.05)',
-    footerText:   isLight ? 'rgba(0,0,0,0.3)'    : 'rgba(255,255,255,0.2)',
+    bg: isLight ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(180deg, #111122 0%, #0d0d1a 100%)',
+    border: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)',
+    shadow: isLight ? '8px 0 40px rgba(0,0,0,0.12)' : '8px 0 40px rgba(0,0,0,0.5)',
+    headerBorder: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.06)',
+    title: isLight ? '#1e293b' : '#f1f5f9',
+    sub: isLight ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.3)',
+    closeBg: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)',
+    closeBorder: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+    closeColor: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
+    emptyColor: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+    itemReadBg: isLight ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)',
+    itemUnreadBg: isLight ? '#ffffff' : 'rgba(22,22,40,0.9)',
+    itemReadBorder: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.04)',
+    itemUnreadBorder: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)',
+    notifTitle: isLight ? '#1e293b' : '#f1f5f9',
+    notifTitleRead: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.45)',
+    notifBody: isLight ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.35)',
+    notifTime: isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)',
+    deleteBg: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)',
+    deleteIcon: isLight ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)',
+    footerBorder: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.05)',
+    footerText: isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)',
   }
 
   const unreadCount = notes.filter(n => !n.read).length
@@ -111,8 +122,13 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         style={{
-          position: 'fixed', top: 0, left: isMobile ? 0 : 260, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
+          position: 'fixed',
+          top: 0,
+          left: isMobile ? 0 : 260,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
           zIndex: 200,
         }}
@@ -125,35 +141,58 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
         exit={{ x: -20, opacity: 0 }}
         transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
         style={{
-          position: 'fixed', top: 0, left: isMobile ? 0 : 260,
-          width: isMobile ? '100%' : 360, height: '100vh',
+          position: 'fixed',
+          top: 0,
+          left: isMobile ? 0 : 260,
+          width: isMobile ? '100%' : 360,
+          height: '100vh',
           background: np.bg,
           borderRight: `1px solid ${np.border}`,
-          zIndex: 201, display: 'flex', flexDirection: 'column',
+          zIndex: 201,
+          display: 'flex',
+          flexDirection: 'column',
           boxShadow: np.shadow,
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          padding: '24px 20px 16px',
-          borderBottom: `1px solid ${np.headerBorder}`,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        {/* Header */}
+        <div
+          style={{
+            padding: '24px 20px 16px',
+            borderBottom: `1px solid ${np.headerBorder}`,
+          }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 4,
+            }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 9,
-                background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 9,
+                  background: 'rgba(244,63,94,0.12)',
+                  border: '1px solid rgba(244,63,94,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
                 <Bell size={15} color="#f43f5e" />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 17, fontWeight: 800, color: np.title, letterSpacing: '-0.02em' }}>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontFamily: 'Syne, sans-serif',
+                    fontSize: 17,
+                    fontWeight: 800,
+                    color: np.title,
+                    letterSpacing: '-0.02em',
+                  }}>
                   Notificações
                 </h2>
-                <p style={{ margin: 0, fontSize: 11, color: np.sub }}>
-                  {unreadCount > 0 ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}` : 'Tudo em dia'}
-                </p>
+                <p style={{ margin: 0, fontSize: 11, color: np.sub }}>{unreadCount > 0 ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}` : 'Tudo em dia'}</p>
               </div>
             </div>
             <motion.button
@@ -161,13 +200,17 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
               whileTap={{ scale: 0.9 }}
               onClick={onClose}
               style={{
-                width: 32, height: 32, borderRadius: 8,
+                width: 32,
+                height: 32,
+                borderRadius: 8,
                 border: `1px solid ${np.closeBorder}`,
                 background: np.closeBg,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: np.closeColor,
-              }}
-            >
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: np.closeColor,
+              }}>
               <X size={15} />
             </motion.button>
           </div>
@@ -179,13 +222,22 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
               whileTap={{ scale: 0.97 }}
               onClick={onMarkAllRead}
               style={{
-                marginTop: 12, width: '100%', padding: '8px 12px', borderRadius: 9,
-                border: '1px solid rgba(99,102,241,0.2)', background: 'rgba(99,102,241,0.07)',
-                color: '#818cf8', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                marginTop: 12,
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 9,
+                border: '1px solid rgba(99,102,241,0.2)',
+                background: 'rgba(99,102,241,0.07)',
+                color: '#818cf8',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
                 transition: 'all 0.2s',
-              }}
-            >
+              }}>
               <CheckCheck size={13} />
               Marcar todas como lidas
             </motion.button>
@@ -199,8 +251,11 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                style={{ textAlign: 'center', padding: '60px 0', color: np.emptyColor }}
-              >
+                style={{
+                  textAlign: 'center',
+                  padding: '60px 0',
+                  color: np.emptyColor,
+                }}>
                 <div style={{ fontSize: 36, marginBottom: 12 }}>🔔</div>
                 <div style={{ fontSize: 14, fontWeight: 500 }}>Nenhuma notificação</div>
               </motion.div>
@@ -213,50 +268,92 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
                     layout
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -20, transition: { duration: 0.18 } }}
+                    exit={{
+                      opacity: 0,
+                      x: -20,
+                      transition: { duration: 0.18 },
+                    }}
                     transition={{ delay: i * 0.04 }}
-                    onClick={() => { if (!n.read) onMarkRead(n.id) }}
+                    onClick={() => {
+                      if (!n.read) onMarkRead(n.id)
+                    }}
                     style={{
-                      position: 'relative', padding: '14px', borderRadius: 13, marginBottom: 8,
+                      position: 'relative',
+                      padding: '14px',
+                      borderRadius: 13,
+                      marginBottom: 8,
                       background: n.read ? np.itemReadBg : np.itemUnreadBg,
                       border: `1px solid ${n.read ? np.itemReadBorder : np.itemUnreadBorder}`,
                       cursor: n.read ? 'default' : 'pointer',
                       transition: 'all 0.2s',
-                    }}
-                  >
+                    }}>
                     {/* Unread dot */}
                     {!n.read && (
-                      <div style={{
-                        position: 'absolute', top: 14, right: 14,
-                        width: 7, height: 7, borderRadius: '50%', background: '#6366f1',
-                        boxShadow: '0 0 6px rgba(99,102,241,0.6)',
-                      }} />
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 14,
+                          right: 14,
+                          width: 7,
+                          height: 7,
+                          borderRadius: '50%',
+                          background: '#6366f1',
+                          boxShadow: '0 0 6px rgba(99,102,241,0.6)',
+                        }}
+                      />
                     )}
 
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                        background: n.iconBg, border: `1px solid ${n.iconColor}25`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        opacity: n.read ? 0.5 : 1,
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'flex-start',
                       }}>
+                      <div
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          flexShrink: 0,
+                          background: n.iconBg,
+                          border: `1px solid ${n.iconColor}25`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: n.read ? 0.5 : 1,
+                        }}>
                         <Icon size={16} color={n.iconColor} />
                       </div>
-                      <div style={{ flex: 1, overflow: 'hidden', paddingRight: n.read ? 0 : 16 }}>
-                        <div style={{
-                          fontSize: 13, fontWeight: n.read ? 500 : 700,
-                          color: n.read ? np.notifTitleRead : np.notifTitle,
-                          marginBottom: 3,
+                      <div
+                        style={{
+                          flex: 1,
+                          overflow: 'hidden',
+                          paddingRight: n.read ? 0 : 16,
                         }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: n.read ? 500 : 700,
+                            color: n.read ? np.notifTitleRead : np.notifTitle,
+                            marginBottom: 3,
+                          }}>
                           {n.title}
                         </div>
-                        <div style={{
-                          fontSize: 12, color: np.notifBody,
-                          lineHeight: 1.5, marginBottom: 6,
-                        }}>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: np.notifBody,
+                            lineHeight: 1.5,
+                            marginBottom: 6,
+                          }}>
                           {n.body}
                         </div>
-                        <div style={{ fontSize: 11, color: np.notifTime, fontWeight: 500 }}>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: np.notifTime,
+                            fontWeight: 500,
+                          }}>
                           {n.time}
                         </div>
                       </div>
@@ -264,17 +361,30 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
 
                     {/* Delete button */}
                     <motion.button
-                      whileHover={{ scale: 1.15, background: 'rgba(244,63,94,0.15)' }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={e => { e.stopPropagation(); onRemove(n.id) }}
-                      style={{
-                        position: 'absolute', bottom: 12, right: 12,
-                        width: 24, height: 24, borderRadius: 6, border: 'none',
-                        background: np.deleteBg,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', transition: 'all 0.2s',
+                      whileHover={{
+                        scale: 1.15,
+                        background: 'rgba(244,63,94,0.15)',
                       }}
-                    >
+                      whileTap={{ scale: 0.9 }}
+                      onClick={e => {
+                        e.stopPropagation()
+                        onRemove(n.id)
+                      }}
+                      style={{
+                        position: 'absolute',
+                        bottom: 12,
+                        right: 12,
+                        width: 24,
+                        height: 24,
+                        borderRadius: 6,
+                        border: 'none',
+                        background: np.deleteBg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}>
                       <Trash2 size={12} color={np.deleteIcon} />
                     </motion.button>
                   </motion.div>
@@ -285,11 +395,14 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: '14px 20px',
-          borderTop: `1px solid ${np.footerBorder}`,
-          fontSize: 12, color: np.footerText, textAlign: 'center',
-        }}>
+        <div
+          style={{
+            padding: '14px 20px',
+            borderTop: `1px solid ${np.footerBorder}`,
+            fontSize: 12,
+            color: np.footerText,
+            textAlign: 'center',
+          }}>
           Clique em uma notificação para marcá-la como lida
         </div>
       </motion.div>

@@ -1,15 +1,23 @@
+import { AnimatePresence, motion } from 'framer-motion'
+import { Check, Clock, MapPin, QrCode, User, X } from 'lucide-react'
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, User, MapPin, Clock, Check, QrCode } from 'lucide-react'
-import { PIX_KEY_TYPES, isValidCPF } from '../../data/mockData'
-import SearchableSelect from '../UI/SearchableSelect'
+import { isValidCPF, PIX_KEY_TYPES } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
-
+import SearchableSelect from '../UI/SearchableSelect'
 
 const Field = ({ label, children }) => (
   <div style={{ marginBottom: 18 }}>
-    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--card-muted)', marginBottom: 7, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+    <label
+      style={{
+        display: 'block',
+        fontSize: 12,
+        fontWeight: 600,
+        color: 'var(--card-muted)',
+        marginBottom: 7,
+        letterSpacing: '0.05em',
+        textTransform: 'uppercase',
+      }}>
       {label}
     </label>
     {children}
@@ -41,13 +49,11 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
   const toggle = (field, value) => {
     setForm(prev => ({
       ...prev,
-      [field]: prev[field].includes(value)
-        ? prev[field].filter(v => v !== value)
-        : [...prev[field], value]
+      [field]: prev[field].includes(value) ? prev[field].filter(v => v !== value) : [...prev[field], value],
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault()
     setError('')
     if (!form.name.trim() || form.locations.length === 0) return
@@ -94,16 +100,18 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
   if (worker?.schedule) scheduleNames.add(worker.schedule)
   const scheduleOptions = [...scheduleNames].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
 
-  const handleJobTitleChange = (name) => {
+  const handleJobTitleChange = name => {
     const match = jobTitlesForLocations.find(j => j.name === name) ?? locationJobTitles.find(j => j.name === name)
     setForm(p => ({
       ...p,
       jobTitle: name,
-      ...(match ? {
-        weekdayRate: match.weekdayRate ?? p.weekdayRate,
-        saturdayRate: match.saturdayRate ?? p.saturdayRate,
-        sundayRate: match.sundayRate ?? p.sundayRate,
-      } : {}),
+      ...(match
+        ? {
+            weekdayRate: match.weekdayRate ?? p.weekdayRate,
+            saturdayRate: match.saturdayRate ?? p.saturdayRate,
+            sundayRate: match.sundayRate ?? p.sundayRate,
+          }
+        : {}),
     }))
   }
 
@@ -113,11 +121,16 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       style={{
-        position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-      }}
-    >
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(0,0,0,0.7)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+      }}>
       <motion.div
         initial={{ opacity: 0, scale: 0.92, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -125,27 +138,47 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         onClick={e => e.stopPropagation()}
         style={{
-          width: '100%', maxWidth: 560,
+          width: '100%',
+          maxWidth: 560,
           background: 'var(--card-bg)',
           border: '1px solid var(--card-border)',
-          borderRadius: 24, overflow: 'hidden',
+          borderRadius: 24,
+          overflow: 'hidden',
           boxShadow: '0 40px 80px rgba(0,0,0,0.4)',
-          maxHeight: '90vh', overflowY: 'auto',
-        }}
-      >
-        {/* Modal header */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '26px 28px', borderBottom: '1px solid var(--card-border)',
-          position: 'sticky', top: 0,
-          background: 'var(--card-bg-solid)',
-          zIndex: 10,
+          maxHeight: '90vh',
+          overflowY: 'auto',
         }}>
+        {/* Modal header */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '26px 28px',
+            borderBottom: '1px solid var(--card-border)',
+            position: 'sticky',
+            top: 0,
+            background: 'var(--card-bg-solid)',
+            zIndex: 10,
+          }}>
           <div>
-            <h2 style={{ margin: 0, fontFamily: 'Syne, sans-serif', fontSize: 22, fontWeight: 800, color: 'var(--card-heading)', letterSpacing: '-0.02em' }}>
+            <h2
+              style={{
+                margin: 0,
+                fontFamily: 'Syne, sans-serif',
+                fontSize: 22,
+                fontWeight: 800,
+                color: 'var(--card-heading)',
+                letterSpacing: '-0.02em',
+              }}>
               {worker ? t.editWorkerTitle : t.newWorkerTitle}
             </h2>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--card-muted)' }}>
+            <p
+              style={{
+                margin: '4px 0 0',
+                fontSize: 13,
+                color: 'var(--card-muted)',
+              }}>
               {t.workerModalSubtitle}
             </p>
           </div>
@@ -154,11 +187,18 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
             whileTap={{ scale: 0.9 }}
             onClick={onClose}
             style={{
-              width: 36, height: 36, borderRadius: 10, border: '1px solid var(--card-border)',
-              background: 'var(--inner-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: 'var(--card-muted)', transition: 'all 0.2s',
-            }}
-          >
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              border: '1px solid var(--card-border)',
+              background: 'var(--inner-bg)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'var(--card-muted)',
+              transition: 'all 0.2s',
+            }}>
             <X size={16} />
           </motion.button>
         </div>
@@ -166,29 +206,67 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
         <form onSubmit={handleSubmit} style={{ padding: '28px' }}>
           {/* Section: Identificação */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(99,102,241,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 16,
+              }}>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  background: 'rgba(99,102,241,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
                 <User size={13} color="#818cf8" />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-sub)' }}>{t.identificationSection}</span>
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--card-sub)',
+                }}>
+                {t.identificationSection}
+              </span>
             </div>
 
             <Field label={t.fullNameLabel}>
               <input
                 value={form.name}
-                onChange={e => { setForm(p => ({ ...p, name: e.target.value })); setError('') }}
+                onChange={e => {
+                  setForm(p => ({ ...p, name: e.target.value }))
+                  setError('')
+                }}
                 placeholder={t.workerNamePlaceholder}
                 required
                 className="input-premium"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  fontSize: 14,
+                }}
               />
             </Field>
 
             <Field label="Tipo de trabalhador">
               <div style={{ display: 'flex', gap: 8 }}>
                 {[
-                  { value: 'diarista',   label: '🧹 Diarista',   desc: 'Pagamento por dia' },
-                  { value: 'funcionario', label: '👔 Funcionário', desc: 'Vínculo fixo' },
+                  {
+                    value: 'diarista',
+                    label: '🧹 Diarista',
+                    desc: 'Pagamento por dia',
+                  },
+                  {
+                    value: 'funcionario',
+                    label: '👔 Funcionário',
+                    desc: 'Vínculo fixo',
+                  },
                 ].map(opt => {
                   const sel = form.workerType === opt.value
                   return (
@@ -198,14 +276,31 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                       whileTap={{ scale: 0.97 }}
                       onClick={() => setForm(p => ({ ...p, workerType: opt.value }))}
                       style={{
-                        flex: 1, padding: '12px 10px', borderRadius: 12, cursor: 'pointer',
+                        flex: 1,
+                        padding: '12px 10px',
+                        borderRadius: 12,
+                        cursor: 'pointer',
                         border: `1.5px solid ${sel ? 'rgba(99,102,241,0.5)' : 'var(--card-border)'}`,
                         background: sel ? 'rgba(99,102,241,0.12)' : 'var(--inner-bg)',
-                        transition: 'all 0.15s', textAlign: 'center',
-                      }}
-                    >
-                      <div style={{ fontSize: 13, fontWeight: 700, color: sel ? '#818cf8' : 'var(--card-sub)', marginBottom: 2 }}>{opt.label}</div>
-                      <div style={{ fontSize: 11, color: sel ? 'rgba(129,140,248,0.6)' : 'var(--card-muted)' }}>{opt.desc}</div>
+                        transition: 'all 0.15s',
+                        textAlign: 'center',
+                      }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: sel ? '#818cf8' : 'var(--card-sub)',
+                          marginBottom: 2,
+                        }}>
+                        {opt.label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: sel ? 'rgba(129,140,248,0.6)' : 'var(--card-muted)',
+                        }}>
+                        {opt.desc}
+                      </div>
                     </motion.button>
                   )
                 })}
@@ -214,13 +309,40 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
 
             {/* Section: Locais (precisa vir antes de Departamento/Cargo — o catálogo depende do local escolhido) */}
             <div style={{ marginBottom: 18 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: 10,
+                }}>
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: 6,
+                    background: 'rgba(16,185,129,0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
                   <MapPin size={13} color="#10b981" />
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-sub)' }}>{t.workLocationsSection}</span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--card-sub)',
+                  }}>
+                  {t.workLocationsSection}
+                </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 8 }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                  gap: 8,
+                }}>
                 {locations.map(loc => {
                   const selected = form.locations.includes(loc.id)
                   return (
@@ -230,22 +352,39 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                       whileTap={{ scale: 0.96 }}
                       onClick={() => toggle('locations', loc.id)}
                       style={{
-                        padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                        padding: '12px 14px',
+                        borderRadius: 12,
+                        cursor: 'pointer',
                         border: `1.5px solid ${selected ? loc.color + '60' : 'var(--card-border)'}`,
                         background: selected ? `${loc.color}12` : 'var(--inner-bg)',
-                        display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s',
-                      }}
-                    >
-                      <div style={{
-                        width: 18, height: 18, borderRadius: 5,
-                        background: selected ? loc.color : 'var(--inner-border)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.2s', flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        transition: 'all 0.2s',
                       }}>
+                      <div
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 5,
+                          background: selected ? loc.color : 'var(--inner-border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s',
+                          flexShrink: 0,
+                        }}>
                         {selected && <Check size={11} color="white" />}
                       </div>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: selected ? loc.color : 'var(--card-sub)' }}>{loc.name}</div>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: selected ? loc.color : 'var(--card-sub)',
+                          }}>
+                          {loc.name}
+                        </div>
                         <div style={{ fontSize: 11, color: 'var(--card-muted)' }}>{loc.city}</div>
                       </div>
                     </motion.button>
@@ -254,51 +393,31 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: 12,
+              }}>
               {/* Departamento */}
               <Field label={t.departmentLabel}>
-                <SearchableSelect
-                  value={form.department}
-                  onChange={v => setForm(p => ({ ...p, department: v }))}
-                  options={deptOptions}
-                  placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.departmentLabel}
-                  minWidth="100%"
-                  fontSize={14}
-                  padding="12px 16px"
-                  clearable={false}
-                  allowCustom={false}
-                />
+                <SearchableSelect value={form.department} onChange={v => setForm(p => ({ ...p, department: v }))} options={deptOptions} placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.departmentLabel} minWidth="100%" fontSize={14} padding="12px 16px" clearable={false} allowCustom={false} />
               </Field>
 
               {/* Cargo */}
               <Field label={t.jobTitleLabel}>
-                <SearchableSelect
-                  value={form.jobTitle}
-                  onChange={handleJobTitleChange}
-                  options={jobTitleOptions}
-                  placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.jobTitleLabel}
-                  minWidth="100%"
-                  fontSize={14}
-                  padding="12px 16px"
-                  clearable={false}
-                  allowCustom={false}
-                />
+                <SearchableSelect value={form.jobTitle} onChange={handleJobTitleChange} options={jobTitleOptions} placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.jobTitleLabel} minWidth="100%" fontSize={14} padding="12px 16px" clearable={false} allowCustom={false} />
               </Field>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: 12,
+              }}>
               <Field label={t.scheduleLabel}>
-                <SearchableSelect
-                  value={form.schedule}
-                  onChange={v => setForm(p => ({ ...p, schedule: v }))}
-                  options={scheduleOptions}
-                  placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.scheduleLabel}
-                  minWidth="100%"
-                  fontSize={14}
-                  padding="12px 16px"
-                  clearable={false}
-                  allowCustom={false}
-                />
+                <SearchableSelect value={form.schedule} onChange={v => setForm(p => ({ ...p, schedule: v }))} options={scheduleOptions} placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.scheduleLabel} minWidth="100%" fontSize={14} padding="12px 16px" clearable={false} allowCustom={false} />
               </Field>
               <Field label={t.phoneLabel}>
                 <input
@@ -306,11 +425,21 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                   onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
                   placeholder="(11) 99999-9999"
                   className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    fontSize: 14,
+                  }}
                 />
               </Field>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                gap: 12,
+              }}>
               <Field label={t.emailLabel}>
                 <input
                   value={form.email}
@@ -318,7 +447,12 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                   type="email"
                   placeholder="email@exemplo.com"
                   className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    fontSize: 14,
+                  }}
                 />
               </Field>
               <Field label={t.cpfLabel}>
@@ -326,28 +460,80 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                   value={form.cpf}
                   onChange={e => {
                     const cpf = e.target.value
-                    setForm(p => ({ ...p, cpf, pixKey: p.pixKeyType === 'cpf' ? cpf : p.pixKey }))
+                    setForm(p => ({
+                      ...p,
+                      cpf,
+                      pixKey: p.pixKeyType === 'cpf' ? cpf : p.pixKey,
+                    }))
                     setError('')
                   }}
                   placeholder="000.000.000-00"
                   className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    fontSize: 14,
+                  }}
                 />
               </Field>
             </div>
           </div>
 
           {/* Section: PIX */}
-          <div style={{ marginBottom: 24, padding: '20px', borderRadius: 16, background: 'rgba(6,182,212,0.04)', border: '1px solid rgba(6,182,212,0.15)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div
+            style={{
+              marginBottom: 24,
+              padding: '20px',
+              borderRadius: 16,
+              background: 'rgba(6,182,212,0.04)',
+              border: '1px solid rgba(6,182,212,0.15)',
+            }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 16,
+              }}>
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 6,
+                  background: 'rgba(6,182,212,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
                 <QrCode size={13} color="#06b6d4" />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-sub)' }}>{t.pixKeySection}</span>
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: 'var(--card-sub)',
+                }}>
+                {t.pixKeySection}
+              </span>
             </div>
             {/* Tipo de chave — pills horizontais */}
-            <label style={{ display: 'block', fontSize: 11, color: 'var(--card-muted)', marginBottom: 8 }}>{t.pixKeyTypeLabel}</label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: 11,
+                color: 'var(--card-muted)',
+                marginBottom: 8,
+              }}>
+              {t.pixKeyTypeLabel}
+            </label>
+            <div
+              style={{
+                display: 'flex',
+                gap: 6,
+                flexWrap: 'wrap',
+                marginBottom: 14,
+              }}>
               {PIX_KEY_TYPES.map(pt => {
                 const sel = form.pixKeyType === pt.value
                 return (
@@ -355,26 +541,54 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                     key={pt.value}
                     type="button"
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => setForm(p => ({ ...p, pixKeyType: pt.value, pixKey: pt.value === 'cpf' ? p.cpf : '' }))}
+                    onClick={() =>
+                      setForm(p => ({
+                        ...p,
+                        pixKeyType: pt.value,
+                        pixKey: pt.value === 'cpf' ? p.cpf : '',
+                      }))
+                    }
                     style={{
-                      flex: '1 1 auto', minWidth: 'fit-content',
-                      padding: '9px 14px', borderRadius: 10, cursor: 'pointer',
+                      flex: '1 1 auto',
+                      minWidth: 'fit-content',
+                      padding: '9px 14px',
+                      borderRadius: 10,
+                      cursor: 'pointer',
                       border: `1.5px solid ${sel ? 'rgba(6,182,212,0.5)' : 'var(--card-border)'}`,
                       background: sel ? 'rgba(6,182,212,0.1)' : 'var(--inner-bg)',
                       color: sel ? '#06b6d4' : 'var(--card-muted)',
-                      fontSize: 13, fontWeight: sel ? 700 : 400,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      whiteSpace: 'nowrap', transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{
-                      width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
-                      border: `2px solid ${sel ? '#06b6d4' : 'var(--card-border)'}`,
-                      background: sel ? '#06b6d4' : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13,
+                      fontWeight: sel ? 700 : 400,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      whiteSpace: 'nowrap',
                       transition: 'all 0.15s',
                     }}>
-                      {sel && <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }} />}
+                    <div
+                      style={{
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                        border: `2px solid ${sel ? '#06b6d4' : 'var(--card-border)'}`,
+                        background: sel ? '#06b6d4' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.15s',
+                      }}>
+                      {sel && (
+                        <div
+                          style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: '50%',
+                            background: '#fff',
+                          }}
+                        />
+                      )}
                     </div>
                     {pt.label}
                   </motion.button>
@@ -383,28 +597,42 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
             </div>
 
             {/* Chave — largura total */}
-            <label style={{ display: 'block', fontSize: 11, color: 'rgba(6,182,212,0.8)', marginBottom: 6 }}>
+            <label
+              style={{
+                display: 'block',
+                fontSize: 11,
+                color: 'rgba(6,182,212,0.8)',
+                marginBottom: 6,
+              }}>
               {PIX_KEY_TYPES.find(pt => pt.value === form.pixKeyType)?.label || 'Chave'}
             </label>
             <input
               value={form.pixKey}
               onChange={e => setForm(p => ({ ...p, pixKey: e.target.value }))}
-              placeholder={
-                form.pixKeyType === 'cpf'    ? '000.000.000-00' :
-                form.pixKeyType === 'phone'  ? '+55 (11) 99999-9999' :
-                form.pixKeyType === 'email'  ? 'email@exemplo.com' :
-                t.randomKeyPlaceholder
-              }
+              placeholder={form.pixKeyType === 'cpf' ? '000.000.000-00' : form.pixKeyType === 'phone' ? '+55 (11) 99999-9999' : form.pixKeyType === 'email' ? 'email@exemplo.com' : t.randomKeyPlaceholder}
               className="input-premium"
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14, fontFamily: 'monospace', borderColor: 'rgba(6,182,212,0.2)' }}
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                borderRadius: 12,
+                fontSize: 14,
+                fontFamily: 'monospace',
+                borderColor: 'rgba(6,182,212,0.2)',
+              }}
             />
           </div>
 
           {error && (
-            <div style={{
-              marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 13,
-              background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.25)', color: '#f43f5e',
-            }}>
+            <div
+              style={{
+                marginBottom: 16,
+                padding: '10px 14px',
+                borderRadius: 10,
+                fontSize: 13,
+                background: 'rgba(244,63,94,0.1)',
+                border: '1px solid rgba(244,63,94,0.25)',
+                color: '#f43f5e',
+              }}>
               {error}
             </div>
           )}
@@ -415,12 +643,17 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
               type="button"
               onClick={onClose}
               style={{
-                flex: 1, padding: '13px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+                flex: 1,
+                padding: '13px',
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
                 border: '1px solid var(--card-border)',
-                background: 'var(--inner-bg)', color: 'var(--card-sub)',
-                cursor: 'pointer', transition: 'all 0.2s',
-              }}
-            >
+                background: 'var(--inner-bg)',
+                color: 'var(--card-sub)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}>
               {t.cancel}
             </button>
             <motion.button
@@ -428,8 +661,13 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="btn-primary"
-              style={{ flex: 2, padding: '13px', borderRadius: 12, fontSize: 14, fontWeight: 700 }}
-            >
+              style={{
+                flex: 2,
+                padding: '13px',
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 700,
+              }}>
               {worker ? t.saveChanges : t.registerWorkerBtn}
             </motion.button>
           </div>
