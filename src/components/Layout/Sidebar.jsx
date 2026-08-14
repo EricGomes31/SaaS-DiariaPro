@@ -18,6 +18,9 @@ const loadIds = (key) => {
   } catch { return [] }
 }
 
+// Planos/cobrança temporariamente ocultos — trocar para true quando reativar.
+const PLANS_ENABLED = false
+
 const NAV_ITEMS = [
   { id: 'dashboard', icon: LayoutDashboard },
   { id: 'workers',   icon: Users },
@@ -255,35 +258,37 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           <div style={{ height: 1, background: sb.divider, marginBottom: 16 }} />
 
           {/* Upgrade CTA */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { onUpgrade?.(); setConfirmLogout(false) }}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 11,
-              padding: '12px 14px', borderRadius: 12, marginBottom: 12,
-              border: '1px solid rgba(139,92,246,0.3)', cursor: 'pointer',
-              background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
-              transition: 'all 0.2s',
-            }}
-          >
-            <div style={{
-              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 10px rgba(99,102,241,0.4)',
-            }}>
-              <Sparkles size={15} color="white" />
-            </div>
-            <div style={{ textAlign: 'left', overflow: 'hidden' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: sb.logoText, whiteSpace: 'nowrap' }}>
-                {NAV_LABELS[lang]?.upgrade ?? NAV_LABELS.pt.upgrade}
+          {PLANS_ENABLED && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { onUpgrade?.(); setConfirmLogout(false) }}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 11,
+                padding: '12px 14px', borderRadius: 12, marginBottom: 12,
+                border: '1px solid rgba(139,92,246,0.3)', cursor: 'pointer',
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
+                transition: 'all 0.2s',
+              }}
+            >
+              <div style={{
+                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 2px 10px rgba(99,102,241,0.4)',
+              }}>
+                <Sparkles size={15} color="white" />
               </div>
-              <div style={{ fontSize: 10, color: sb.navText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {NAV_LABELS[lang]?.upgradeSub ?? NAV_LABELS.pt.upgradeSub}
+              <div style={{ textAlign: 'left', overflow: 'hidden' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: sb.logoText, whiteSpace: 'nowrap' }}>
+                  {NAV_LABELS[lang]?.upgrade ?? NAV_LABELS.pt.upgrade}
+                </div>
+                <div style={{ fontSize: 10, color: sb.navText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {NAV_LABELS[lang]?.upgradeSub ?? NAV_LABELS.pt.upgradeSub}
+                </div>
               </div>
-            </div>
-          </motion.button>
+            </motion.button>
+          )}
 
           {/* Notifications */}
           <motion.button

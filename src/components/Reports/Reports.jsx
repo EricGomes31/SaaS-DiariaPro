@@ -334,7 +334,6 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 500,
         background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)',

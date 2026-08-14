@@ -222,7 +222,6 @@ export default function PrivacyModal({ initialTab = 'privacy', onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={onClose}
         style={{
           position: 'fixed', inset: 0, zIndex: 9000,
           background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',

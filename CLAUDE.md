@@ -42,6 +42,18 @@ Upload `hostgator-upload.zip` → extract into `public_html/`. The `.htaccess` h
 - `/entrar` → `index.html` (React app / login)
 - All other routes → `index.html` (SPA fallback)
 
+## Git Workflow: Issues & Pull Requests
+
+This repository uses GitHub Issues + Pull Requests to plan and ship every change, and to manage deploys. This convention applies to **any agent, of any model**, working in this repo — not just Claude Code.
+
+1. **One Issue per task.** Before starting a fix, improvement, or new feature, create a GitHub Issue for it (`gh issue create`). Title it clearly and label it `bug`, `enhancement`, or `feature`.
+2. **One branch per Issue.** Branch off `master` with a descriptive name (`fix/...`, `feat/...`, `chore/...`).
+3. **No direct pushes to `master`.** Work lands via a Pull Request, reviewed and merged — the PR merge is what represents a deploy-ready change.
+4. **Always link the Issue in the PR description**, e.g. `Closes #123` (or `Refs #123` if the PR doesn't fully resolve it) — so merging auto-closes the issue and history stays traceable.
+5. Keep PRs scoped to one Issue/topic where practical, so `git log`/PR history stays a reliable record of *why* a change happened.
+
+If `gh` isn't installed/authenticated in the current environment, say so explicitly rather than skipping issue/PR creation silently.
+
 ## Architecture
 
 ### Routing and State
