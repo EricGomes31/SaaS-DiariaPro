@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Plus, Building2, Trash2, AlertTriangle, Pencil, X, Layers, Briefcase } from 'lucide-react'
+import { MapPin, Plus, Building2, Trash2, AlertTriangle, Pencil, X, Layers, Briefcase, Clock } from 'lucide-react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import {
   ResponsiveContainer,
@@ -12,6 +12,7 @@ export default function LocationManager({
   lang = 'pt', locations, setLocations, workers, workDays,
   locationDepartments = [], setLocationDepartments,
   locationJobTitles = [], setLocationJobTitles,
+  locationSchedules = [], setLocationSchedules,
 }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
@@ -501,11 +502,15 @@ export default function LocationManager({
                     {t.departmentsSection}
                   </h3>
                 </div>
-                <DepartmentManager
+                <SimpleCatalogManager
                   t={t}
                   items={locationDepartments.filter(d => d.locationId === selected.id)}
                   onAdd={name => setLocationDepartments(prev => [...prev, { id: `dept${Date.now()}`, locationId: selected.id, name }])}
                   onDelete={id => setLocationDepartments(prev => prev.filter(d => d.id !== id))}
+                  placeholder={t.newDepartmentPlaceholder}
+                  emptyText={t.noDepartmentsYet}
+                  deleteConfirmText={t.deleteDepartment}
+                  addLabel={t.newDepartmentTitle}
                 />
               </div>
 
@@ -530,6 +535,32 @@ export default function LocationManager({
                   onAdd={payload => setLocationJobTitles(prev => [...prev, { id: `job${Date.now()}`, locationId: selected.id, ...payload }])}
                   onEdit={(id, payload) => setLocationJobTitles(prev => prev.map(j => j.id === id ? { ...j, ...payload } : j))}
                   onDelete={id => setLocationJobTitles(prev => prev.filter(j => j.id !== id))}
+                />
+              </div>
+
+              {/* Horários de trabalho do local */}
+              <div style={{
+                background: 'var(--card-bg)', border: '1px solid var(--card-border)',
+                boxShadow: 'var(--card-shadow)',
+                borderRadius: 18, padding: '22px', marginTop: 16,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Clock size={13} color="#10b981" />
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--card-heading)' }}>
+                    {t.schedulesSection}
+                  </h3>
+                </div>
+                <SimpleCatalogManager
+                  t={t}
+                  items={locationSchedules.filter(s => s.locationId === selected.id)}
+                  onAdd={name => setLocationSchedules(prev => [...prev, { id: `sch${Date.now()}`, locationId: selected.id, name }])}
+                  onDelete={id => setLocationSchedules(prev => prev.filter(s => s.id !== id))}
+                  placeholder={t.newSchedulePlaceholder}
+                  emptyText={t.noSchedulesYet}
+                  deleteConfirmText={t.deleteSchedule}
+                  addLabel={t.newScheduleTitle}
                 />
               </div>
             </motion.div>
@@ -574,7 +605,7 @@ export default function LocationManager({
 }
 
 // ─── Departamentos do local (lista + adicionar + excluir) ────────────────────
-function DepartmentManager({ t, items, onAdd, onDelete }) {
+function SimpleCatalogManager({ t, items, onAdd, onDelete, placeholder, emptyText, deleteConfirmText, addLabel }) {
   const [showAdd, setShowAdd] = useState(false)
   const [name, setName] = useState('')
   const [deletingId, setDeletingId] = useState(null)
@@ -600,7 +631,7 @@ function DepartmentManager({ t, items, onAdd, onDelete }) {
             }}>
               {confirming ? (
                 <>
-                  <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{t.deleteDepartment}?</span>
+                  <span style={{ fontSize: 12, color: 'var(--card-sub)' }}>{deleteConfirmText}?</span>
                   <button onClick={() => setDeletingId(null)} style={{ border: 'none', background: 'transparent', color: 'var(--card-muted)', cursor: 'pointer', fontSize: 12 }}>{t.cancel}</button>
                   <button onClick={() => { onDelete(dep.id); setDeletingId(null) }} style={{ border: 'none', borderRadius: 6, padding: '4px 8px', background: '#f43f5e', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>{t.deleteBtn}</button>
                 </>
@@ -616,7 +647,7 @@ function DepartmentManager({ t, items, onAdd, onDelete }) {
           )
         })}
         {items.length === 0 && !showAdd && (
-          <div style={{ color: 'var(--card-muted)', fontSize: 13 }}>{t.noDepartmentsYet}</div>
+          <div style={{ color: 'var(--card-muted)', fontSize: 13 }}>{emptyText}</div>
         )}
       </div>
 
@@ -625,7 +656,7 @@ function DepartmentManager({ t, items, onAdd, onDelete }) {
           <input
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder={t.newDepartmentPlaceholder}
+            placeholder={placeholder}
             className="input-premium"
             autoFocus
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd() } }}
@@ -644,7 +675,7 @@ function DepartmentManager({ t, items, onAdd, onDelete }) {
             background: 'transparent', color: '#818cf8', cursor: 'pointer', fontSize: 13, fontWeight: 600,
           }}
         >
-          <Plus size={13} /> {t.newDepartmentTitle}
+          <Plus size={13} /> {addLabel}
         </motion.button>
       )}
     </div>

@@ -255,6 +255,11 @@ const i18n = {
     newJobTitlePlaceholder: 'Nome do cargo',
     deleteDepartment: 'Excluir departamento',
     deleteJobTitle: 'Excluir cargo',
+    schedulesSection: 'Horários',
+    noSchedulesYet: 'Nenhum horário cadastrado ainda',
+    newScheduleTitle: 'Novo horário',
+    newSchedulePlaceholder: 'Ex: 06h–14h',
+    deleteSchedule: 'Excluir horário',
 
     // Reports
     reportsTitle: 'Relatórios',
@@ -574,6 +579,11 @@ const i18n = {
     newJobTitlePlaceholder: 'Job title name',
     deleteDepartment: 'Delete department',
     deleteJobTitle: 'Delete job title',
+    schedulesSection: 'Schedules',
+    noSchedulesYet: 'No schedules registered yet',
+    newScheduleTitle: 'New schedule',
+    newSchedulePlaceholder: 'E.g.: 06am–02pm',
+    deleteSchedule: 'Delete schedule',
 
     // Reports
     reportsTitle: 'Reports',
@@ -891,6 +901,11 @@ const i18n = {
     newJobTitlePlaceholder: 'Nombre del cargo',
     deleteDepartment: 'Eliminar departamento',
     deleteJobTitle: 'Eliminar cargo',
+    schedulesSection: 'Horarios',
+    noSchedulesYet: 'Ningún horario registrado todavía',
+    newScheduleTitle: 'Nuevo horario',
+    newSchedulePlaceholder: 'Ej: 06h–14h',
+    deleteSchedule: 'Eliminar horario',
 
     // Reports
     reportsTitle: 'Informes',
