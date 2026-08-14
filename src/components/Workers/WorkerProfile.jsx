@@ -184,65 +184,67 @@ function PaymentRow({ record, index, isMobile, t }) {
       {/* Expandable breakdown */}
       <AnimatePresence>
         {open && record.totalDays > 0 && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }} style={{ overflow: 'hidden' }}>
-            <div
-              style={{
-                padding: '12px 16px 16px',
-                background: 'rgba(0,0,0,0.15)',
-                borderTop: `1px solid ${cfg.border}`,
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
-                gap: 10,
-              }}>
-              {[
-                {
-                  label: t.weekdayBreakdown,
-                  days: record.weekdayDays,
-                  earnings: record.weekdayEarnings,
-                  color: '#818cf8',
-                },
-                {
-                  label: t.weekendBreakdown,
-                  days: record.weekendDays,
-                  earnings: record.weekendEarnings,
-                  color: '#f59e0b',
-                },
-                {
-                  label: t.periodTotal,
-                  days: record.totalDays,
-                  earnings: record.total,
-                  color: cfg.color,
-                },
-              ].map((s, i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: '12px',
-                    borderRadius: 10,
-                    background: `${s.color}08`,
-                    border: `1px solid ${s.color}15`,
-                  }}>
+          <motion.div initial={{ opacity: 0, gridTemplateRows: '0fr' }} animate={{ opacity: 1, gridTemplateRows: '1fr' }} exit={{ opacity: 0, gridTemplateRows: '0fr' }} transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }} style={{ display: 'grid', overflow: 'hidden' }}>
+            <div style={{ overflow: 'hidden', minHeight: 0 }}>
+              <div
+                style={{
+                  padding: '12px 16px 16px',
+                  background: 'rgba(0,0,0,0.15)',
+                  borderTop: `1px solid ${cfg.border}`,
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr',
+                  gap: 10,
+                }}>
+                {[
+                  {
+                    label: t.weekdayBreakdown,
+                    days: record.weekdayDays,
+                    earnings: record.weekdayEarnings,
+                    color: '#818cf8',
+                  },
+                  {
+                    label: t.weekendBreakdown,
+                    days: record.weekendDays,
+                    earnings: record.weekendEarnings,
+                    color: '#f59e0b',
+                  },
+                  {
+                    label: t.periodTotal,
+                    days: record.totalDays,
+                    earnings: record.total,
+                    color: cfg.color,
+                  },
+                ].map((s, i) => (
                   <div
+                    key={i}
                     style={{
-                      fontSize: 10,
-                      color: 'var(--card-muted)',
-                      marginBottom: 6,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
+                      padding: '12px',
+                      borderRadius: 10,
+                      background: `${s.color}08`,
+                      border: `1px solid ${s.color}15`,
                     }}>
-                    {s.label}
+                    <div
+                      style={{
+                        fontSize: 10,
+                        color: 'var(--card-muted)',
+                        marginBottom: 6,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                      }}>
+                      {s.label}
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: s.color }}>R$ {s.earnings.toLocaleString('pt-BR')}</div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: 'var(--card-muted)',
+                        marginTop: 3,
+                      }}>
+                      {s.days} {s.days !== 1 ? t.daysWorkedPlural : t.daysWorkedSingular}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: s.color }}>R$ {s.earnings.toLocaleString('pt-BR')}</div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--card-muted)',
-                      marginTop: 3,
-                    }}>
-                    {s.days} {s.days !== 1 ? t.daysWorkedPlural : t.daysWorkedSingular}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </motion.div>
         )}

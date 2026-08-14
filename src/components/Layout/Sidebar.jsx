@@ -517,65 +517,67 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           {/* ── Logout confirmation strip ── */}
           <AnimatePresence>
             {confirmLogout && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }} style={{ overflow: 'hidden', marginBottom: 8 }}>
-                <div
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    background: 'rgba(244,63,94,0.07)',
-                    border: '1px solid rgba(244,63,94,0.2)',
-                  }}>
+              <motion.div initial={{ opacity: 0, gridTemplateRows: '0fr' }} animate={{ opacity: 1, gridTemplateRows: '1fr' }} exit={{ opacity: 0, gridTemplateRows: '0fr' }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }} style={{ display: 'grid', overflow: 'hidden', marginBottom: 8 }}>
+                <div style={{ overflow: 'hidden', minHeight: 0 }}>
                   <div
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 7,
-                      marginBottom: 10,
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: 'rgba(244,63,94,0.07)',
+                      border: '1px solid rgba(244,63,94,0.2)',
                     }}>
-                    <AlertTriangle size={13} color="#f43f5e" />
-                    <span
+                    <div
                       style={{
-                        fontSize: 12,
-                        color: sb.confirmText,
-                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 7,
+                        marginBottom: 10,
                       }}>
-                      {t.logoutConfirm}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: 7 }}>
-                    <button
-                      onClick={() => setConfirmLogout(false)}
-                      style={{
-                        flex: 1,
-                        padding: '7px',
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        border: `1px solid ${sb.cancelBorder}`,
-                        background: sb.cancelBg,
-                        color: sb.cancelText,
-                        cursor: 'pointer',
-                      }}>
-                      {t.cancel}
-                    </button>
-                    <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={handleLogout}
-                      style={{
-                        flex: 2,
-                        padding: '7px',
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        border: 'none',
-                        background: '#f43f5e',
-                        color: 'white',
-                        cursor: 'pointer',
-                        boxShadow: '0 4px 12px rgba(244,63,94,0.35)',
-                      }}>
-                      {t.logout}
-                    </motion.button>
+                      <AlertTriangle size={13} color="#f43f5e" />
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: sb.confirmText,
+                          fontWeight: 500,
+                        }}>
+                        {t.logoutConfirm}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 7 }}>
+                      <button
+                        onClick={() => setConfirmLogout(false)}
+                        style={{
+                          flex: 1,
+                          padding: '7px',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          border: `1px solid ${sb.cancelBorder}`,
+                          background: sb.cancelBg,
+                          color: sb.cancelText,
+                          cursor: 'pointer',
+                        }}>
+                        {t.cancel}
+                      </button>
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleLogout}
+                        style={{
+                          flex: 2,
+                          padding: '7px',
+                          borderRadius: 8,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          border: 'none',
+                          background: '#f43f5e',
+                          color: 'white',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 12px rgba(244,63,94,0.35)',
+                        }}>
+                        {t.logout}
+                      </motion.button>
+                    </div>
                   </div>
                 </div>
               </motion.div>

@@ -332,57 +332,59 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                 {/* Inline confirmation strip */}
                 <AnimatePresence>
                   {isConfirming && (
-                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }} style={{ overflow: 'hidden' }}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          padding: '12px 16px',
-                          background: 'rgba(244,63,94,0.08)',
-                          borderTop: '1px solid rgba(244,63,94,0.2)',
-                        }}>
-                        <AlertTriangle size={14} color="#f43f5e" style={{ flexShrink: 0 }} />
-                        <span
+                    <motion.div initial={{ opacity: 0, gridTemplateRows: '0fr' }} animate={{ opacity: 1, gridTemplateRows: '1fr' }} exit={{ opacity: 0, gridTemplateRows: '0fr' }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }} style={{ display: 'grid', overflow: 'hidden' }}>
+                      <div style={{ overflow: 'hidden', minHeight: 0 }}>
+                        <div
                           style={{
-                            flex: 1,
-                            fontSize: 12,
-                            color: 'var(--card-sub)',
-                            lineHeight: 1.4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '12px 16px',
+                            background: 'rgba(244,63,94,0.08)',
+                            borderTop: '1px solid rgba(244,63,94,0.2)',
                           }}>
-                          {t.deleteLocation} <strong style={{ color: 'var(--card-heading)' }}>{loc.name}</strong>?
-                        </span>
-                        <button
-                          onClick={() => setDeletingId(null)}
-                          style={{
-                            padding: '5px 12px',
-                            borderRadius: 7,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            border: '1px solid var(--card-border)',
-                            background: 'var(--inner-bg)',
-                            color: 'var(--card-sub)',
-                            cursor: 'pointer',
-                          }}>
-                          {t.cancel}
-                        </button>
-                        <motion.button
-                          whileHover={{ scale: 1.04 }}
-                          whileTap={{ scale: 0.96 }}
-                          onClick={() => handleDelete(loc.id)}
-                          style={{
-                            padding: '5px 14px',
-                            borderRadius: 7,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            border: 'none',
-                            background: '#f43f5e',
-                            color: 'white',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 12px rgba(244,63,94,0.35)',
-                          }}>
-                          {t.deleteBtn}
-                        </motion.button>
+                          <AlertTriangle size={14} color="#f43f5e" style={{ flexShrink: 0 }} />
+                          <span
+                            style={{
+                              flex: 1,
+                              fontSize: 12,
+                              color: 'var(--card-sub)',
+                              lineHeight: 1.4,
+                            }}>
+                            {t.deleteLocation} <strong style={{ color: 'var(--card-heading)' }}>{loc.name}</strong>?
+                          </span>
+                          <button
+                            onClick={() => setDeletingId(null)}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: 7,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              border: '1px solid var(--card-border)',
+                              background: 'var(--inner-bg)',
+                              color: 'var(--card-sub)',
+                              cursor: 'pointer',
+                            }}>
+                            {t.cancel}
+                          </button>
+                          <motion.button
+                            whileHover={{ scale: 1.04 }}
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => handleDelete(loc.id)}
+                            style={{
+                              padding: '5px 14px',
+                              borderRadius: 7,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              border: 'none',
+                              background: '#f43f5e',
+                              color: 'white',
+                              cursor: 'pointer',
+                              boxShadow: '0 4px 12px rgba(244,63,94,0.35)',
+                            }}>
+                            {t.deleteBtn}
+                          </motion.button>
+                        </div>
                       </div>
                     </motion.div>
                   )}

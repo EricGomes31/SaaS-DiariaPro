@@ -698,218 +698,220 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
               {/* Add entry form */}
               <AnimatePresence>
                 {showAddPanel && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        padding: '16px',
-                        borderRadius: 14,
-                        background: 'rgba(99,102,241,0.06)',
-                        border: '1px solid rgba(99,102,241,0.15)',
-                        marginBottom: 16,
-                        maxWidth: 460,
-                      }}>
+                  <motion.div initial={{ opacity: 0, gridTemplateRows: '0fr' }} animate={{ opacity: 1, gridTemplateRows: '1fr' }} exit={{ opacity: 0, gridTemplateRows: '0fr' }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }} style={{ display: 'grid', overflow: 'hidden' }}>
+                    <div style={{ overflow: 'hidden', minHeight: 0 }}>
                       <div
                         style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: '#818cf8',
-                          marginBottom: 12,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
+                          padding: '16px',
+                          borderRadius: 14,
+                          background: 'rgba(99,102,241,0.06)',
+                          border: '1px solid rgba(99,102,241,0.15)',
+                          marginBottom: 16,
+                          maxWidth: 460,
                         }}>
-                        {t.registerWork}
-                      </div>
-                      <div style={{ marginBottom: 10, position: 'relative' }}>
-                        <label
+                        <div
                           style={{
-                            fontSize: 11,
-                            color: 'var(--card-muted)',
-                            display: 'block',
-                            marginBottom: 5,
-                          }}>
-                          {t.workerLabel}
-                        </label>
-                        <input
-                          type="text"
-                          value={workerSearch}
-                          onChange={e => {
-                            setWorkerSearch(e.target.value)
-                            setShowWorkerDropdown(true)
-                            setAddError('')
-                            if (!e.target.value) setAddForm(p => ({ ...p, workerId: '' }))
-                          }}
-                          onFocus={() => setShowWorkerDropdown(true)}
-                          placeholder="Digite o nome..."
-                          className="input-premium"
-                          style={{
-                            width: '100%',
-                            padding: '9px 12px',
-                            borderRadius: 10,
-                            fontSize: 13,
-                            boxSizing: 'border-box',
-                          }}
-                          autoComplete="off"
-                          autoFocus
-                        />
-                        {showWorkerDropdown &&
-                          workerSearch.length > 0 &&
-                          (() => {
-                            const matches = workers.filter(w => w.status === 'active' && w.name.toLowerCase().includes(workerSearch.toLowerCase()))
-                            return matches.length > 0 ? (
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  top: '100%',
-                                  left: 0,
-                                  right: 0,
-                                  zIndex: 100,
-                                  background: 'var(--card-bg)',
-                                  border: '1px solid var(--card-border)',
-                                  borderRadius: 10,
-                                  boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
-                                  maxHeight: 180,
-                                  overflowY: 'auto',
-                                  marginTop: 4,
-                                }}>
-                                {matches.map(w => (
-                                  <div
-                                    key={w.id}
-                                    onMouseDown={() => {
-                                      setAddForm(p => ({
-                                        ...p,
-                                        workerId: w.id,
-                                      }))
-                                      setWorkerSearch(w.name)
-                                      setShowWorkerDropdown(false)
-                                      setAddError('')
-                                    }}
-                                    style={{
-                                      padding: '9px 12px',
-                                      fontSize: 13,
-                                      cursor: 'pointer',
-                                      color: 'var(--card-heading)',
-                                      borderBottom: '1px solid var(--inner-border)',
-                                      transition: 'background 0.15s',
-                                    }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--inner-bg)')}
-                                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                                    {w.name}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null
-                          })()}
-                      </div>
-                      <div style={{ marginBottom: 14 }}>
-                        <label
-                          style={{
-                            fontSize: 11,
-                            color: 'var(--card-muted)',
-                            display: 'block',
-                            marginBottom: 5,
-                          }}>
-                          {t.locationLabel}
-                        </label>
-                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                          {locations.map(l => {
-                            const sel = addForm.locationId === l.id
-                            return (
-                              <motion.button
-                                key={l.id}
-                                type="button"
-                                whileTap={{ scale: 0.96 }}
-                                onClick={() =>
-                                  setAddForm(p => ({
-                                    ...p,
-                                    locationId: l.id,
-                                  }))
-                                }
-                                style={{
-                                  flex: 1,
-                                  minWidth: 'fit-content',
-                                  padding: '8px 10px',
-                                  borderRadius: 9,
-                                  cursor: 'pointer',
-                                  border: `1.5px solid ${sel ? l.color + '70' : 'var(--inner-border)'}`,
-                                  background: sel ? `${l.color}18` : 'var(--inner-bg)',
-                                  color: sel ? l.color : 'var(--card-muted)',
-                                  fontSize: 12,
-                                  fontWeight: sel ? 700 : 400,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                  transition: 'all 0.15s',
-                                }}>
-                                <div
-                                  style={{
-                                    width: 7,
-                                    height: 7,
-                                    borderRadius: '50%',
-                                    background: l.color,
-                                    opacity: sel ? 1 : 0.4,
-                                    flexShrink: 0,
-                                  }}
-                                />
-                                {l.name}
-                              </motion.button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                      {addError && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          style={{
-                            marginBottom: 12,
-                            padding: '9px 12px',
-                            borderRadius: 10,
-                            background: 'rgba(244,63,94,0.08)',
-                            border: '1px solid rgba(244,63,94,0.25)',
                             fontSize: 12,
                             fontWeight: 600,
-                            color: '#f43f5e',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 7,
+                            color: '#818cf8',
+                            marginBottom: 12,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
                           }}>
-                          <AlertCircle size={14} style={{ flexShrink: 0 }} />
-                          {addError}
-                        </motion.div>
-                      )}
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button
-                          onClick={() => {
-                            setShowAddPanel(false)
-                            setWorkerSearch('')
-                            setAddError('')
-                          }}
-                          style={{
-                            flex: 1,
-                            padding: '9px',
-                            borderRadius: 10,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            border: '1px solid var(--card-border)',
-                            background: 'var(--inner-bg)',
-                            color: 'var(--card-muted)',
-                            cursor: 'pointer',
-                          }}>
-                          {t.cancel}
-                        </button>
-                        <motion.button
-                          whileTap={{ scale: 0.97 }}
-                          onClick={handleAddEntry}
-                          className="btn-primary"
-                          style={{
-                            flex: 2,
-                            padding: '9px',
-                            borderRadius: 10,
-                            fontSize: 13,
-                            fontWeight: 600,
-                          }}>
-                          {t.register}
-                        </motion.button>
+                          {t.registerWork}
+                        </div>
+                        <div style={{ marginBottom: 10, position: 'relative' }}>
+                          <label
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--card-muted)',
+                              display: 'block',
+                              marginBottom: 5,
+                            }}>
+                            {t.workerLabel}
+                          </label>
+                          <input
+                            type="text"
+                            value={workerSearch}
+                            onChange={e => {
+                              setWorkerSearch(e.target.value)
+                              setShowWorkerDropdown(true)
+                              setAddError('')
+                              if (!e.target.value) setAddForm(p => ({ ...p, workerId: '' }))
+                            }}
+                            onFocus={() => setShowWorkerDropdown(true)}
+                            placeholder="Digite o nome..."
+                            className="input-premium"
+                            style={{
+                              width: '100%',
+                              padding: '9px 12px',
+                              borderRadius: 10,
+                              fontSize: 13,
+                              boxSizing: 'border-box',
+                            }}
+                            autoComplete="off"
+                            autoFocus
+                          />
+                          {showWorkerDropdown &&
+                            workerSearch.length > 0 &&
+                            (() => {
+                              const matches = workers.filter(w => w.status === 'active' && w.name.toLowerCase().includes(workerSearch.toLowerCase()))
+                              return matches.length > 0 ? (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    zIndex: 100,
+                                    background: 'var(--card-bg)',
+                                    border: '1px solid var(--card-border)',
+                                    borderRadius: 10,
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                                    maxHeight: 180,
+                                    overflowY: 'auto',
+                                    marginTop: 4,
+                                  }}>
+                                  {matches.map(w => (
+                                    <div
+                                      key={w.id}
+                                      onMouseDown={() => {
+                                        setAddForm(p => ({
+                                          ...p,
+                                          workerId: w.id,
+                                        }))
+                                        setWorkerSearch(w.name)
+                                        setShowWorkerDropdown(false)
+                                        setAddError('')
+                                      }}
+                                      style={{
+                                        padding: '9px 12px',
+                                        fontSize: 13,
+                                        cursor: 'pointer',
+                                        color: 'var(--card-heading)',
+                                        borderBottom: '1px solid var(--inner-border)',
+                                        transition: 'background 0.15s',
+                                      }}
+                                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--inner-bg)')}
+                                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                                      {w.name}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null
+                            })()}
+                        </div>
+                        <div style={{ marginBottom: 14 }}>
+                          <label
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--card-muted)',
+                              display: 'block',
+                              marginBottom: 5,
+                            }}>
+                            {t.locationLabel}
+                          </label>
+                          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                            {locations.map(l => {
+                              const sel = addForm.locationId === l.id
+                              return (
+                                <motion.button
+                                  key={l.id}
+                                  type="button"
+                                  whileTap={{ scale: 0.96 }}
+                                  onClick={() =>
+                                    setAddForm(p => ({
+                                      ...p,
+                                      locationId: l.id,
+                                    }))
+                                  }
+                                  style={{
+                                    flex: 1,
+                                    minWidth: 'fit-content',
+                                    padding: '8px 10px',
+                                    borderRadius: 9,
+                                    cursor: 'pointer',
+                                    border: `1.5px solid ${sel ? l.color + '70' : 'var(--inner-border)'}`,
+                                    background: sel ? `${l.color}18` : 'var(--inner-bg)',
+                                    color: sel ? l.color : 'var(--card-muted)',
+                                    fontSize: 12,
+                                    fontWeight: sel ? 700 : 400,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    transition: 'all 0.15s',
+                                  }}>
+                                  <div
+                                    style={{
+                                      width: 7,
+                                      height: 7,
+                                      borderRadius: '50%',
+                                      background: l.color,
+                                      opacity: sel ? 1 : 0.4,
+                                      flexShrink: 0,
+                                    }}
+                                  />
+                                  {l.name}
+                                </motion.button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        {addError && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            style={{
+                              marginBottom: 12,
+                              padding: '9px 12px',
+                              borderRadius: 10,
+                              background: 'rgba(244,63,94,0.08)',
+                              border: '1px solid rgba(244,63,94,0.25)',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: '#f43f5e',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 7,
+                            }}>
+                            <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                            {addError}
+                          </motion.div>
+                        )}
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => {
+                              setShowAddPanel(false)
+                              setWorkerSearch('')
+                              setAddError('')
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '9px',
+                              borderRadius: 10,
+                              fontSize: 13,
+                              fontWeight: 500,
+                              border: '1px solid var(--card-border)',
+                              background: 'var(--inner-bg)',
+                              color: 'var(--card-muted)',
+                              cursor: 'pointer',
+                            }}>
+                            {t.cancel}
+                          </button>
+                          <motion.button
+                            whileTap={{ scale: 0.97 }}
+                            onClick={handleAddEntry}
+                            className="btn-primary"
+                            style={{
+                              flex: 2,
+                              padding: '9px',
+                              borderRadius: 10,
+                              fontSize: 13,
+                              fontWeight: 600,
+                            }}>
+                            {t.register}
+                          </motion.button>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
