@@ -14,6 +14,7 @@ npm run knip      # Find unused files/exports/dependencies
 npm run depcruise # Check architecture-boundary rules (.dependency-cruiser.cjs)
 npm run test      # Run unit tests once (Vitest)
 npm run test:watch # Run unit tests in watch mode
+npm run test:e2e  # Run e2e smoke tests (Playwright, auto-starts the dev server)
 ```
 
 After `npm run build`, generate the deploy zip:
