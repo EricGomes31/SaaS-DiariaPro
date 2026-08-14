@@ -22,7 +22,7 @@ export function workerFromRow(r) {
     saturdayRate: r.saturday_rate ?? weekend,
     sundayRate:   r.sunday_rate   ?? weekend,
     locations: r.locations ?? [], schedule: r.schedule, status: r.status,
-    avatar, avatarColor, phone: r.phone, email: r.email,
+    avatar, avatarColor, phone: r.phone, email: r.email, cpf: r.cpf,
     startDate: r.start_date, pixKeyType: r.pix_key_type, pixKey: r.pix_key,
     workerType: r.worker_type ?? 'diarista',
   }
@@ -94,7 +94,7 @@ function workerToRow(w) {
     sunday_rate:  w.sundayRate  ?? w.saturdayRate ?? w.weekdayRate,
     locations: w.locations,
     schedule: w.schedule, status: w.status, avatar: w.avatar, avatar_color: w.avatarColor,
-    phone: w.phone, email: w.email ?? null, start_date: w.startDate, pix_key_type: w.pixKeyType, pix_key: w.pixKey,
+    phone: w.phone, email: w.email ?? null, cpf: w.cpf ?? null, start_date: w.startDate, pix_key_type: w.pixKeyType, pix_key: w.pixKey,
     worker_type: w.workerType ?? 'diarista',
   }
 }

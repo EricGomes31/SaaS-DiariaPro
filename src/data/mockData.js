@@ -8,6 +8,23 @@ export const PIX_KEY_TYPES = [
   { value: 'random', label: 'Chave Aleatória' },
 ]
 
+export function isValidCPF(cpf) {
+  const digits = String(cpf || '').replace(/\D/g, '')
+  if (digits.length !== 11 || /^(\d)\1{10}$/.test(digits)) return false
+
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i], 10) * (10 - i)
+  let checkDigit1 = (sum * 10) % 11
+  if (checkDigit1 >= 10) checkDigit1 = 0
+  if (checkDigit1 !== parseInt(digits[9], 10)) return false
+
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i], 10) * (11 - i)
+  let checkDigit2 = (sum * 10) % 11
+  if (checkDigit2 >= 10) checkDigit2 = 0
+  return checkDigit2 === parseInt(digits[10], 10)
+}
+
 export const LOCATIONS = [
   { id: 'porto-canoa', name: 'Porto Canoa', color: '#6366f1', shortName: 'PC', address: '', city: 'Serra' },
   { id: 'taquara',     name: 'Taquara',     color: '#f59e0b', shortName: 'TQ', address: '', city: 'Serra' },

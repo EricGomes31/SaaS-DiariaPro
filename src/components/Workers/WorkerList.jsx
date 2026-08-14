@@ -708,6 +708,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
           <WorkerModal
             lang={lang}
             worker={editWorker}
+            workers={workers}
             locations={locations}
             locationDepartments={locationDepartments}
             locationJobTitles={locationJobTitles}

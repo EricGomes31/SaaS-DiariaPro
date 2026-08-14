@@ -77,6 +77,7 @@ create table public.workers (
   avatar_color  text,
   phone         text,
   email         text,
+  cpf           text,
   start_date    text,
   pix_key_type  text,
   pix_key       text,

@@ -4,6 +4,7 @@ import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertTriangle, RotateC
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useToast } from '../UI/Toast'
 import { log } from '../../lib/logger'
+import { isValidCPF } from '../../data/mockData'
 
 // ── Traduções (padrão local) ─────────────────────────────────────────────────
 const UI = {
@@ -45,6 +46,9 @@ const UI = {
     reasonRequired: (f) => `Campo(s) obrigatório(s) vazio(s): ${f}`,
     reasonWorkerNotFound: (n) => `Diarista não encontrada: ${n}`,
     reasonInvalidDate: 'Data inválida (use AAAA-MM-DD)',
+    reasonDuplicateName: (n) => `Já existe um diarista cadastrado com esse nome: ${n}`,
+    reasonDuplicateCpf: (n) => `Já existe um diarista cadastrado com esse CPF: ${n}`,
+    reasonInvalidCpf: (n) => `CPF inválido: ${n}`,
   },
   en: {
     title: 'Import Data (CSV)',
@@ -84,6 +88,9 @@ const UI = {
     reasonRequired: (f) => `Empty required field(s): ${f}`,
     reasonWorkerNotFound: (n) => `Worker not found: ${n}`,
     reasonInvalidDate: 'Invalid date (use YYYY-MM-DD)',
+    reasonDuplicateName: (n) => `A worker with this name is already registered: ${n}`,
+    reasonDuplicateCpf: (n) => `A worker with this CPF is already registered: ${n}`,
+    reasonInvalidCpf: (n) => `Invalid CPF: ${n}`,
   },
   es: {
     title: 'Importar Datos (CSV)',
@@ -123,6 +130,9 @@ const UI = {
     reasonRequired: (f) => `Campo(s) obligatorio(s) vacío(s): ${f}`,
     reasonWorkerNotFound: (n) => `Trabajador no encontrado: ${n}`,
     reasonInvalidDate: 'Fecha inválida (usa AAAA-MM-DD)',
+    reasonDuplicateName: (n) => `Ya existe un trabajador registrado con ese nombre: ${n}`,
+    reasonDuplicateCpf: (n) => `Ya existe un trabajador registrado con ese CPF: ${n}`,
+    reasonInvalidCpf: (n) => `CPF inválido: ${n}`,
   },
 }
 
@@ -243,12 +253,30 @@ const TYPES = {
       { key: 'sundayRate',   header: 'diaria_domingo', example: '180' },
       { key: 'phone',        header: 'telefone',       example: '(27) 99999-9999' },
       { key: 'email',        header: 'email',          example: 'joao@email.com' },
+      { key: 'cpf',          header: 'cpf',            example: '123.456.789-00' },
       { key: 'pixKeyType',   header: 'tipo_chave_pix', example: 'cpf' },
       { key: 'pixKey',       header: 'chave_pix',      required: true, example: '123.456.789-00' },
       { key: 'locais',       header: 'locais',         example: 'Porto Canoa' },
     ],
     build: (get, ctx, idx) => {
       const name = get('name')
+      const pixKeyType = normPixType(get('pixKeyType'))
+      const pixKey = get('pixKey')
+      // Se não vier coluna cpf própria, aproveita a chave PIX quando ela já for o CPF.
+      const cpf = get('cpf') || (pixKeyType === 'cpf' ? pixKey : '')
+
+      const normCpf = cpf.replace(/\D/g, '')
+      if (normCpf) {
+        if (!isValidCPF(normCpf)) return { error: 'invalidCpf', param: name }
+        if (ctx.workers.some(w => (w.cpf || '').replace(/\D/g, '') === normCpf)) {
+          return { error: 'duplicateCpf', param: name }
+        }
+      }
+      const normName = name.trim().toLowerCase()
+      if (ctx.workers.some(w => w.name?.trim().toLowerCase() === normName)) {
+        return { error: 'duplicateName', param: name }
+      }
+
       const weekday = parseNum(get('weekdayRate'))
       const sat = get('saturdayRate') ? parseNum(get('saturdayRate')) : weekday
       const sun = get('sundayRate') ? parseNum(get('sundayRate')) : sat
@@ -264,8 +292,9 @@ const TYPES = {
           sundayRate: sun,
           phone: get('phone'),
           email: get('email'),
-          pixKeyType: normPixType(get('pixKeyType')),
-          pixKey: get('pixKey'),
+          cpf,
+          pixKeyType,
+          pixKey,
           locations: matchLocations(get('locais'), ctx.locations),
           schedule: '',
           status: 'active',
@@ -365,6 +394,7 @@ const ALL_COLUMNS = [
   { key: 'sundayRate',   header: 'diaria_domingo' },
   { key: 'phone',        header: 'telefone' },
   { key: 'email',        header: 'email' },
+  { key: 'cpf',          header: 'cpf' },
   { key: 'pixKeyType',   header: 'tipo_chave_pix' },
   { key: 'pixKey',       header: 'chave_pix' },
   { key: 'locais',       header: 'locais' },
@@ -382,7 +412,7 @@ const ALL_COLUMNS = [
 
 // Uma linha de exemplo por tipo (o resto das colunas fica em branco).
 const ALL_EXAMPLES = [
-  { tipo: 'diarista', nome: 'JOÃO DA SILVA', tipo_trabalhador: 'diarista', departamento: 'Serra Park', cargo: 'Doca', diaria_semana: '170', diaria_sabado: '170', diaria_domingo: '180', telefone: '(27) 99999-9999', email: 'joao@email.com', tipo_chave_pix: 'cpf', chave_pix: '123.456.789-00', locais: 'Porto Canoa' },
+  { tipo: 'diarista', nome: 'JOÃO DA SILVA', tipo_trabalhador: 'diarista', departamento: 'Serra Park', cargo: 'Doca', diaria_semana: '170', diaria_sabado: '170', diaria_domingo: '180', telefone: '(27) 99999-9999', email: 'joao@email.com', cpf: '123.456.789-00', tipo_chave_pix: 'cpf', chave_pix: '123.456.789-00', locais: 'Porto Canoa' },
   { tipo: 'dia', nome: 'JOÃO DA SILVA', data: '2026-07-15', local: 'Porto Canoa', valor: '170', hora_extra: '0', bonus: '0' },
   { tipo: 'pagamento', nome: 'JOÃO DA SILVA', valor_total: '1700', data_pagamento: '2026-07-31', status: 'paid', periodo: 'Julho/2026', dias: '10' },
 ]
@@ -414,6 +444,9 @@ export default function DataImport({
   const reasonText = (code, param) =>
     code === 'workerNotFound' ? t.reasonWorkerNotFound(param)
     : code === 'invalidDate' ? t.reasonInvalidDate
+    : code === 'invalidCpf' ? t.reasonInvalidCpf(param)
+    : code === 'duplicateName' ? t.reasonDuplicateName(param)
+    : code === 'duplicateCpf' ? t.reasonDuplicateCpf(param)
     : t.reasonRequired(param)
 
   const switchType = (id) => { setType(id); setResult(null); setPreview(null); if (fileRef.current) fileRef.current.value = '' }
@@ -496,14 +529,17 @@ export default function DataImport({
 
     const imported = []
     const rejectedRows = []
+    // Cresce a cada diarista aceito, pra pegar duplicata entre linhas do mesmo arquivo.
+    const liveWorkers = type === 'workers' ? [...workers] : workers
     for (let r = 1; r < rows.length; r++) {
       const cols = rows[r]
       const get = makeGet(cols)
       const missing = cfg.columns.filter(c => c.required && !get(c.key)).map(c => c.header)
       if (missing.length) { rejectedRows.push([...cols, reasonText('required', missing.join(', '))]); continue }
-      const res = cfg.build(get, { workers, locations }, r)
+      const res = cfg.build(get, { workers: liveWorkers, locations }, r)
       if (res.error) { rejectedRows.push([...cols, reasonText(res.error, res.param)]); continue }
       imported.push(res.data)
+      if (type === 'workers') liveWorkers.push(res.data)
     }
 
     const byType = { workers: [], workDays: [], payments: [] }
