@@ -9,6 +9,7 @@ drop table if exists public.work_days           cascade;
 drop table if exists public.workers             cascade;
 drop table if exists public.location_job_titles cascade;
 drop table if exists public.location_departments cascade;
+drop table if exists public.location_schedules  cascade;
 drop table if exists public.locations           cascade;
 
 -- ─── Locations ──────────────────────────────────────────────────────────────
@@ -62,6 +63,21 @@ create policy "Usuários gerenciam seus cargos"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+-- ─── Horários de trabalho por local ──────────────────────────────────────────
+create table public.location_schedules (
+  id           text primary key,
+  location_id  text not null references public.locations(id) on delete cascade,
+  name         text not null,
+  user_id      uuid references auth.users(id) on delete cascade not null default auth.uid()
+);
+
+alter table public.location_schedules enable row level security;
+
+create policy "Usuários gerenciam seus horários"
+  on public.location_schedules for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 -- ─── Workers ────────────────────────────────────────────────────────────────
 create table public.workers (
   id            text primary key,
@@ -77,6 +93,7 @@ create table public.workers (
   avatar_color  text,
   phone         text,
   email         text,
+  cpf           text,
   start_date    text,
   pix_key_type  text,
   pix_key       text,
@@ -177,6 +194,7 @@ alter publication supabase_realtime add table public.work_days;
 alter publication supabase_realtime add table public.locations;
 alter publication supabase_realtime add table public.location_departments;
 alter publication supabase_realtime add table public.location_job_titles;
+alter publication supabase_realtime add table public.location_schedules;
 alter publication supabase_realtime add table public.payment_records;
 alter publication supabase_realtime add table public.holidays;
 alter publication supabase_realtime add table public.daily_expenses;

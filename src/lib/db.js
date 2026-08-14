@@ -22,7 +22,7 @@ export function workerFromRow(r) {
     saturdayRate: r.saturday_rate ?? weekend,
     sundayRate:   r.sunday_rate   ?? weekend,
     locations: r.locations ?? [], schedule: r.schedule, status: r.status,
-    avatar, avatarColor, phone: r.phone, email: r.email,
+    avatar, avatarColor, phone: r.phone, email: r.email, cpf: r.cpf,
     startDate: r.start_date, pixKeyType: r.pix_key_type, pixKey: r.pix_key,
     workerType: r.worker_type ?? 'diarista',
   }
@@ -50,6 +50,10 @@ export function locationJobTitleFromRow(r) {
     id: r.id, locationId: r.location_id, name: r.name,
     weekdayRate: r.weekday_rate, saturdayRate: r.saturday_rate, sundayRate: r.sunday_rate,
   }
+}
+
+export function locationScheduleFromRow(r) {
+  return { id: r.id, locationId: r.location_id, name: r.name }
 }
 
 export function dailyExpenseFromRow(r) {
@@ -94,7 +98,7 @@ function workerToRow(w) {
     sunday_rate:  w.sundayRate  ?? w.saturdayRate ?? w.weekdayRate,
     locations: w.locations,
     schedule: w.schedule, status: w.status, avatar: w.avatar, avatar_color: w.avatarColor,
-    phone: w.phone, email: w.email ?? null, start_date: w.startDate, pix_key_type: w.pixKeyType, pix_key: w.pixKey,
+    phone: w.phone, email: w.email ?? null, cpf: w.cpf ?? null, start_date: w.startDate, pix_key_type: w.pixKeyType, pix_key: w.pixKey,
     worker_type: w.workerType ?? 'diarista',
   }
 }
@@ -122,6 +126,10 @@ function locationJobTitleToRow(j) {
   }
 }
 
+function locationScheduleToRow(s) {
+  return { id: s.id, location_id: s.locationId, name: s.name }
+}
+
 function dailyExpenseToRow(e) {
   return {
     id: e.id, date: e.date,
@@ -146,7 +154,7 @@ function paymentToRow(p) {
 // ─── Fetch all (used on login and realtime refresh) ──────────────────────────
 
 export async function fetchAll() {
-  const [w, d, l, p, h, e, s, ld, lj] = await Promise.all([
+  const [w, d, l, p, h, e, s, ld, lj, ls] = await Promise.all([
     supabase.from('workers').select('*').order('name'),
     supabase.from('work_days').select('*').order('date'),
     supabase.from('locations').select('*').order('name'),
@@ -156,6 +164,7 @@ export async function fetchAll() {
     supabase.from('subscriptions').select('*').limit(1),  // RLS já filtra p/ o próprio usuário
     supabase.from('location_departments').select('*').order('name'),
     supabase.from('location_job_titles').select('*').order('name'),
+    supabase.from('location_schedules').select('*').order('name'),
   ])
 
   if (w.error) throw w.error
@@ -170,6 +179,7 @@ export async function fetchAll() {
   // Idem para departamentos/cargos (rode add-location-departments-job-titles.sql).
   if (ld.error) console.warn('[fetchAll] location_departments indisponível (rode a migration):', ld.error.message)
   if (lj.error) console.warn('[fetchAll] location_job_titles indisponível (rode a migration):', lj.error.message)
+  if (ls.error) console.warn('[fetchAll] location_schedules indisponível (rode a migration):', ls.error.message)
 
   const locations = (l.data ?? []).map(locationFromRow)
   const workers   = (w.data ?? []).map(workerFromRow)
@@ -180,8 +190,9 @@ export async function fetchAll() {
   const subscription   = s.error ? null : ((s.data ?? []).map(subscriptionFromRow)[0] ?? null)
   const locationDepartments = ld.error ? [] : (ld.data ?? []).map(locationDepartmentFromRow)
   const locationJobTitles   = lj.error ? [] : (lj.data ?? []).map(locationJobTitleFromRow)
+  const locationSchedules   = ls.error ? [] : (ls.data ?? []).map(locationScheduleFromRow)
 
-  return { workers, workDays, locations, paymentRecords, holidays, dailyExpenses, subscription, locationDepartments, locationJobTitles }
+  return { workers, workDays, locations, paymentRecords, holidays, dailyExpenses, subscription, locationDepartments, locationJobTitles, locationSchedules }
 }
 
 // eslint-disable-next-line no-unused-vars -- utilitário de manutenção mantido de propósito
@@ -268,6 +279,17 @@ export async function upsertLocationJobTitles(items) {
 export async function deleteLocationJobTitles(ids) {
   if (!ids.length) return
   const { error } = await supabase.from('location_job_titles').delete().in('id', ids)
+  if (error) throw error
+}
+
+export async function upsertLocationSchedules(items) {
+  if (!items.length) return
+  const { error } = await supabase.from('location_schedules').upsert(items.map(locationScheduleToRow), { onConflict: 'id' })
+  if (error) throw error
+}
+export async function deleteLocationSchedules(ids) {
+  if (!ids.length) return
+  const { error } = await supabase.from('location_schedules').delete().in('id', ids)
   if (error) throw error
 }
 
