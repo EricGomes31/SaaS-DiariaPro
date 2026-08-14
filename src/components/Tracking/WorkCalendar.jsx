@@ -489,6 +489,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                           className="input-premium"
                           style={{ width: '100%', padding: '9px 12px', borderRadius: 10, fontSize: 13, boxSizing: 'border-box' }}
                           autoComplete="off"
+                          autoFocus
                         />
                         {showWorkerDropdown && workerSearch.length > 0 && (() => {
                           const matches = workers

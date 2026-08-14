@@ -31,8 +31,9 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const { showToast } = useToast()
-  // Limite de diaristas do plano · null = ilimitado. Sem assinatura carregada → não bloqueia (fail-open).
-  const workerLimit = subscription?.workerLimit ?? null
+  // Planos/limite de diaristas temporariamente ocultos — reativar trocando a linha abaixo
+  // para `subscription?.workerLimit ?? null` quando a cobrança voltar a ficar visível.
+  const workerLimit = null
   const atLimit = workerLimit != null && workers.length >= workerLimit
   // Work days already settled by a payment record (same model used in PaymentView)
   const paidDayIds = useMemo(() => new Set((paymentRecords || []).flatMap(r => r.workDayIds || [])), [paymentRecords])

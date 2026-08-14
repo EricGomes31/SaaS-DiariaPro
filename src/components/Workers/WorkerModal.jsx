@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, User, DollarSign, MapPin, Clock, Check, QrCode } from 'lucide-react'
+import { X, User, MapPin, Clock, Check, QrCode } from 'lucide-react'
 import { PIX_KEY_TYPES } from '../../data/mockData'
 import SearchableSelect from '../UI/SearchableSelect'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -85,7 +85,6 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
@@ -290,58 +289,6 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
                 style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
               />
             </Field>
-          </div>
-
-          {/* Section: Remuneração */}
-          <div style={{ marginBottom: 24, padding: '20px', borderRadius: 16, background: 'var(--inner-bg)', border: '1px solid var(--inner-border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <DollarSign size={13} color="#f59e0b" />
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--card-sub)' }}>{t.remunerationSection}</span>
-            </div>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--card-muted)' }}>{t.remunerationAutoFillHint}</p>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, color: 'var(--card-muted)', marginBottom: 6 }}>
-                  {t.weekdayRateLabel}
-                </label>
-                <input
-                  type="number"
-                  value={form.weekdayRate}
-                  onChange={e => setForm(p => ({ ...p, weekdayRate: e.target.value }))}
-                  min="0"
-                  className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 16, fontWeight: 700 }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.8)', marginBottom: 6 }}>
-                  Sábado (R$)
-                </label>
-                <input
-                  type="number"
-                  value={form.saturdayRate}
-                  onChange={e => setForm(p => ({ ...p, saturdayRate: e.target.value }))}
-                  min="0"
-                  className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 16, fontWeight: 700, borderColor: 'rgba(245,158,11,0.25)' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 11, color: 'rgba(245,158,11,0.8)', marginBottom: 6 }}>
-                  Domingo (R$)
-                </label>
-                <input
-                  type="number"
-                  value={form.sundayRate}
-                  onChange={e => setForm(p => ({ ...p, sundayRate: e.target.value }))}
-                  min="0"
-                  className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 16, fontWeight: 700, borderColor: 'rgba(245,158,11,0.25)' }}
-                />
-              </div>
-            </div>
           </div>
 
           {/* Section: PIX */}

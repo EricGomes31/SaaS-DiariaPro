@@ -218,7 +218,6 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -131,7 +131,6 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, bonusAmount = 0
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 600,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -907,7 +906,6 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 500,
         background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)',
