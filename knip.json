@@ -1,0 +1,6 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["index.html"],
+  "project": ["src/**/*.{js,jsx}"],
+  "ignore": ["src/components/Kiosk/**", "src/hooks/useFaceModels.js"]
+}

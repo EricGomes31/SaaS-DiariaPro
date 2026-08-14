@@ -8,14 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev       # Start Vite dev server (hot reload) — http://localhost:5173
 npm run build     # Production build → dist/
 npm run preview   # Preview the production build locally
+npm run lint      # Biome check (lint + format check)
+npm run lint:fix  # Biome check --write (auto-fix)
+npm run knip      # Find unused files/exports/dependencies
+npm run depcruise # Check architecture-boundary rules (.dependency-cruiser.cjs)
+npm run test      # Run unit tests once (Vitest)
+npm run test:watch # Run unit tests in watch mode
+npm run test:e2e  # Run e2e smoke tests (Playwright, auto-starts the dev server)
 ```
 
 After `npm run build`, generate the deploy zip:
 ```powershell
 Compress-Archive -Path 'dist/*' -DestinationPath 'hostgator-upload.zip' -Force
 ```
-
-There are no test or lint commands configured.
 
 ## Project Overview
 
@@ -51,6 +56,7 @@ This repository uses GitHub Issues + Pull Requests to plan and ship every change
 3. **No direct pushes to `master`.** Work lands via a Pull Request, reviewed and merged — the PR merge is what represents a deploy-ready change.
 4. **Always link the Issue in the PR description**, e.g. `Closes #123` (or `Refs #123` if the PR doesn't fully resolve it) — so merging auto-closes the issue and history stays traceable.
 5. Keep PRs scoped to one Issue/topic where practical, so `git log`/PR history stays a reliable record of *why* a change happened.
+6. **Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat:`, `fix:`, `chore:`, `docs:`, ...), enforced by commitlint via a husky `commit-msg` hook (`commitlint.config.js`, `.husky/commit-msg`). This runs automatically on every `git commit` once `npm install` has run (`prepare` script installs the hooks).
 
 If `gh` isn't installed/authenticated in the current environment, say so explicitly rather than skipping issue/PR creation silently.
 

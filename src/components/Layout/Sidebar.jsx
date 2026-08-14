@@ -1,21 +1,20 @@
-import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  LayoutDashboard, Users, CalendarDays, CreditCard, UtensilsCrossed,
-  MapPin, BarChart3, Settings, Bell, LogOut, Zap, AlertTriangle, X, Shield, Sparkles, Upload,
-} from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { AlertTriangle, BarChart3, Bell, CalendarDays, CreditCard, LayoutDashboard, LogOut, MapPin, Settings, Shield, Sparkles, Upload, Users, UtensilsCrossed, X, Zap } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import i18n from '../../i18n'
 import NotificationsPanel, { buildNotifications } from './NotificationsPanel'
 import SettingsPanel from './SettingsPanel'
-import i18n from '../../i18n'
 
 // Estado lida/excluída das notificações persistido no navegador
 const NOTIF_READ_KEY = 'diaria-notif-read'
 const NOTIF_DELETED_KEY = 'diaria-notif-deleted'
-const loadIds = (key) => {
+const loadIds = key => {
   try {
     const v = JSON.parse(localStorage.getItem(key))
     return Array.isArray(v) ? v : []
-  } catch { return [] }
+  } catch {
+    return []
+  }
 }
 
 // Planos/cobrança temporariamente ocultos — trocar para true quando reativar.
@@ -23,50 +22,91 @@ const PLANS_ENABLED = false
 
 const NAV_ITEMS = [
   { id: 'dashboard', icon: LayoutDashboard },
-  { id: 'workers',   icon: Users },
-  { id: 'tracking',  icon: CalendarDays },
-  { id: 'expenses',  icon: UtensilsCrossed },
-  { id: 'payments',  icon: CreditCard },
+  { id: 'workers', icon: Users },
+  { id: 'tracking', icon: CalendarDays },
+  { id: 'expenses', icon: UtensilsCrossed },
+  { id: 'payments', icon: CreditCard },
   { id: 'locations', icon: MapPin },
-  { id: 'reports',   icon: BarChart3 },
-  { id: 'audit',     icon: Shield },
+  { id: 'reports', icon: BarChart3 },
+  { id: 'audit', icon: Shield },
   { id: 'migration', icon: Upload },
 ]
 
 const NAV_LABELS = {
-  pt: { dashboard: 'Dashboard', workers: 'Trabalhadores', tracking: 'Controle de Dias', expenses: 'Gastos Diários', payments: 'Pagamentos', locations: 'Locais', reports: 'Relatórios', audit: 'Auditoria', migration: 'Importar CSV', notifications: 'Notificações', settings: 'Configurações', upgrade: 'Fazer upgrade', upgradeSub: 'Desbloqueie mais recursos' },
-  en: { dashboard: 'Dashboard', workers: 'Workers', tracking: 'Time Tracking', expenses: 'Daily Expenses', payments: 'Payments', locations: 'Locations', reports: 'Reports', audit: 'Audit Log', migration: 'Import CSV', notifications: 'Notifications', settings: 'Settings', upgrade: 'Upgrade', upgradeSub: 'Unlock more features' },
-  es: { dashboard: 'Dashboard', workers: 'Trabajadores', tracking: 'Control de Días', expenses: 'Gastos Diarios', payments: 'Pagos', locations: 'Lugares', reports: 'Informes', audit: 'Auditoría', migration: 'Importar CSV', notifications: 'Notificaciones', settings: 'Configuración', upgrade: 'Mejorar plan', upgradeSub: 'Desbloquea más recursos' },
+  pt: {
+    dashboard: 'Dashboard',
+    workers: 'Trabalhadores',
+    tracking: 'Controle de Dias',
+    expenses: 'Gastos Diários',
+    payments: 'Pagamentos',
+    locations: 'Locais',
+    reports: 'Relatórios',
+    audit: 'Auditoria',
+    migration: 'Importar CSV',
+    notifications: 'Notificações',
+    settings: 'Configurações',
+    upgrade: 'Fazer upgrade',
+    upgradeSub: 'Desbloqueie mais recursos',
+  },
+  en: {
+    dashboard: 'Dashboard',
+    workers: 'Workers',
+    tracking: 'Time Tracking',
+    expenses: 'Daily Expenses',
+    payments: 'Payments',
+    locations: 'Locations',
+    reports: 'Reports',
+    audit: 'Audit Log',
+    migration: 'Import CSV',
+    notifications: 'Notifications',
+    settings: 'Settings',
+    upgrade: 'Upgrade',
+    upgradeSub: 'Unlock more features',
+  },
+  es: {
+    dashboard: 'Dashboard',
+    workers: 'Trabajadores',
+    tracking: 'Control de Días',
+    expenses: 'Gastos Diarios',
+    payments: 'Pagos',
+    locations: 'Lugares',
+    reports: 'Informes',
+    audit: 'Auditoría',
+    migration: 'Importar CSV',
+    notifications: 'Notificaciones',
+    settings: 'Configuración',
+    upgrade: 'Mejorar plan',
+    upgradeSub: 'Desbloquea más recursos',
+  },
 }
 
 export default function Sidebar({ activePage, setActivePage, onLogout, theme, setTheme, lang = 'pt', setLang, holidays = [], setHolidays, isMobile = false, sidebarOpen = false, setSidebarOpen, currentUser, onUpgrade, workers = [], workDays = [], paymentRecords = [] }) {
   const t = i18n[lang] ?? i18n.pt
   const [showNotifications, setShowNotifications] = useState(false)
-  const [showSettings, setShowSettings]           = useState(false)
-  const [confirmLogout, setConfirmLogout]         = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [confirmLogout, setConfirmLogout] = useState(false)
 
   // ── Notificações geradas dos dados reais ──
-  const [readIds, setReadIds]       = useState(() => loadIds(NOTIF_READ_KEY))
+  const [readIds, setReadIds] = useState(() => loadIds(NOTIF_READ_KEY))
   const [deletedIds, setDeletedIds] = useState(() => loadIds(NOTIF_DELETED_KEY))
 
-  const allNotes = useMemo(
-    () => buildNotifications({ workers, workDays, paymentRecords }),
-    [workers, workDays, paymentRecords],
-  )
-  const notes = allNotes
-    .filter(n => !deletedIds.includes(n.id))
-    .map(n => ({ ...n, read: readIds.includes(n.id) }))
+  const allNotes = useMemo(() => buildNotifications({ workers, workDays, paymentRecords }), [workers, workDays, paymentRecords])
+  const notes = allNotes.filter(n => !deletedIds.includes(n.id)).map(n => ({ ...n, read: readIds.includes(n.id) }))
   const unreadCount = notes.filter(n => !n.read).length
 
   // Persiste apenas IDs que ainda existem (IDs mudam por dia — evita acumular lixo)
   const persistIds = (key, ids, setter) => {
     const valid = [...new Set(ids)].filter(id => allNotes.some(n => n.id === id))
     setter(valid)
-    try { localStorage.setItem(key, JSON.stringify(valid)) } catch { /* storage indisponível */ }
+    try {
+      localStorage.setItem(key, JSON.stringify(valid))
+    } catch {
+      /* storage indisponível */
+    }
   }
-  const markNotifRead    = (id) => persistIds(NOTIF_READ_KEY, [...readIds, id], setReadIds)
-  const markAllNotifRead = ()   => persistIds(NOTIF_READ_KEY, [...readIds, ...notes.map(n => n.id)], setReadIds)
-  const removeNotif      = (id) => persistIds(NOTIF_DELETED_KEY, [...deletedIds, id], setDeletedIds)
+  const markNotifRead = id => persistIds(NOTIF_READ_KEY, [...readIds, id], setReadIds)
+  const markAllNotifRead = () => persistIds(NOTIF_READ_KEY, [...readIds, ...notes.map(n => n.id)], setReadIds)
+  const removeNotif = id => persistIds(NOTIF_DELETED_KEY, [...deletedIds, id], setDeletedIds)
 
   const handleLogout = () => {
     setConfirmLogout(false)
@@ -75,30 +115,30 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
 
   const isLight = theme === 'light'
   const sb = {
-    bg:              isLight ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%)',
-    border:          isLight ? 'rgba(0,0,0,0.08)'  : 'rgba(255,255,255,0.05)',
-    divider:         isLight ? 'rgba(0,0,0,0.07)'  : 'rgba(255,255,255,0.05)',
-    logoText:        isLight ? '#1e293b'            : '#f1f5f9',
-    logoSub:         isLight ? 'rgba(0,0,0,0.35)'  : 'rgba(255,255,255,0.3)',
-    sectionLabel:    isLight ? 'rgba(0,0,0,0.3)'   : 'rgba(255,255,255,0.2)',
-    navIcon:         isLight ? 'rgba(0,0,0,0.4)'   : 'rgba(255,255,255,0.35)',
-    navText:         isLight ? 'rgba(0,0,0,0.5)'   : 'rgba(255,255,255,0.45)',
-    navActiveText:   isLight ? '#4f46e5'            : '#e0e7ff',
-    closeBtnBg:      isLight ? 'rgba(0,0,0,0.06)'  : 'rgba(255,255,255,0.05)',
-    closeBtnBorder:  isLight ? 'rgba(0,0,0,0.1)'   : 'rgba(255,255,255,0.08)',
-    closeBtnIcon:    isLight ? 'rgba(0,0,0,0.4)'   : 'rgba(255,255,255,0.5)',
-    badgeBorder:     isLight ? '#f1f5f9'            : '#0d0d1a',
-    cancelBg:        isLight ? 'rgba(0,0,0,0.04)'  : 'rgba(255,255,255,0.04)',
-    cancelBorder:    isLight ? 'rgba(0,0,0,0.08)'  : 'rgba(255,255,255,0.08)',
-    cancelText:      isLight ? 'rgba(0,0,0,0.4)'   : 'rgba(255,255,255,0.4)',
-    confirmText:     isLight ? 'rgba(0,0,0,0.6)'   : 'rgba(255,255,255,0.6)',
-    userText:        isLight ? '#1e293b'            : '#e2e8f0',
-    userEmail:       isLight ? 'rgba(0,0,0,0.35)'  : 'rgba(255,255,255,0.3)',
-    logoutIcon:      isLight ? 'rgba(0,0,0,0.25)'  : 'rgba(255,255,255,0.25)',
-    hoverBg:         isLight ? 'rgba(0,0,0,0.04)'  : 'rgba(255,255,255,0.03)',
+    bg: isLight ? 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)' : 'linear-gradient(180deg, #0d0d1a 0%, #0a0a14 100%)',
+    border: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.05)',
+    divider: isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.05)',
+    logoText: isLight ? '#1e293b' : '#f1f5f9',
+    logoSub: isLight ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.3)',
+    sectionLabel: isLight ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)',
+    navIcon: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.35)',
+    navText: isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.45)',
+    navActiveText: isLight ? '#4f46e5' : '#e0e7ff',
+    closeBtnBg: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
+    closeBtnBorder: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.08)',
+    closeBtnIcon: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.5)',
+    badgeBorder: isLight ? '#f1f5f9' : '#0d0d1a',
+    cancelBg: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)',
+    cancelBorder: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)',
+    cancelText: isLight ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.4)',
+    confirmText: isLight ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)',
+    userText: isLight ? '#1e293b' : '#e2e8f0',
+    userEmail: isLight ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.3)',
+    logoutIcon: isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.25)',
+    hoverBg: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)',
   }
 
-  const handleNavClick = (id) => {
+  const handleNavClick = id => {
     setActivePage(id)
     if (isMobile) setSidebarOpen(false)
   }
@@ -118,7 +158,8 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
             transition={{ duration: 0.25 }}
             onClick={closeSidebar}
             style={{
-              position: 'fixed', inset: 0,
+              position: 'fixed',
+              inset: 0,
               background: 'rgba(0,0,0,0.65)',
               backdropFilter: 'blur(4px)',
               WebkitBackdropFilter: 'blur(4px)',
@@ -133,34 +174,66 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
         animate={isMobile ? { x: sidebarOpen ? 0 : -260 } : { x: 0 }}
         transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
         style={{
-          position: 'fixed', top: 0, left: 0, height: '100dvh', width: 260,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          height: '100dvh',
+          width: 260,
           background: sb.bg,
           borderRight: `1px solid ${sb.border}`,
-          display: 'flex', flexDirection: 'column',
+          display: 'flex',
+          flexDirection: 'column',
           zIndex: isMobile ? 200 : 100,
           overflow: 'hidden',
-        }}
-      >
+        }}>
         {/* ── Logo ── */}
         <div style={{ padding: '28px 24px 24px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
             <motion.div
               whileHover={{ scale: 1.02 }}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-            >
-              <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                cursor: 'pointer',
               }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+                }}>
                 <Zap size={18} color="white" fill="white" />
               </div>
               <div>
-                <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: 17, color: sb.logoText, letterSpacing: '-0.02em' }}>
+                <div
+                  style={{
+                    fontFamily: 'Syne, sans-serif',
+                    fontWeight: 800,
+                    fontSize: 17,
+                    color: sb.logoText,
+                    letterSpacing: '-0.02em',
+                  }}>
                   Diária Pro
                 </div>
-                <div style={{ fontSize: 10, color: sb.logoSub, fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: sb.logoSub,
+                    fontWeight: 500,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}>
                   {t.brandSubtitle}
                 </div>
               </div>
@@ -171,13 +244,16 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
               <button
                 onClick={closeSidebar}
                 style={{
-                  width: 32, height: 32, borderRadius: 8,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
                   background: sb.closeBtnBg,
                   border: `1px solid ${sb.closeBtnBorder}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   cursor: 'pointer',
-                }}
-              >
+                }}>
                 <X size={16} color={sb.closeBtnIcon} />
               </button>
             )}
@@ -187,13 +263,27 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
 
         {/* ── Section label ── */}
         <div style={{ padding: '0 24px 12px', flexShrink: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 600, color: sb.sectionLabel, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 600,
+              color: sb.sectionLabel,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+            }}>
             {t.menuPrincipal}
           </span>
         </div>
 
         {/* ── Nav items ── */}
-        <nav style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 12px' }}>
+        <nav
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            overscrollBehavior: 'contain',
+            padding: '0 12px',
+          }}>
           {NAV_ITEMS.map((item, i) => {
             const isActive = activePage === item.id
             const Icon = item.icon
@@ -208,44 +298,55 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 whileHover={{ x: 2 }}
                 whileTap={{ scale: 0.98 }}
                 style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '11px 14px', borderRadius: 10, marginBottom: 4,
-                  border: 'none', cursor: 'pointer',
-                  background: isActive
-                    ? 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.15) 100%)'
-                    : 'transparent',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '11px 14px',
+                  borderRadius: 10,
+                  marginBottom: 4,
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: isActive ? 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.15) 100%)' : 'transparent',
                   transition: 'all 0.2s ease',
-                  position: 'relative', overflow: 'hidden',
-                }}
-              >
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}>
                 {isActive && (
                   <motion.div
                     layoutId="activeIndicator"
                     style={{
-                      position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-                      width: 3, height: 20, borderRadius: '0 3px 3px 0',
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 3,
+                      height: 20,
+                      borderRadius: '0 3px 3px 0',
                       background: 'linear-gradient(180deg, #818cf8 0%, #a78bfa 100%)',
                     }}
                   />
                 )}
                 {isActive && (
-                  <div style={{
-                    position: 'absolute', inset: 0,
-                    background: 'linear-gradient(90deg, rgba(99,102,241,0.1) 0%, transparent 100%)',
-                    borderRadius: 10, border: '1px solid rgba(99,102,241,0.2)',
-                  }} />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(90deg, rgba(99,102,241,0.1) 0%, transparent 100%)',
+                      borderRadius: 10,
+                      border: '1px solid rgba(99,102,241,0.2)',
+                    }}
+                  />
                 )}
-                <Icon
-                  size={18}
-                  color={isActive ? '#818cf8' : sb.navIcon}
-                  style={{ transition: 'color 0.2s ease', flexShrink: 0 }}
-                />
-                <span style={{
-                  fontSize: 14, fontWeight: isActive ? 600 : 400,
-                  color: isActive ? sb.navActiveText : sb.navText,
-                  transition: 'color 0.2s ease',
-                  fontFamily: 'Inter, sans-serif',
-                }}>
+                <Icon size={18} color={isActive ? '#818cf8' : sb.navIcon} style={{ transition: 'color 0.2s ease', flexShrink: 0 }} />
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: isActive ? 600 : 400,
+                    color: isActive ? sb.navActiveText : sb.navText,
+                    transition: 'color 0.2s ease',
+                    fontFamily: 'Inter, sans-serif',
+                  }}>
                   {label}
                 </span>
               </motion.button>
@@ -262,28 +363,55 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => { onUpgrade?.(); setConfirmLogout(false) }}
+              onClick={() => {
+                onUpgrade?.()
+                setConfirmLogout(false)
+              }}
               style={{
-                width: '100%', display: 'flex', alignItems: 'center', gap: 11,
-                padding: '12px 14px', borderRadius: 12, marginBottom: 12,
-                border: '1px solid rgba(139,92,246,0.3)', cursor: 'pointer',
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 11,
+                padding: '12px 14px',
+                borderRadius: 12,
+                marginBottom: 12,
+                border: '1px solid rgba(139,92,246,0.3)',
+                cursor: 'pointer',
                 background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
                 transition: 'all 0.2s',
-              }}
-            >
-              <div style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 2px 10px rgba(99,102,241,0.4)',
               }}>
+              <div
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 8,
+                  flexShrink: 0,
+                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 10px rgba(99,102,241,0.4)',
+                }}>
                 <Sparkles size={15} color="white" />
               </div>
               <div style={{ textAlign: 'left', overflow: 'hidden' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: sb.logoText, whiteSpace: 'nowrap' }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: sb.logoText,
+                    whiteSpace: 'nowrap',
+                  }}>
                   {NAV_LABELS[lang]?.upgrade ?? NAV_LABELS.pt.upgrade}
                 </div>
-                <div style={{ fontSize: 10, color: sb.navText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: sb.navText,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
                   {NAV_LABELS[lang]?.upgradeSub ?? NAV_LABELS.pt.upgradeSub}
                 </div>
               </div>
@@ -294,33 +422,60 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           <motion.button
             whileHover={{ x: 2, background: sb.hoverBg }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => { setShowNotifications(true); setConfirmLogout(false) }}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '11px 14px', borderRadius: 10, marginBottom: 4,
-              border: 'none', cursor: 'pointer', background: 'transparent',
-              transition: 'all 0.2s',
+            onClick={() => {
+              setShowNotifications(true)
+              setConfirmLogout(false)
             }}
-          >
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '11px 14px',
+              borderRadius: 10,
+              marginBottom: 4,
+              border: 'none',
+              cursor: 'pointer',
+              background: 'transparent',
+              transition: 'all 0.2s',
+            }}>
             <div style={{ position: 'relative' }}>
               <Bell size={18} color={showNotifications ? '#818cf8' : sb.navIcon} />
               {unreadCount > 0 && (
-                <div style={{
-                  position: 'absolute', top: -2, right: -2, width: 8, height: 8,
-                  borderRadius: '50%', background: '#f43f5e',
-                  border: `1.5px solid ${sb.badgeBorder}`,
-                }} />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: -2,
+                    right: -2,
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    background: '#f43f5e',
+                    border: `1.5px solid ${sb.badgeBorder}`,
+                  }}
+                />
               )}
             </div>
-            <span style={{ fontSize: 14, color: showNotifications ? '#818cf8' : sb.navText, fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' }}>
+            <span
+              style={{
+                fontSize: 14,
+                color: showNotifications ? '#818cf8' : sb.navText,
+                fontFamily: 'Inter, sans-serif',
+                transition: 'color 0.2s',
+              }}>
               {NAV_LABELS[lang]?.notifications ?? 'Notificações'}
             </span>
             {unreadCount > 0 && (
-              <span style={{
-                marginLeft: 'auto', fontSize: 11, fontWeight: 700,
-                background: 'rgba(244,63,94,0.15)', color: '#f43f5e',
-                padding: '2px 7px', borderRadius: 100,
-              }}>
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background: 'rgba(244,63,94,0.15)',
+                  color: '#f43f5e',
+                  padding: '2px 7px',
+                  borderRadius: 100,
+                }}>
                 {unreadCount}
               </span>
             )}
@@ -330,16 +485,31 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           <motion.button
             whileHover={{ x: 2, background: sb.hoverBg }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => { setShowSettings(true); setConfirmLogout(false) }}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-              padding: '11px 14px', borderRadius: 10, marginBottom: 12,
-              border: 'none', cursor: 'pointer', background: 'transparent',
-              transition: 'all 0.2s',
+            onClick={() => {
+              setShowSettings(true)
+              setConfirmLogout(false)
             }}
-          >
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '11px 14px',
+              borderRadius: 10,
+              marginBottom: 12,
+              border: 'none',
+              cursor: 'pointer',
+              background: 'transparent',
+              transition: 'all 0.2s',
+            }}>
             <Settings size={18} color={showSettings ? '#818cf8' : sb.navIcon} />
-            <span style={{ fontSize: 14, color: showSettings ? '#818cf8' : sb.navText, fontFamily: 'Inter, sans-serif', transition: 'color 0.2s' }}>
+            <span
+              style={{
+                fontSize: 14,
+                color: showSettings ? '#818cf8' : sb.navText,
+                fontFamily: 'Inter, sans-serif',
+                transition: 'color 0.2s',
+              }}>
               {NAV_LABELS[lang]?.settings ?? 'Configurações'}
             </span>
           </motion.button>
@@ -347,21 +517,28 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           {/* ── Logout confirmation strip ── */}
           <AnimatePresence>
             {confirmLogout && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-                style={{ overflow: 'hidden', marginBottom: 8 }}
-              >
-                <div style={{
-                  padding: '12px 14px', borderRadius: 12,
-                  background: 'rgba(244,63,94,0.07)',
-                  border: '1px solid rgba(244,63,94,0.2)',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }} style={{ overflow: 'hidden', marginBottom: 8 }}>
+                <div
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    background: 'rgba(244,63,94,0.07)',
+                    border: '1px solid rgba(244,63,94,0.2)',
+                  }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      marginBottom: 10,
+                    }}>
                     <AlertTriangle size={13} color="#f43f5e" />
-                    <span style={{ fontSize: 12, color: sb.confirmText, fontWeight: 500 }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: sb.confirmText,
+                        fontWeight: 500,
+                      }}>
                       {t.logoutConfirm}
                     </span>
                   </div>
@@ -369,11 +546,16 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                     <button
                       onClick={() => setConfirmLogout(false)}
                       style={{
-                        flex: 1, padding: '7px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        border: `1px solid ${sb.cancelBorder}`, background: sb.cancelBg,
-                        color: sb.cancelText, cursor: 'pointer',
-                      }}
-                    >
+                        flex: 1,
+                        padding: '7px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        border: `1px solid ${sb.cancelBorder}`,
+                        background: sb.cancelBg,
+                        color: sb.cancelText,
+                        cursor: 'pointer',
+                      }}>
                       {t.cancel}
                     </button>
                     <motion.button
@@ -381,11 +563,17 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                       whileTap={{ scale: 0.97 }}
                       onClick={handleLogout}
                       style={{
-                        flex: 2, padding: '7px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                        border: 'none', background: '#f43f5e', color: 'white', cursor: 'pointer',
+                        flex: 2,
+                        padding: '7px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        border: 'none',
+                        background: '#f43f5e',
+                        color: 'white',
+                        cursor: 'pointer',
                         boxShadow: '0 4px 12px rgba(244,63,94,0.35)',
-                      }}
-                    >
+                      }}>
                       {t.logout}
                     </motion.button>
                   </div>
@@ -398,25 +586,51 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
           <motion.div
             whileHover={{ background: sb.hoverBg }}
             style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 14px', borderRadius: 10,
-              transition: 'background 0.2s', position: 'relative',
-            }}
-          >
-            <div style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 700, color: 'white', flexShrink: 0,
-              boxShadow: '0 0 12px rgba(99,102,241,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              padding: '10px 14px',
+              borderRadius: 10,
+              transition: 'background 0.2s',
+              position: 'relative',
             }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 700,
+                color: 'white',
+                flexShrink: 0,
+                boxShadow: '0 0 12px rgba(99,102,241,0.3)',
+              }}>
               {(currentUser?.email ?? 'AD').slice(0, 2).toUpperCase()}
             </div>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: sb.userText, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: sb.userText,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
                 {currentUser?.user_metadata?.name ?? currentUser?.email?.split('@')[0] ?? 'Usuário'}
               </div>
-              <div style={{ fontSize: 11, color: sb.userEmail, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: sb.userEmail,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}>
                 {currentUser?.email ?? ''}
               </div>
             </div>
@@ -426,12 +640,18 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
               onClick={() => setConfirmLogout(p => !p)}
               title="Sair"
               style={{
-                width: 28, height: 28, borderRadius: 8, border: 'none', flexShrink: 0,
+                width: 28,
+                height: 28,
+                borderRadius: 8,
+                border: 'none',
+                flexShrink: 0,
                 background: confirmLogout ? 'rgba(244,63,94,0.12)' : 'transparent',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'all 0.2s',
-              }}
-            >
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}>
               <LogOut size={15} color={confirmLogout ? '#f43f5e' : sb.logoutIcon} />
             </motion.button>
           </motion.div>
@@ -439,34 +659,9 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
       </motion.aside>
 
       {/* ── Overlays ── */}
-      <AnimatePresence>
-        {showNotifications && (
-          <NotificationsPanel
-            onClose={() => setShowNotifications(false)}
-            theme={theme}
-            notes={notes}
-            onMarkRead={markNotifRead}
-            onMarkAllRead={markAllNotifRead}
-            onRemove={removeNotif}
-          />
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{showNotifications && <NotificationsPanel onClose={() => setShowNotifications(false)} theme={theme} notes={notes} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifRead} onRemove={removeNotif} />}</AnimatePresence>
 
-      <AnimatePresence>
-        {showSettings && (
-          <SettingsPanel
-            onClose={() => setShowSettings(false)}
-            theme={theme}
-            setTheme={setTheme}
-            lang={lang}
-            setLang={setLang}
-            holidays={holidays}
-            setHolidays={setHolidays}
-            currentUser={currentUser}
-          />
-        )}
-      </AnimatePresence>
-
+      <AnimatePresence>{showSettings && <SettingsPanel onClose={() => setShowSettings(false)} theme={theme} setTheme={setTheme} lang={lang} setLang={setLang} holidays={holidays} setHolidays={setHolidays} currentUser={currentUser} />}</AnimatePresence>
     </>
   )
 }

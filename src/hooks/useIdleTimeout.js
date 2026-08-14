@@ -1,9 +1,9 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 const EVENTS = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click']
 
 export function useIdleTimeout({ timeout, warningTime = 60000, onIdle, onWarning, onReset, enabled = true }) {
-  const idleTimer    = useRef(null)
+  const idleTimer = useRef(null)
   const warningTimer = useRef(null)
 
   const reset = useCallback(() => {
@@ -12,7 +12,7 @@ export function useIdleTimeout({ timeout, warningTime = 60000, onIdle, onWarning
     onReset?.()
 
     warningTimer.current = setTimeout(() => onWarning?.(), timeout - warningTime)
-    idleTimer.current    = setTimeout(() => onIdle?.(),    timeout)
+    idleTimer.current = setTimeout(() => onIdle?.(), timeout)
   }, [timeout, warningTime, onIdle, onWarning, onReset])
 
   useEffect(() => {

@@ -1,8 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import tailwindcss from '@tailwindcss/vite'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 
 // Carimbo único por build — usado para detectar nova versão publicada
 const buildVersion = String(Date.now())
