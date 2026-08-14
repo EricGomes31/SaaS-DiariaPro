@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, User, DollarSign, MapPin, Clock, Check, QrCode } from 'lucide-react'
-import { PIX_KEY_TYPES } from '../../data/mockData'
+import { PIX_KEY_TYPES, isValidCPF } from '../../data/mockData'
 import SearchableSelect from '../UI/SearchableSelect'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import i18n from '../../i18n'
@@ -16,9 +16,10 @@ const Field = ({ label, children }) => (
   </div>
 )
 
-export default function WorkerModal({ lang = 'pt', worker, locations, locationDepartments = [], locationJobTitles = [], locationSchedules = [], onSave, onClose }) {
+export default function WorkerModal({ lang = 'pt', worker, workers = [], locations, locationDepartments = [], locationJobTitles = [], locationSchedules = [], onSave, onClose }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
+  const [error, setError] = useState('')
   const [form, setForm] = useState({
     name: worker?.name || '',
     department: worker?.department || '',
@@ -31,6 +32,7 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
     status: worker?.status || 'active',
     phone: worker?.phone || '',
     email: worker?.email || '',
+    cpf: worker?.cpf || '',
     pixKeyType: worker?.pixKeyType || 'cpf',
     pixKey: worker?.pixKey || '',
     workerType: worker?.workerType || 'diarista',
@@ -47,7 +49,28 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    setError('')
     if (!form.name.trim() || form.locations.length === 0) return
+
+    const normalizedCpf = form.cpf.replace(/\D/g, '')
+    if (normalizedCpf) {
+      if (!isValidCPF(normalizedCpf)) {
+        setError(t.invalidCpfError)
+        return
+      }
+      const cpfDuplicate = workers.some(w => w.id !== worker?.id && (w.cpf || '').replace(/\D/g, '') === normalizedCpf)
+      if (cpfDuplicate) {
+        setError(t.duplicateWorkerCpfError)
+        return
+      }
+    }
+
+    const normalizedName = form.name.trim().toLowerCase()
+    const nameDuplicate = workers.some(w => w.id !== worker?.id && w.name.trim().toLowerCase() === normalizedName)
+    if (nameDuplicate) {
+      setError(t.duplicateWorkerNameError)
+      return
+    }
     onSave({
       ...form,
       weekdayRate: parseFloat(form.weekdayRate) || 0,
@@ -116,7 +139,7 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '26px 28px', borderBottom: '1px solid var(--card-border)',
           position: 'sticky', top: 0,
-          background: 'var(--card-bg)',
+          background: 'var(--card-bg-solid)',
           zIndex: 10,
         }}>
           <div>
@@ -154,7 +177,7 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
             <Field label={t.fullNameLabel}>
               <input
                 value={form.name}
-                onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                onChange={e => { setForm(p => ({ ...p, name: e.target.value })); setError('') }}
                 placeholder={t.workerNamePlaceholder}
                 required
                 className="input-premium"
@@ -288,16 +311,31 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
                 />
               </Field>
             </div>
-            <Field label={t.emailLabel}>
-              <input
-                value={form.email}
-                onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                type="email"
-                placeholder="email@exemplo.com"
-                className="input-premium"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
-              />
-            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+              <Field label={t.emailLabel}>
+                <input
+                  value={form.email}
+                  onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  className="input-premium"
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                />
+              </Field>
+              <Field label={t.cpfLabel}>
+                <input
+                  value={form.cpf}
+                  onChange={e => {
+                    const cpf = e.target.value
+                    setForm(p => ({ ...p, cpf, pixKey: p.pixKeyType === 'cpf' ? cpf : p.pixKey }))
+                    setError('')
+                  }}
+                  placeholder="000.000.000-00"
+                  className="input-premium"
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                />
+              </Field>
+            </div>
           </div>
 
           {/* Section: Remuneração */}
@@ -370,7 +408,7 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
                     key={pt.value}
                     type="button"
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => setForm(p => ({ ...p, pixKeyType: pt.value, pixKey: '' }))}
+                    onClick={() => setForm(p => ({ ...p, pixKeyType: pt.value, pixKey: pt.value === 'cpf' ? p.cpf : '' }))}
                     style={{
                       flex: '1 1 auto', minWidth: 'fit-content',
                       padding: '9px 14px', borderRadius: 10, cursor: 'pointer',
@@ -414,6 +452,15 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
               style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14, fontFamily: 'monospace', borderColor: 'rgba(6,182,212,0.2)' }}
             />
           </div>
+
+          {error && (
+            <div style={{
+              marginBottom: 16, padding: '10px 14px', borderRadius: 10, fontSize: 13,
+              background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.25)', color: '#f43f5e',
+            }}>
+              {error}
+            </div>
+          )}
 
           {/* Footer buttons */}
           <div style={{ display: 'flex', gap: 10 }}>
