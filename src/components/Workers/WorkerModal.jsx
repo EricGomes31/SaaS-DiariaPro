@@ -16,7 +16,7 @@ const Field = ({ label, children }) => (
   </div>
 )
 
-export default function WorkerModal({ lang = 'pt', worker, locations, locationDepartments = [], locationJobTitles = [], onSave, onClose }) {
+export default function WorkerModal({ lang = 'pt', worker, locations, locationDepartments = [], locationJobTitles = [], locationSchedules = [], onSave, onClose }) {
   const isMobile = useIsMobile()
   const t = i18n[lang] ?? i18n.pt
   const [form, setForm] = useState({
@@ -66,6 +66,10 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
   const jobTitleNames = new Set(jobTitlesForLocations.map(j => j.name))
   if (worker?.jobTitle) jobTitleNames.add(worker.jobTitle)
   const jobTitleOptions = [...jobTitleNames].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
+
+  const scheduleNames = new Set(locationSchedules.filter(s => form.locations.includes(s.locationId)).map(s => s.name))
+  if (worker?.schedule) scheduleNames.add(worker.schedule)
+  const scheduleOptions = [...scheduleNames].sort((a, b) => a.localeCompare(b)).map(n => ({ value: n, label: n }))
 
   const handleJobTitleChange = (name) => {
     const match = jobTitlesForLocations.find(j => j.name === name) ?? locationJobTitles.find(j => j.name === name)
@@ -262,12 +266,16 @@ export default function WorkerModal({ lang = 'pt', worker, locations, locationDe
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
               <Field label={t.scheduleLabel}>
-                <input
+                <SearchableSelect
                   value={form.schedule}
-                  onChange={e => setForm(p => ({ ...p, schedule: e.target.value }))}
-                  placeholder="Ex: 06h–14h"
-                  className="input-premium"
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 12, fontSize: 14 }}
+                  onChange={v => setForm(p => ({ ...p, schedule: v }))}
+                  options={scheduleOptions}
+                  placeholder={form.locations.length === 0 ? t.selectLocationFirstHint : t.scheduleLabel}
+                  minWidth="100%"
+                  fontSize={14}
+                  padding="12px 16px"
+                  clearable={false}
+                  allowCustom={false}
                 />
               </Field>
               <Field label={t.phoneLabel}>
