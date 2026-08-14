@@ -1,7 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import * as Sentry from 'npm:@sentry/deno@^8'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')!
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') ?? 'Diária Pro <noreply@diariapro.com.br>'
+
+// SENTRY_DSN precisa ser configurado como secret desta função (supabase secrets set).
+// Sem ele, Sentry.init fica inerte — não quebra a função.
+Sentry.init({ dsn: Deno.env.get('SENTRY_DSN'), defaultIntegrations: false })
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -53,6 +58,8 @@ serve(async (req) => {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     })
   } catch (error) {
+    Sentry.captureException(error, { extra: { function: 'send-payment-receipt' } })
+    await Sentry.flush(2000)
     return new Response(JSON.stringify({ error: String(error) }), {
       status: 500,
       headers: { ...CORS, 'Content-Type': 'application/json' },

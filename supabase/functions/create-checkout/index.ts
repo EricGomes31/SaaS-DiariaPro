@@ -1,9 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as Sentry from 'npm:@sentry/deno@^8'
 
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são injetados automaticamente pelo Supabase.
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERV_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// SENTRY_DSN precisa ser configurado como secret desta função (supabase secrets set).
+// Sem ele, Sentry.init fica inerte — não quebra a função.
+Sentry.init({ dsn: Deno.env.get('SENTRY_DSN'), defaultIntegrations: false })
 const ASAAS_API_KEY     = Deno.env.get('ASAAS_API_KEY')!
 // Sandbox por padrão. Em produção: https://api.asaas.com/v3
 const ASAAS_BASE_URL    = Deno.env.get('ASAAS_BASE_URL') ?? 'https://sandbox.asaas.com/api/v3'
@@ -79,6 +84,8 @@ serve(async (req) => {
 
     return json({ url: link.url, paymentLinkId: link.id })
   } catch (error) {
+    Sentry.captureException(error, { extra: { function: 'create-checkout' } })
+    await Sentry.flush(2000)
     return json({ error: String(error) }, 500)
   }
 })

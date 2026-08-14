@@ -46,6 +46,7 @@ export default defineConfig({
           if (id.includes('node_modules/recharts')) return 'charts'
           if (id.includes('node_modules/date-fns')) return 'date'
           if (id.includes('node_modules/@supabase')) return 'supabase'
+          if (id.includes('node_modules/@sentry')) return 'sentry'
         },
       },
     },
