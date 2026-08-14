@@ -8,13 +8,17 @@
     "preview": "vite preview",
     "lint": "biome check",
     "lint:fix": "biome check --write",
-    "knip": "knip"
+    "knip": "knip",
+    "prepare": "husky"
   },
   "type": "module",
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
+    "@commitlint/cli": "^21.2.2",
+    "@commitlint/config-conventional": "^21.2.2",
     "@tailwindcss/vite": "^4.2.4",
     "@vitejs/plugin-react": "^6.0.1",
+    "husky": "^9.1.7",
     "knip": "^6.32.2",
     "vite": "^8.0.10"
   },
