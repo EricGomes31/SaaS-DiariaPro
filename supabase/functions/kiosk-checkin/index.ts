@@ -1,9 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as Sentry from 'npm:@sentry/deno@^8'
 
 // SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são injetados automaticamente pelo Supabase.
 const SUPABASE_URL      = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERV_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+// SENTRY_DSN precisa ser configurado como secret desta função (supabase secrets set).
+// Sem ele, Sentry.init fica inerte — não quebra a função.
+Sentry.init({ dsn: Deno.env.get('SENTRY_DSN'), defaultIntegrations: false })
 
 const EVENT_TYPES = ['chegada', 'saida_almoco', 'volta_almoco', 'saida']
 
@@ -145,6 +150,8 @@ serve(async (req) => {
 
     return json({ success: true, occurredAt: savedEvent?.occurred_at ?? occurredAt })
   } catch (error) {
+    Sentry.captureException(error, { extra: { function: 'kiosk-checkin' } })
+    await Sentry.flush(2000)
     return json({ error: String(error) }, 500)
   }
 })

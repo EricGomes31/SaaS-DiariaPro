@@ -88,7 +88,13 @@ Persistence is **Supabase PostgreSQL** with Row Level Security, accessed through
 - `getWorkerStats(workerId, workDays)`, `getDashboardStats(...)` — aggregations over passed-in data
 - `PIX_KEY_TYPES`, `JOB_TITLES` and other UI constants (note: department filters derive options from registered workers, not from the static `DEPARTMENTS`)
 
-Edge functions in `supabase/functions/` (send-weekly-report, send-payment-receipt, create-checkout, asaas-webhook) are deployed separately via the Supabase dashboard/CLI.
+Edge functions in `supabase/functions/` (send-weekly-report, send-payment-receipt, create-checkout, asaas-webhook, kiosk-checkin, kiosk-roster) are deployed separately via the Supabase dashboard/CLI. Each function is pasted into the Dashboard editor as a single self-contained file — imports must be full URLs (`https://deno.land/...`, `https://esm.sh/...`, or Deno's `npm:` specifier), never relative paths to other files in this repo, since the Dashboard doesn't resolve local imports between functions.
+
+### Observability (Sentry)
+
+- **Frontend**: `@sentry/react`, initialized in `src/main.jsx` behind `import.meta.env.VITE_SENTRY_DSN` — inert (no-op) if unset, so dev/CI without the var don't break. `Sentry.ErrorBoundary` wraps the app with a themed fallback screen. DSN goes in `.env.local` (gitignored), same as the Supabase vars.
+- **Edge functions**: `npm:@sentry/deno@^8` in all 6 functions, reading `Deno.env.get('SENTRY_DSN')` — set as a **Supabase secret** (`supabase secrets set SENTRY_DSN=...` or via the Dashboard), separate from the frontend's Vite env var. Each catch block calls `Sentry.captureException(error, { extra: { function: '<function-name>' } })` then `await Sentry.flush(2000)` before returning the error response (serverless — the event must be flushed before the isolate can be torn down).
+- Only the **Error monitoring** product is enabled on the Sentry project — no Session Replay (the app renders CPF/PIX/salary data on screen) and no Tracing/Performance yet.
 
 ### Styling System
 

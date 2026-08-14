@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@hcaptcha/react-hcaptcha": "^2.0.2",
+    "@sentry/react": "^10.70.0",
     "@supabase/supabase-js": "^2.105.4",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
