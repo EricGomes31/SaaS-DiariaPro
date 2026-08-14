@@ -11,6 +11,9 @@ npm run preview   # Preview the production build locally
 npm run lint      # Biome check (lint + format check)
 npm run lint:fix  # Biome check --write (auto-fix)
 npm run knip      # Find unused files/exports/dependencies
+npm run depcruise # Check architecture-boundary rules (.dependency-cruiser.cjs)
+npm run test      # Run unit tests once (Vitest)
+npm run test:watch # Run unit tests in watch mode
 ```
 
 After `npm run build`, generate the deploy zip:

@@ -10,6 +10,8 @@
     "lint:fix": "biome check --write",
     "knip": "knip",
     "depcruise": "depcruise src --config .dependency-cruiser.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "husky"
   },
   "type": "module",
@@ -22,7 +24,8 @@
     "dependency-cruiser": "^18.2.0",
     "husky": "^9.1.7",
     "knip": "^6.32.2",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@hcaptcha/react-hcaptcha": "^2.0.2",
