@@ -520,8 +520,6 @@ export function getDashboardStats(workers = WORKERS, workDays = WORK_DAYS, locat
   }
 }
 
-export const HOLIDAYS = HOLIDAYS_2026
-
 export function getPaymentHistory(workerId, allWorkDays = WORK_DAYS) {
   const days = allWorkDays.filter(d => d.workerId === workerId).sort((a, b) => a.date.localeCompare(b.date))
 

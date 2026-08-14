@@ -1,7 +1,7 @@
 import { HOLIDAYS_2025, LOCATIONS, WORK_DAYS, WORKERS } from '../data/mockData'
 import { supabase } from './supabase'
 
-// ─── Mappers (exported for realtime handlers in App.jsx) ─────────────────────
+// ─── Mappers ──────────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#f43f5e', '#8b5cf6', '#06b6d4']
 function deriveAvatarColor(str = '') {
@@ -10,7 +10,7 @@ function deriveAvatarColor(str = '') {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-export function workerFromRow(r) {
+function workerFromRow(r) {
   const weekend = r.saturday_rate ?? r.weekend_rate ?? r.weekday_rate
   const rawAvatar = (r.avatar || '').trim()
   const avatar =
@@ -48,7 +48,7 @@ export function workerFromRow(r) {
   }
 }
 
-export function workDayFromRow(r) {
+function workDayFromRow(r) {
   return {
     id: r.id,
     workerId: r.worker_id,
@@ -62,7 +62,7 @@ export function workDayFromRow(r) {
   }
 }
 
-export function locationFromRow(r) {
+function locationFromRow(r) {
   return {
     id: r.id,
     name: r.name,
@@ -73,11 +73,11 @@ export function locationFromRow(r) {
   }
 }
 
-export function locationDepartmentFromRow(r) {
+function locationDepartmentFromRow(r) {
   return { id: r.id, locationId: r.location_id, name: r.name }
 }
 
-export function locationJobTitleFromRow(r) {
+function locationJobTitleFromRow(r) {
   return {
     id: r.id,
     locationId: r.location_id,
@@ -88,11 +88,11 @@ export function locationJobTitleFromRow(r) {
   }
 }
 
-export function locationScheduleFromRow(r) {
+function locationScheduleFromRow(r) {
   return { id: r.id, locationId: r.location_id, name: r.name }
 }
 
-export function dailyExpenseFromRow(r) {
+function dailyExpenseFromRow(r) {
   return {
     id: r.id,
     date: r.date,
@@ -123,7 +123,7 @@ function paymentFromRow(r) {
   }
 }
 
-export function subscriptionFromRow(r) {
+function subscriptionFromRow(r) {
   return {
     id: r.id,
     plan: r.plan,
