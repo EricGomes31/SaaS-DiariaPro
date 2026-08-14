@@ -106,6 +106,7 @@ export default function App() {
   const [locations,      setLocations]      = useState([])
   const [locationDepartments, setLocationDepartments] = useState([])
   const [locationJobTitles,   setLocationJobTitles]   = useState([])
+  const [locationSchedules,   setLocationSchedules]   = useState([])
   const [paymentRecords, setPaymentRecords] = useState([])
   const [holidays,       setHolidays]       = useState([])
   const [dailyExpenses,  setDailyExpenses]  = useState([])
@@ -123,6 +124,7 @@ export default function App() {
   const prevLocations = useRef([])
   const prevLocationDepartments = useRef([])
   const prevLocationJobTitles   = useRef([])
+  const prevLocationSchedules   = useRef([])
   const prevPayments  = useRef([])
   const prevHolidays  = useRef([])
   const prevDailyExpenses = useRef([])
@@ -203,12 +205,13 @@ export default function App() {
         window.history.replaceState(null, '', '/entrar')
         syncing.current = false
         setWorkers([]); setWorkDays([]); setLocations([])
-        setLocationDepartments([]); setLocationJobTitles([])
+        setLocationDepartments([]); setLocationJobTitles([]); setLocationSchedules([])
         setPaymentRecords([]); setHolidays([]); setDailyExpenses([])
         setSubscription(null)
         prevWorkers.current = []; prevWorkDays.current = []
         prevLocations.current = []; prevPayments.current = []
         prevLocationDepartments.current = []; prevLocationJobTitles.current = []
+        prevLocationSchedules.current = []
         prevDailyExpenses.current = []
       }
     })
@@ -229,6 +232,7 @@ export default function App() {
       prevLocations.current = data.locations
       prevLocationDepartments.current = data.locationDepartments
       prevLocationJobTitles.current   = data.locationJobTitles
+      prevLocationSchedules.current   = data.locationSchedules
       prevPayments.current  = data.paymentRecords
       prevDailyExpenses.current = data.dailyExpenses
       syncing.current = false
@@ -237,6 +241,7 @@ export default function App() {
       setLocations(data.locations)
       setLocationDepartments(data.locationDepartments)
       setLocationJobTitles(data.locationJobTitles)
+      setLocationSchedules(data.locationSchedules)
       setPaymentRecords(data.paymentRecords)
       setHolidays(data.holidays)
       setDailyExpenses(data.dailyExpenses)
@@ -269,6 +274,7 @@ export default function App() {
           prevLocations.current = data.locations
           prevLocationDepartments.current = data.locationDepartments
           prevLocationJobTitles.current   = data.locationJobTitles
+          prevLocationSchedules.current   = data.locationSchedules
           prevPayments.current  = data.paymentRecords
           prevDailyExpenses.current = data.dailyExpenses
           setWorkers(data.workers)
@@ -276,6 +282,7 @@ export default function App() {
           setLocations(data.locations)
           setLocationDepartments(data.locationDepartments)
           setLocationJobTitles(data.locationJobTitles)
+          setLocationSchedules(data.locationSchedules)
           setPaymentRecords(data.paymentRecords)
           setHolidays(data.holidays)
           setDailyExpenses(data.dailyExpenses)
@@ -295,6 +302,7 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' },       handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_departments' }, handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'location_job_titles' },   handleRemoteChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'location_schedules' },    handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_records' }, handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_expenses' },  handleRemoteChange)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'subscriptions' },   handleRemoteChange)
@@ -435,6 +443,28 @@ export default function App() {
       })
     }
   }, [locationJobTitles])
+
+  useEffect(() => {
+    if (!syncing.current || fromRealtime.current) { prevLocationSchedules.current = locationSchedules; return }
+    const oldSchedules = prevLocationSchedules.current
+    const { toUpsert, toDelete } = diff(oldSchedules, locationSchedules)
+    prevLocationSchedules.current = locationSchedules
+    if (toUpsert.length) {
+      db.upsertLocationSchedules(toUpsert).catch(() => showToast('Erro ao salvar horários.', 'error'))
+      toUpsert.forEach(s => {
+        const isNew = !oldSchedules.find(os => os.id === s.id)
+        log(isNew ? 'add_schedule' : 'edit_schedule',
+            isNew ? `Horário adicionado: ${s.name}` : `Horário editado: ${s.name}`)
+      })
+    }
+    if (toDelete.length) {
+      db.deleteLocationSchedules(toDelete).catch(() => showToast('Erro ao salvar horários.', 'error'))
+      toDelete.forEach(id => {
+        const s = oldSchedules.find(os => os.id === id)
+        log('delete_schedule', `Horário removido: ${s?.name ?? id}`)
+      })
+    }
+  }, [locationSchedules])
 
   useEffect(() => {
     if (!syncing.current || fromRealtime.current) { prevPayments.current = paymentRecords; return }
@@ -588,6 +618,7 @@ export default function App() {
                     locations={locations} setLocations={setLocations}
                     locationDepartments={locationDepartments} setLocationDepartments={setLocationDepartments}
                     locationJobTitles={locationJobTitles} setLocationJobTitles={setLocationJobTitles}
+                    locationSchedules={locationSchedules} setLocationSchedules={setLocationSchedules}
                     paymentRecords={paymentRecords} setPaymentRecords={setPaymentRecords}
                     holidays={holidays} setHolidays={setHolidays}
                     dailyExpenses={dailyExpenses} setDailyExpenses={setDailyExpenses}
