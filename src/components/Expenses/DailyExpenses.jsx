@@ -1651,74 +1651,76 @@ export default function DailyExpenses({ lang = 'pt', workers = [], workDays = []
             {/* Per-day price editor */}
             <AnimatePresence>
               {editingDate === selectedRow.date && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      padding: '16px',
-                      borderRadius: 14,
-                      background: 'rgba(99,102,241,0.05)',
-                      border: '1px solid rgba(99,102,241,0.15)',
-                      marginBottom: 16,
-                    }}>
+                <motion.div initial={{ opacity: 0, gridTemplateRows: '0fr' }} animate={{ opacity: 1, gridTemplateRows: '1fr' }} exit={{ opacity: 0, gridTemplateRows: '0fr' }} transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }} style={{ display: 'grid', overflow: 'hidden' }}>
+                  <div style={{ overflow: 'hidden', minHeight: 0 }}>
                     <div
                       style={{
-                        display: 'flex',
-                        gap: 14,
-                        flexWrap: 'wrap',
-                        alignItems: 'flex-end',
-                        marginBottom: 12,
+                        padding: '16px',
+                        borderRadius: 14,
+                        background: 'rgba(99,102,241,0.05)',
+                        border: '1px solid rgba(99,102,241,0.15)',
+                        marginBottom: 16,
                       }}>
-                      {MEALS.map(m => (
-                        <PriceInput key={m.key} icon={m.icon} color={m.color} label={m.label} value={dayDraft[m.key]} onChange={v => setDayDraft(d => ({ ...d, [m.key]: v }))} hint={`× ${selectedRow.present} = ${brl(selectedRow.present * num(dayDraft[m.key]))}`} />
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {selectedRow.custom && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 14,
+                          flexWrap: 'wrap',
+                          alignItems: 'flex-end',
+                          marginBottom: 12,
+                        }}>
+                        {MEALS.map(m => (
+                          <PriceInput key={m.key} icon={m.icon} color={m.color} label={m.label} value={dayDraft[m.key]} onChange={v => setDayDraft(d => ({ ...d, [m.key]: v }))} hint={`× ${selectedRow.present} = ${brl(selectedRow.present * num(dayDraft[m.key]))}`} />
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {selectedRow.custom && (
+                          <button
+                            onClick={() => clearDayOverride(selectedRow.date)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '9px 14px',
+                              borderRadius: 10,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              border: '1px solid var(--card-border)',
+                              background: 'var(--inner-bg)',
+                              color: 'var(--card-sub)',
+                              cursor: 'pointer',
+                            }}>
+                            <RotateCcw size={13} /> {t.useDefaultPrice}
+                          </button>
+                        )}
+                        <div style={{ flex: 1 }} />
                         <button
-                          onClick={() => clearDayOverride(selectedRow.date)}
+                          onClick={() => setEditingDate(null)}
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '9px 14px',
+                            padding: '9px 16px',
                             borderRadius: 10,
                             fontSize: 13,
-                            fontWeight: 600,
+                            fontWeight: 500,
                             border: '1px solid var(--card-border)',
                             background: 'var(--inner-bg)',
-                            color: 'var(--card-sub)',
+                            color: 'var(--card-muted)',
                             cursor: 'pointer',
                           }}>
-                          <RotateCcw size={13} /> {t.useDefaultPrice}
+                          {t.cancel}
                         </button>
-                      )}
-                      <div style={{ flex: 1 }} />
-                      <button
-                        onClick={() => setEditingDate(null)}
-                        style={{
-                          padding: '9px 16px',
-                          borderRadius: 10,
-                          fontSize: 13,
-                          fontWeight: 500,
-                          border: '1px solid var(--card-border)',
-                          background: 'var(--inner-bg)',
-                          color: 'var(--card-muted)',
-                          cursor: 'pointer',
-                        }}>
-                        {t.cancel}
-                      </button>
-                      <motion.button
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => saveDayOverride(selectedRow.date)}
-                        className="btn-primary"
-                        style={{
-                          padding: '9px 20px',
-                          borderRadius: 10,
-                          fontSize: 13,
-                          fontWeight: 700,
-                        }}>
-                        {t.savePrices}
-                      </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => saveDayOverride(selectedRow.date)}
+                          className="btn-primary"
+                          style={{
+                            padding: '9px 20px',
+                            borderRadius: 10,
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}>
+                          {t.savePrices}
+                        </motion.button>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

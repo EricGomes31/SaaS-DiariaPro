@@ -573,24 +573,23 @@ export default function InviteSetPassword({ onDone, currentUser }) {
               {/* Error */}
               <AnimatePresence>
                 {error && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto' }}
-                    exit={{ opacity: 0, y: -4, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    style={{
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      marginBottom: 14,
-                      background: 'rgba(244,63,94,0.08)',
-                      border: '1px solid rgba(244,63,94,0.2)',
-                      fontSize: 13,
-                      color: '#fb7185',
-                      fontWeight: 500,
-                      lineHeight: 1.4,
-                      overflow: 'hidden',
-                    }}>
-                    {error}
+                  <motion.div initial={{ opacity: 0, y: -4, gridTemplateRows: '0fr' }} animate={{ opacity: 1, y: 0, gridTemplateRows: '1fr' }} exit={{ opacity: 0, y: -4, gridTemplateRows: '0fr' }} transition={{ duration: 0.2 }} style={{ display: 'grid', overflow: 'hidden' }}>
+                    <div
+                      style={{
+                        overflow: 'hidden',
+                        minHeight: 0,
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        marginBottom: 14,
+                        background: 'rgba(244,63,94,0.08)',
+                        border: '1px solid rgba(244,63,94,0.2)',
+                        fontSize: 13,
+                        color: '#fb7185',
+                        fontWeight: 500,
+                        lineHeight: 1.4,
+                      }}>
+                      {error}
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

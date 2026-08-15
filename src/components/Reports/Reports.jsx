@@ -700,45 +700,53 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
           {/* Date filter */}
           <AnimatePresence>
             {groupBy === 'day' && (
-              <motion.div key="date-filter" initial={{ opacity: 0, height: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 'auto', marginBottom: 18 }} exit={{ opacity: 0, height: 0, marginBottom: 0 }} transition={{ duration: 0.22 }} style={{ overflow: 'visible' }}>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: 'var(--card-muted)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    marginBottom: 10,
-                  }}>
-                  Período
-                </div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 8,
-                  }}>
-                  <MiniDatePicker label="De" value={dateFrom} onChange={setDateFrom} />
-                  <MiniDatePicker label="Até" value={dateTo} onChange={setDateTo} />
-                </div>
-                {(dateFrom || dateTo) && (
-                  <button
-                    onClick={() => {
-                      setDateFrom('')
-                      setDateTo('')
-                    }}
+              <motion.div
+                key="date-filter"
+                initial={{ opacity: 0, gridTemplateRows: '0fr', marginBottom: 0 }}
+                animate={{ opacity: 1, gridTemplateRows: '1fr', marginBottom: 18 }}
+                exit={{ opacity: 0, gridTemplateRows: '0fr', marginBottom: 0 }}
+                transition={{ duration: 0.22 }}
+                style={{ display: 'grid', overflow: 'hidden' }}>
+                <div style={{ overflow: 'hidden', minHeight: 0 }}>
+                  <div
                     style={{
-                      marginTop: 8,
                       fontSize: 11,
-                      color: 'rgba(239,68,68,0.6)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: 0,
+                      fontWeight: 600,
+                      color: 'var(--card-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      marginBottom: 10,
                     }}>
-                    Limpar período
-                  </button>
-                )}
+                    Período
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 8,
+                    }}>
+                    <MiniDatePicker label="De" value={dateFrom} onChange={setDateFrom} />
+                    <MiniDatePicker label="Até" value={dateTo} onChange={setDateTo} />
+                  </div>
+                  {(dateFrom || dateTo) && (
+                    <button
+                      onClick={() => {
+                        setDateFrom('')
+                        setDateTo('')
+                      }}
+                      style={{
+                        marginTop: 8,
+                        fontSize: 11,
+                        color: 'rgba(239,68,68,0.6)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                      }}>
+                      Limpar período
+                    </button>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1586,16 +1594,18 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                         overflow: 'hidden',
                       }}>
                       <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: pct / 100 }}
                         transition={{
                           delay: 0.3 + i * 0.05,
                           duration: 0.8,
                           ease: [0.4, 0, 0.2, 1],
                         }}
                         style={{
+                          width: '100%',
                           height: '100%',
                           borderRadius: 2,
+                          transformOrigin: 'left',
                           background: `linear-gradient(90deg, ${w.avatarColor}, ${w.avatarColor}80)`,
                         }}
                       />
@@ -1693,16 +1703,18 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                         overflow: 'hidden',
                       }}>
                       <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(loc.days / maxDays) * 100}%` }}
+                        initial={{ scaleX: 0 }}
+                        animate={{ scaleX: loc.days / maxDays }}
                         transition={{
                           delay: 0.35 + i * 0.06,
                           duration: 0.8,
                           ease: [0.4, 0, 0.2, 1],
                         }}
                         style={{
+                          width: '100%',
                           height: '100%',
                           borderRadius: 2,
+                          transformOrigin: 'left',
                           background: loc.color,
                         }}
                       />
@@ -1941,15 +1953,17 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                               overflow: 'hidden',
                             }}>
                             <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${pct}%` }}
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: pct / 100 }}
                               transition={{
                                 duration: 0.8,
                                 ease: [0.4, 0, 0.2, 1],
                               }}
                               style={{
+                                width: '100%',
                                 height: '100%',
                                 borderRadius: 2,
+                                transformOrigin: 'left',
                                 background: s.color,
                               }}
                             />
