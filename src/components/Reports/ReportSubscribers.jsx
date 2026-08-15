@@ -555,10 +555,24 @@ export default function ReportSubscribers() {
         </div>
 
         {loading ? (
-          <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: 'linear' }}>
-              <Loader2 size={22} color="rgba(99,102,241,0.6)" />
-            </motion.div>
+          <div>
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  padding: '16px 24px',
+                  borderBottom: i < 2 ? '1px solid var(--card-border)' : 'none',
+                }}>
+                <div className="shimmer" style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div className="shimmer" style={{ width: `${45 + ((i * 11) % 25)}%`, height: 14, borderRadius: 4 }} />
+                  <div className="shimmer" style={{ width: `${25 + ((i * 9) % 20)}%`, height: 11, borderRadius: 4 }} />
+                </div>
+              </div>
+            ))}
           </div>
         ) : subscribers.length === 0 ? (
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
@@ -591,128 +605,127 @@ export default function ReportSubscribers() {
           <div>
             <AnimatePresence>
               {subscribers.map((sub, i) => (
-                <motion.div
-                  key={sub.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10, height: 0, marginBottom: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 16,
-                    padding: '16px 24px',
-                    borderBottom: i < subscribers.length - 1 ? '1px solid var(--card-border)' : 'none',
-                  }}>
-                  {/* Avatar */}
-                  <div
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 11,
-                      background: 'rgba(99,102,241,0.12)',
-                      border: '1.5px solid rgba(99,102,241,0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      fontSize: 14,
-                      fontWeight: 800,
-                      color: '#818cf8',
-                      opacity: sub.active ? 1 : 0.45,
-                    }}>
-                    {sub.name
-                      .split(' ')
-                      .map(n => n[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </div>
-
-                  {/* Info */}
-                  <div
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      opacity: sub.active ? 1 : 0.45,
-                    }}>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: 'var(--card-heading)',
-                        marginBottom: 3,
-                      }}>
-                      {sub.name}
-                    </div>
+                <motion.div key={sub.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10, gridTemplateRows: '0fr' }} transition={{ delay: i * 0.04 }} style={{ display: 'grid', overflow: 'hidden' }}>
+                  <div style={{ overflow: 'hidden', minHeight: 0 }}>
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 10,
-                        flexWrap: 'wrap',
+                        gap: 16,
+                        padding: '16px 24px',
+                        borderBottom: i < subscribers.length - 1 ? '1px solid var(--card-border)' : 'none',
                       }}>
-                      <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{sub.email}</span>
-                      <span
+                      {/* Avatar */}
+                      <div
                         style={{
-                          width: 3,
-                          height: 3,
-                          borderRadius: '50%',
-                          background: 'var(--card-muted)',
+                          width: 40,
+                          height: 40,
+                          borderRadius: 11,
+                          background: 'rgba(99,102,241,0.12)',
+                          border: '1.5px solid rgba(99,102,241,0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           flexShrink: 0,
-                        }}
-                      />
-                      <span
-                        style={{
-                          fontSize: 12,
-                          color: 'rgba(99,102,241,0.7)',
-                          fontWeight: 600,
+                          fontSize: 14,
+                          fontWeight: 800,
+                          color: '#818cf8',
+                          opacity: sub.active ? 1 : 0.45,
                         }}>
-                        Toda {dayLabel(sub.dayOfWeek)} às {hourLabel(sub.sendHour)}
-                      </span>
-                    </div>
-                  </div>
+                        {sub.name
+                          .split(' ')
+                          .map(n => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
 
-                  {/* Actions */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      flexShrink: 0,
-                    }}>
-                    <motion.button
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => handleToggle(sub)}
-                      title={sub.active ? 'Desativar' : 'Ativar'}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: 4,
-                        display: 'flex',
-                        color: sub.active ? '#10b981' : 'var(--card-sub)',
-                      }}>
-                      {sub.active ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
-                    </motion.button>
-                    <motion.button
-                      whileTap={{ scale: 0.92 }}
-                      onClick={() => handleDelete(sub.id)}
-                      title="Remover"
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 8,
-                        background: 'rgba(239,68,68,0.06)',
-                        border: '1px solid rgba(239,68,68,0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'rgba(239,68,68,0.6)',
-                      }}>
-                      <Trash2 size={14} />
-                    </motion.button>
+                      {/* Info */}
+                      <div
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          opacity: sub.active ? 1 : 0.45,
+                        }}>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: 'var(--card-heading)',
+                            marginBottom: 3,
+                          }}>
+                          {sub.name}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            flexWrap: 'wrap',
+                          }}>
+                          <span style={{ fontSize: 12, color: 'var(--card-muted)' }}>{sub.email}</span>
+                          <span
+                            style={{
+                              width: 3,
+                              height: 3,
+                              borderRadius: '50%',
+                              background: 'var(--card-muted)',
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontSize: 12,
+                              color: 'rgba(99,102,241,0.7)',
+                              fontWeight: 600,
+                            }}>
+                            Toda {dayLabel(sub.dayOfWeek)} às {hourLabel(sub.sendHour)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexShrink: 0,
+                        }}>
+                        <motion.button
+                          whileTap={{ scale: 0.92 }}
+                          onClick={() => handleToggle(sub)}
+                          title={sub.active ? 'Desativar' : 'Ativar'}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: 4,
+                            display: 'flex',
+                            color: sub.active ? '#10b981' : 'var(--card-sub)',
+                          }}>
+                          {sub.active ? <ToggleRight size={26} /> : <ToggleLeft size={26} />}
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.92 }}
+                          onClick={() => handleDelete(sub.id)}
+                          title="Remover"
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 8,
+                            background: 'rgba(239,68,68,0.06)',
+                            border: '1px solid rgba(239,68,68,0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            color: 'rgba(239,68,68,0.6)',
+                          }}>
+                          <Trash2 size={14} />
+                        </motion.button>
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
               ))}

@@ -1,7 +1,7 @@
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CalendarDays, CalendarPlus, CalendarX, Clock, CreditCard, Download, Lock, LogIn, LogOut, MapPin, RefreshCw, Settings, Shield, User, UserCog, UserMinus, UserPlus, UtensilsCrossed } from 'lucide-react'
+import { CalendarDays, CalendarPlus, CalendarX, Clock, CreditCard, Download, Lock, LogIn, LogOut, MapPin, Settings, Shield, User, UserCog, UserMinus, UserPlus, UtensilsCrossed } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { fetchActivityLogs } from '../../lib/db'
 
@@ -307,8 +307,26 @@ export default function ActivityLog({ theme }) {
 
       {/* Log list */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: c.muted }}>
-          <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                padding: '14px 16px',
+                borderRadius: 14,
+                background: c.card,
+                border: `1px solid ${c.border}`,
+              }}>
+              <div className="shimmer" style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0 }} />
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div className="shimmer" style={{ width: `${55 + ((i * 13) % 30)}%`, height: 13, borderRadius: 4 }} />
+                <div className="shimmer" style={{ width: `${30 + ((i * 7) % 20)}%`, height: 11, borderRadius: 4 }} />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0', color: c.empty }}>
