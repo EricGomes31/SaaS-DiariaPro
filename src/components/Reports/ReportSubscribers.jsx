@@ -555,10 +555,24 @@ export default function ReportSubscribers() {
         </div>
 
         {loading ? (
-          <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}>
-            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: 'linear' }}>
-              <Loader2 size={22} color="rgba(99,102,241,0.6)" />
-            </motion.div>
+          <div>
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  padding: '16px 24px',
+                  borderBottom: i < 2 ? '1px solid var(--card-border)' : 'none',
+                }}>
+                <div className="shimmer" style={{ width: 40, height: 40, borderRadius: 11, flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div className="shimmer" style={{ width: `${45 + ((i * 11) % 25)}%`, height: 14, borderRadius: 4 }} />
+                  <div className="shimmer" style={{ width: `${25 + ((i * 9) % 20)}%`, height: 11, borderRadius: 4 }} />
+                </div>
+              </div>
+            ))}
           </div>
         ) : subscribers.length === 0 ? (
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
