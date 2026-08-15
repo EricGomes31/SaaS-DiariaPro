@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { Plus, Search, X } from 'lucide-react'
 import { useState } from 'react'
 
@@ -137,80 +138,87 @@ export default function SearchableSelect({
       </div>
 
       {/* Dropdown */}
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 4px)',
-            left: 0,
-            right: 0,
-            zIndex: 300,
-            background: 'var(--card-bg)',
-            border: '1px solid var(--card-border)',
-            borderRadius: 12,
-            boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
-            maxHeight: 230,
-            overflowY: 'auto',
-          }}>
-          {showAddCustom && (
-            <div
-              onMouseDown={handleAddCustom}
-              style={{
-                padding: '9px 14px',
-                fontSize,
-                cursor: 'pointer',
-                color: '#818cf8',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                borderBottom: filtered.length > 0 ? '1px solid var(--inner-border)' : 'none',
-                background: 'rgba(99,102,241,0.06)',
-                transition: 'background 0.13s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.14)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.06)')}>
-              <Plus size={13} />
-              Adicionar "{typed}"
-            </div>
-          )}
-          {filtered.length > 0
-            ? filtered.map((opt, i) => (
-                <div
-                  key={opt.value}
-                  onMouseDown={() => handleSelect(opt)}
-                  style={{
-                    padding: '9px 14px',
-                    fontSize,
-                    cursor: 'pointer',
-                    color: value === opt.value ? '#818cf8' : 'var(--card-heading)',
-                    fontWeight: value === opt.value ? 700 : 400,
-                    borderBottom: i < filtered.length - 1 ? '1px solid var(--inner-border)' : 'none',
-                    background: value === opt.value ? 'rgba(99,102,241,0.1)' : 'transparent',
-                    transition: 'background 0.13s',
-                  }}
-                  onMouseEnter={e => {
-                    if (value !== opt.value) e.currentTarget.style.background = 'var(--inner-bg)'
-                  }}
-                  onMouseLeave={e => {
-                    if (value !== opt.value) e.currentTarget.style.background = 'transparent'
-                  }}>
-                  {opt.label}
-                </div>
-              ))
-            : !showAddCustom && (
-                <div
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: 12,
-                    color: 'var(--card-muted)',
-                    textAlign: 'center',
-                  }}>
-                  Nenhum resultado
-                </div>
-              )}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.14, ease: [0, 0, 0.2, 1] }}
+            style={{
+              transformOrigin: 'top center',
+              position: 'absolute',
+              top: 'calc(100% + 4px)',
+              left: 0,
+              right: 0,
+              zIndex: 300,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              borderRadius: 12,
+              boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+              maxHeight: 230,
+              overflowY: 'auto',
+            }}>
+            {showAddCustom && (
+              <div
+                onMouseDown={handleAddCustom}
+                style={{
+                  padding: '9px 14px',
+                  fontSize,
+                  cursor: 'pointer',
+                  color: '#818cf8',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  borderBottom: filtered.length > 0 ? '1px solid var(--inner-border)' : 'none',
+                  background: 'rgba(99,102,241,0.06)',
+                  transition: 'background 0.13s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.14)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.06)')}>
+                <Plus size={13} />
+                Adicionar "{typed}"
+              </div>
+            )}
+            {filtered.length > 0
+              ? filtered.map((opt, i) => (
+                  <div
+                    key={opt.value}
+                    onMouseDown={() => handleSelect(opt)}
+                    style={{
+                      padding: '9px 14px',
+                      fontSize,
+                      cursor: 'pointer',
+                      color: value === opt.value ? '#818cf8' : 'var(--card-heading)',
+                      fontWeight: value === opt.value ? 700 : 400,
+                      borderBottom: i < filtered.length - 1 ? '1px solid var(--inner-border)' : 'none',
+                      background: value === opt.value ? 'rgba(99,102,241,0.1)' : 'transparent',
+                      transition: 'background 0.13s',
+                    }}
+                    onMouseEnter={e => {
+                      if (value !== opt.value) e.currentTarget.style.background = 'var(--inner-bg)'
+                    }}
+                    onMouseLeave={e => {
+                      if (value !== opt.value) e.currentTarget.style.background = 'transparent'
+                    }}>
+                    {opt.label}
+                  </div>
+                ))
+              : !showAddCustom && (
+                  <div
+                    style={{
+                      padding: '10px 14px',
+                      fontSize: 12,
+                      color: 'var(--card-muted)',
+                      textAlign: 'center',
+                    }}>
+                    Nenhum resultado
+                  </div>
+                )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
