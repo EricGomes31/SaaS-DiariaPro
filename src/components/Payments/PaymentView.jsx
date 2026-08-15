@@ -3409,7 +3409,10 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                       flex: 1,
                     }}>
                     {workerRecords.length === 0 ? (
-                      <div
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ duration: 0.26, ease: 'easeOut' }}
                         style={{
                           textAlign: 'center',
                           padding: '32px 0',
@@ -3417,7 +3420,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                           fontSize: 14,
                         }}>
                         Nenhum pagamento encontrado.
-                      </div>
+                      </motion.div>
                     ) : (
                       workerRecords.map((record, i) => {
                         const dias = record.workDayIds?.length ?? record.totalDays ?? '—'

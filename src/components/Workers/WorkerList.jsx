@@ -1087,20 +1087,24 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
         </AnimatePresence>
       </div>
 
-      {filtered.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{
-            textAlign: 'center',
-            padding: '60px 0',
-            color: 'var(--card-muted)',
-          }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>{t.noWorkersFound}</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>{t.tryAdjustFilters}</div>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {filtered.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.26, ease: 'easeOut' }}
+            style={{
+              textAlign: 'center',
+              padding: '60px 0',
+              color: 'var(--card-muted)',
+            }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
+            <div style={{ fontSize: 16, fontWeight: 500 }}>{t.noWorkersFound}</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>{t.tryAdjustFilters}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal */}
       <AnimatePresence>
