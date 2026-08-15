@@ -206,21 +206,6 @@ select option:hover {
   border-radius: inherit;
 }
 
-/* Animated gradient border */
-@keyframes borderGlow {
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-.border-glow {
-  animation: borderGlow 3s ease-in-out infinite;
-}
-
 /* Premium button base */
 .btn-primary {
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
@@ -298,36 +283,6 @@ select option:hover {
 .card-hover:hover {
   transform: translateY(-4px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
-/* Status indicator pulse */
-@keyframes statusPulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
-  }
-}
-.status-pulse {
-  animation: statusPulse 2s ease-in-out infinite;
-}
-
-/* Page transition */
-.page-enter {
-  animation: pageEnter 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes pageEnter {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* Shimmer loading effect */
