@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react'
+import { MotionConfig } from 'framer-motion'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -54,9 +55,14 @@ function ErrorFallback() {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
+      {/* reducedMotion="user": toda animação do Framer Motion (motion.*, AnimatePresence)
+          respeita prefers-reduced-motion do sistema automaticamente, sem tocar em cada
+          componente individualmente. */}
+      <MotionConfig reducedMotion="user">
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </MotionConfig>
     </Sentry.ErrorBoundary>
   </StrictMode>,
 )

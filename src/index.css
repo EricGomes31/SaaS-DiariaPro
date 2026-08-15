@@ -345,3 +345,17 @@ select option:hover {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
+/* Respeita a preferência de movimento reduzido do sistema para toda animação/transição
+   puramente CSS (orbs de fundo, shimmer, etc.) — o Framer Motion é coberto separadamente
+   por <MotionConfig reducedMotion="user"> em src/main.jsx. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
