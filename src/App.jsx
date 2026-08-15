@@ -1,23 +1,15 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Menu, RefreshCw, Zap } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import ActivityLog from './components/Audit/ActivityLog'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import ChangePasswordModal from './components/Auth/ChangePasswordModal'
 import InviteSetPassword from './components/Auth/InviteSetPassword'
 import LoginScreen from './components/Auth/LoginScreen'
 import SignUpScreen from './components/Auth/SignUpScreen'
 import PlansModal from './components/Billing/PlansModal'
 import Dashboard from './components/Dashboard/Dashboard'
-import DailyExpenses from './components/Expenses/DailyExpenses'
 import Sidebar from './components/Layout/Sidebar'
-import LocationManager from './components/Locations/LocationManager'
-import DataImport from './components/Migration/DataImport'
-import PaymentView from './components/Payments/PaymentView'
-import Reports from './components/Reports/Reports'
-import WorkCalendar from './components/Tracking/WorkCalendar'
 import LoadingScreen from './components/UI/LoadingScreen'
 import { useToast } from './components/UI/Toast'
-import WorkerList from './components/Workers/WorkerList'
 import { useIdleTimeout } from './hooks/useIdleTimeout'
 import { useIsMobile } from './hooks/useIsMobile'
 import { useUpdateCheck } from './hooks/useUpdateCheck'
@@ -25,6 +17,19 @@ import i18n from './i18n'
 import * as db from './lib/db'
 import { log, setLogUser } from './lib/logger'
 import { supabase } from './lib/supabase'
+
+// Dashboard fica com import estático — é a primeira página que todo mundo vê
+// logo após o login, então não vale a pena atrasar seu primeiro paint com um
+// fetch de chunk extra. As demais são lazy: dividem o bundle por página sem
+// adicionar espera na tela mais visitada.
+const ActivityLog = lazy(() => import('./components/Audit/ActivityLog'))
+const DailyExpenses = lazy(() => import('./components/Expenses/DailyExpenses'))
+const LocationManager = lazy(() => import('./components/Locations/LocationManager'))
+const DataImport = lazy(() => import('./components/Migration/DataImport'))
+const PaymentView = lazy(() => import('./components/Payments/PaymentView'))
+const Reports = lazy(() => import('./components/Reports/Reports'))
+const WorkCalendar = lazy(() => import('./components/Tracking/WorkCalendar'))
+const WorkerList = lazy(() => import('./components/Workers/WorkerList'))
 
 const PAGES = {
   dashboard: Dashboard,
@@ -36,6 +41,16 @@ const PAGES = {
   reports: Reports,
   audit: ActivityLog,
   migration: DataImport,
+}
+
+function PageLoadingFallback() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.9, ease: 'linear' }}>
+        <RefreshCw size={22} color="rgba(99,102,241,0.6)" />
+      </motion.div>
+    </div>
+  )
 }
 
 // URL de cada página (sem lib de rotas — o .htaccess já faz fallback de
@@ -791,34 +806,36 @@ export default function App() {
                     minHeight: isMobile ? 'calc(100vh - 61px)' : '100vh',
                     padding: isMobile ? '81px 16px 20px' : '32px 40px',
                   }}>
-                  <PageComponent
-                    lang={lang}
-                    theme={theme}
-                    onNavigate={setActivePage}
-                    selectedWorker={selectedWorker}
-                    setSelectedWorker={setSelectedWorker}
-                    workers={workers}
-                    setWorkers={setWorkers}
-                    workDays={workDays}
-                    setWorkDays={setWorkDays}
-                    locations={locations}
-                    setLocations={setLocations}
-                    locationDepartments={locationDepartments}
-                    setLocationDepartments={setLocationDepartments}
-                    locationJobTitles={locationJobTitles}
-                    setLocationJobTitles={setLocationJobTitles}
-                    locationSchedules={locationSchedules}
-                    setLocationSchedules={setLocationSchedules}
-                    paymentRecords={paymentRecords}
-                    setPaymentRecords={setPaymentRecords}
-                    holidays={holidays}
-                    setHolidays={setHolidays}
-                    dailyExpenses={dailyExpenses}
-                    setDailyExpenses={setDailyExpenses}
-                    currentUser={currentUser}
-                    subscription={subscription}
-                    onUpgrade={() => setShowPlans(true)}
-                  />
+                  <Suspense fallback={<PageLoadingFallback />}>
+                    <PageComponent
+                      lang={lang}
+                      theme={theme}
+                      onNavigate={setActivePage}
+                      selectedWorker={selectedWorker}
+                      setSelectedWorker={setSelectedWorker}
+                      workers={workers}
+                      setWorkers={setWorkers}
+                      workDays={workDays}
+                      setWorkDays={setWorkDays}
+                      locations={locations}
+                      setLocations={setLocations}
+                      locationDepartments={locationDepartments}
+                      setLocationDepartments={setLocationDepartments}
+                      locationJobTitles={locationJobTitles}
+                      setLocationJobTitles={setLocationJobTitles}
+                      locationSchedules={locationSchedules}
+                      setLocationSchedules={setLocationSchedules}
+                      paymentRecords={paymentRecords}
+                      setPaymentRecords={setPaymentRecords}
+                      holidays={holidays}
+                      setHolidays={setHolidays}
+                      dailyExpenses={dailyExpenses}
+                      setDailyExpenses={setDailyExpenses}
+                      currentUser={currentUser}
+                      subscription={subscription}
+                      onUpgrade={() => setShowPlans(true)}
+                    />
+                  </Suspense>
                 </motion.div>
               </AnimatePresence>
             </main>
