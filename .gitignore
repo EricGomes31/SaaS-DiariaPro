@@ -21,3 +21,7 @@ test-results/
 # Claude Code — memória e config local do agente
 .claude/projects/
 .claude/settings.local.json
+
+# Symlink de skill com caminho absoluto (máquina-específico) — o conteúdo
+# real já está versionado em .agents/skills/
+.claude/skills/
