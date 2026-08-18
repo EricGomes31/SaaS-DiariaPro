@@ -1,6 +1,7 @@
-import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertCircle, Bell, CheckCheck, CreditCard, Info, Trash2, Users, X } from 'lucide-react'
+import { getStaleWorkerIds } from '../../data/mockData'
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 // Gera notificações a partir dos dados reais da conta.
@@ -55,15 +56,8 @@ export function buildNotifications({ workers = [], workDays = [], paymentRecords
   }
 
   // Diaristas ativos sem registro há mais de 30 dias
-  const lastByWorker = {}
-  for (const d of workDays) {
-    if (!lastByWorker[d.workerId] || d.date > lastByWorker[d.workerId]) lastByWorker[d.workerId] = d.date
-  }
-  const stale = workers.filter(w => {
-    if (w.status !== 'active') return false
-    const last = lastByWorker[w.id]
-    return last && differenceInCalendarDays(new Date(), parseISO(last)) > 30
-  })
+  const staleIds = new Set(getStaleWorkerIds(workers, workDays))
+  const stale = workers.filter(w => staleIds.has(w.id))
   if (stale.length > 0) {
     const names = stale
       .slice(0, 3)

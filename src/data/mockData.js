@@ -1,4 +1,4 @@
-import { eachMonthOfInterval, endOfMonth, format, getDay, parseISO, subDays, subMonths } from 'date-fns'
+import { differenceInCalendarDays, eachMonthOfInterval, endOfMonth, format, getDay, parseISO, subDays, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export const PIX_KEY_TYPES = [
@@ -463,6 +463,24 @@ export function getWorkerStats(workerId, allWorkDays = WORK_DAYS) {
     weekendEarnings: weekendDays.reduce((sum, d) => sum + d.earnings, 0),
     recentDays: days.slice(0, 7),
   }
+}
+
+// Diaristas viram inativos automaticamente após ficar esse número de dias sem
+// nenhum dia de trabalho registrado.
+export const INACTIVITY_THRESHOLD_DAYS = 30
+
+// IDs de diaristas ativos cujo último dia de trabalho é mais antigo que o limite.
+// Diaristas sem nenhum dia registrado ainda são ignorados aqui (não há dado
+// suficiente pra julgar inatividade — ficam ativos até o primeiro registro).
+export function getStaleWorkerIds(workers, workDays, thresholdDays = INACTIVITY_THRESHOLD_DAYS) {
+  const lastByWorker = {}
+  for (const d of workDays) {
+    if (!lastByWorker[d.workerId] || d.date > lastByWorker[d.workerId]) lastByWorker[d.workerId] = d.date
+  }
+  return workers
+    .filter(w => w.status === 'active' && lastByWorker[w.id])
+    .filter(w => differenceInCalendarDays(new Date(), parseISO(lastByWorker[w.id])) > thresholdDays)
+    .map(w => w.id)
 }
 
 export function getDashboardStats(workers = WORKERS, workDays = WORK_DAYS, locations = LOCATIONS) {
