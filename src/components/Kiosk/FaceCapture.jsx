@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from 'framer-motion'
 import { CameraOff } from 'lucide-react'
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
@@ -41,50 +42,60 @@ const FaceCapture = forwardRef(function FaceCapture({ active = true, mirrored = 
     }
   }, [active])
 
-  if (error) {
-    return (
-      <div
-        style={{
-          height,
-          borderRadius: 16,
-          background: 'rgba(176,65,62,0.06)',
-          border: '1px solid rgba(176,65,62,0.2)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 10,
-          padding: 20,
-        }}>
-        <CameraOff size={28} color="#B0413E" />
-        <span
-          style={{
-            fontSize: 13,
-            color: '#B0413E',
-            textAlign: 'center',
-            fontWeight: 600,
-          }}>
-          Não foi possível acessar a câmera. Verifique a permissão do navegador.
-        </span>
-      </div>
-    )
-  }
-
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      muted
-      style={{
-        width: '100%',
-        height,
-        borderRadius: 16,
-        background: '#000',
-        objectFit: 'cover',
-        transform: mirrored ? 'scaleX(-1)' : 'none',
-      }}
-    />
+    <AnimatePresence mode="wait">
+      {error ? (
+        <motion.div
+          key="error"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          style={{
+            height,
+            borderRadius: 16,
+            background: 'rgba(176,65,62,0.06)',
+            border: '1px solid rgba(176,65,62,0.2)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            padding: 20,
+          }}>
+          <CameraOff size={28} color="#B0413E" />
+          <span
+            style={{
+              fontSize: 13,
+              color: '#B0413E',
+              textAlign: 'center',
+              fontWeight: 600,
+            }}>
+            Não foi possível acessar a câmera. Verifique a permissão do navegador.
+          </span>
+        </motion.div>
+      ) : (
+        <motion.video
+          key="video"
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          style={{
+            width: '100%',
+            height,
+            borderRadius: 16,
+            background: '#000',
+            objectFit: 'cover',
+            transform: mirrored ? 'scaleX(-1)' : 'none',
+          }}
+        />
+      )}
+    </AnimatePresence>
   )
 })
 

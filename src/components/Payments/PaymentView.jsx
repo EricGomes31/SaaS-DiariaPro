@@ -438,7 +438,7 @@ function PixQrModal({ worker, pendingAmount, overtimeAmount = 0, bonusAmount = 0
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              transition: 'all 0.2s',
+              transition: 'border-color 0.2s, background 0.2s, color 0.2s',
             }}>
             {copied ? <Check size={14} /> : <Copy size={14} />}
             {copied ? t.copiedLabel : t.copyPayload}
@@ -915,7 +915,7 @@ function MiniDatePicker({ value, onChange, label }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          transition: 'all 0.2s',
+          transition: 'border-color 0.2s, background 0.2s, color 0.2s',
         }}>
         <span>{selected ? format(selected, 'dd/MM/yyyy') : 'dd/mm/aaaa'}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -1331,7 +1331,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                     color: scope === s.id ? s.color : 'var(--card-muted)',
                     fontSize: 12,
                     fontWeight: 700,
-                    transition: 'all 0.2s',
+                    transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                   }}>
                   {s.label}
                 </motion.button>
@@ -1371,7 +1371,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                     color: groupBy === g.id ? '#818cf8' : 'var(--card-muted)',
                     fontSize: 12,
                     fontWeight: 700,
-                    transition: 'all 0.2s',
+                    transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1469,7 +1469,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                       cursor: 'pointer',
                       background: active ? `${fmt.color}10` : 'var(--inner-bg)',
                       border: `1.5px solid ${active ? fmt.color + '40' : 'var(--card-border)'}`,
-                      transition: 'all 0.2s',
+                      transition: 'border-color 0.2s, background 0.2s',
                       textAlign: 'left',
                     }}>
                     {/* Radio dot */}
@@ -1483,7 +1483,7 @@ function ExportModal({ pendingSummary, paidSummary, allSummary, pendingWorkDays,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        transition: 'all 0.2s',
+                        transition: 'border-color 0.2s',
                       }}>
                       {active && (
                         <motion.div
@@ -2169,7 +2169,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                   cursor: 'pointer',
                   fontSize: 12,
                   fontWeight: 700,
-                  transition: 'all 0.18s',
+                  transition: 'background 0.18s, color 0.18s',
                   background: !selectedLocation ? '#6366f1' : 'var(--inner-bg)',
                   color: !selectedLocation ? 'white' : 'var(--card-muted)',
                   border: `1.5px solid ${!selectedLocation ? '#6366f1' : 'var(--card-border)'}`,
@@ -2191,7 +2191,7 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                       cursor: 'pointer',
                       fontSize: 12,
                       fontWeight: 700,
-                      transition: 'all 0.18s',
+                      transition: 'background 0.18s, color 0.18s',
                       background: isActive ? `${loc.color}22` : 'var(--inner-bg)',
                       color: isActive ? loc.color : 'var(--card-muted)',
                       border: `1.5px solid ${isActive ? loc.color + '80' : 'var(--card-border)'}`,
@@ -2567,7 +2567,6 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        transition: 'all 0.2s',
                       }}>
                       <QrCode size={14} color="#06b6d4" />
                     </motion.button>
@@ -3149,7 +3148,6 @@ export default function PaymentView({ lang = 'pt', workers, workDays, locations 
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        transition: 'all 0.2s',
                       }}>
                       <RotateCcw size={14} color="#f59e0b" />
                     </motion.button>

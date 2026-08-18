@@ -340,7 +340,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                 background: filterStatus === s ? 'rgba(99,102,241,0.15)' : 'var(--inner-bg)',
                 color: filterStatus === s ? '#818cf8' : 'var(--card-sub)',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'border-color 0.2s, background 0.2s, color 0.2s',
               }}>
               {
                 {
@@ -817,7 +817,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                                 background: currentOvertime > 0 ? 'rgba(245,158,11,0.08)' : 'rgba(99,102,241,0.06)',
                                 border: `1px solid ${currentOvertime > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(99,102,241,0.2)'}`,
                                 color: currentOvertime > 0 ? '#f59e0b' : 'var(--card-sub)',
-                                transition: 'all 0.2s',
+                                transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                               }}>
                               <Clock size={12} />
                               {currentOvertime > 0 ? `${t.overtimeRegistered}: R$ ${currentOvertime.toLocaleString('pt-BR')}` : t.addOvertime}
@@ -937,7 +937,7 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                                 background: currentBonus > 0 ? 'rgba(16,185,129,0.08)' : 'rgba(99,102,241,0.06)',
                                 border: `1px solid ${currentBonus > 0 ? 'rgba(16,185,129,0.25)' : 'rgba(99,102,241,0.2)'}`,
                                 color: currentBonus > 0 ? '#10b981' : 'var(--card-sub)',
-                                transition: 'all 0.2s',
+                                transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                               }}>
                               <Gift size={12} />
                               {currentBonus > 0 ? `${t.bonusRegistered}: R$ ${currentBonus.toLocaleString('pt-BR')}` : t.addBonus}
@@ -1024,7 +1024,6 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                             background: `${worker.avatarColor}12`,
                             border: `1px solid ${worker.avatarColor}30`,
                             color: worker.avatarColor,
-                            transition: 'all 0.2s',
                           }}>
                           <Clock size={14} />
                           {t.registerToday}
@@ -1050,7 +1049,6 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                           background: 'rgba(244,63,94,0.06)',
                           border: '1px solid rgba(244,63,94,0.15)',
                           color: '#f43f5e',
-                          transition: 'all 0.2s',
                         }}>
                         {t.deactivate}
                       </motion.button>
@@ -1075,7 +1073,6 @@ export default function WorkerList({ lang = 'pt', workers, setWorkers, workDays,
                         background: 'rgba(16,185,129,0.08)',
                         border: '1px solid rgba(16,185,129,0.25)',
                         color: '#10b981',
-                        transition: 'all 0.2s',
                       }}>
                       {t.activateWorker}
                     </motion.button>

@@ -407,7 +407,7 @@ export default function PrivacyModal({ initialTab = 'privacy', onClose }) {
                     cursor: 'pointer',
                     fontSize: 12,
                     fontWeight: 600,
-                    transition: 'all 0.18s ease',
+                    transition: 'background 0.18s ease, color 0.18s ease',
                     background: activeTab === id ? 'rgba(99,102,241,0.25)' : 'transparent',
                     color: activeTab === id ? 'rgba(129,140,248,1)' : 'rgba(255,255,255,0.35)',
                   }}>

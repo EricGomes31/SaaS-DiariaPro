@@ -359,7 +359,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                             overflow: 'hidden',
                             border: isSelected ? '1.5px solid rgba(99,102,241,0.5)' : todayDay ? '1.5px solid rgba(99,102,241,0.2)' : '1px solid var(--inner-border)',
                             background: isSelected ? 'rgba(99,102,241,0.12)' : entries.length > 0 ? (isSpecial ? 'rgba(245,158,11,0.06)' : 'rgba(99,102,241,0.05)') : isWeekendDay ? 'var(--inner-bg)' : 'transparent',
-                            transition: 'all 0.15s',
+                            transition: 'border-color 0.15s, background 0.15s',
                           }}>
                           {allPaid ? (
                             <div
@@ -685,7 +685,6 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
-                        transition: 'all 0.2s',
                         whiteSpace: 'nowrap',
                       }}>
                       <Plus size={15} />
@@ -839,7 +838,7 @@ export default function WorkCalendar({ lang = 'pt', workers, workDays, setWorkDa
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 6,
-                                    transition: 'all 0.15s',
+                                    transition: 'border-color 0.15s, background 0.15s, color 0.15s',
                                   }}>
                                   <div
                                     style={{

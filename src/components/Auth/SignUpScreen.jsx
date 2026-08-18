@@ -60,7 +60,7 @@ export default function SignUpScreen({ theme = 'dark', setTheme, onLogin, mode =
     border: `1.5px solid ${focusedField === field ? (isLight ? 'rgba(99,102,241,0.5)' : '#818cf8') : c.inputBorder}`,
     color: c.inputColor,
     boxShadow: focusedField === field ? '0 0 0 3px rgba(99,102,241,0.12)' : 'none',
-    transition: 'all 0.2s ease',
+    transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
   })
 
   const handleSubmit = async e => {

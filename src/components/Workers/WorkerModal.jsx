@@ -197,7 +197,6 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
               justifyContent: 'center',
               cursor: 'pointer',
               color: 'var(--card-muted)',
-              transition: 'all 0.2s',
             }}>
             <X size={16} />
           </motion.button>
@@ -282,7 +281,7 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                         cursor: 'pointer',
                         border: `1.5px solid ${sel ? 'rgba(99,102,241,0.5)' : 'var(--card-border)'}`,
                         background: sel ? 'rgba(99,102,241,0.12)' : 'var(--inner-bg)',
-                        transition: 'all 0.15s',
+                        transition: 'border-color 0.15s, background 0.15s',
                         textAlign: 'center',
                       }}>
                       <div
@@ -360,7 +359,7 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                         display: 'flex',
                         alignItems: 'center',
                         gap: 10,
-                        transition: 'all 0.2s',
+                        transition: 'border-color 0.2s, background 0.2s',
                       }}>
                       <div
                         style={{
@@ -371,7 +370,7 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          transition: 'all 0.2s',
+                          transition: 'background 0.2s',
                           flexShrink: 0,
                         }}>
                         {selected && <Check size={11} color="white" />}
@@ -564,7 +563,7 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                       justifyContent: 'center',
                       gap: 8,
                       whiteSpace: 'nowrap',
-                      transition: 'all 0.15s',
+                      transition: 'border-color 0.15s, background 0.15s, color 0.15s',
                     }}>
                     <div
                       style={{
@@ -577,7 +576,7 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        transition: 'all 0.15s',
+                        transition: 'border-color 0.15s, background 0.15s',
                       }}>
                       {sel && (
                         <div
@@ -652,7 +651,6 @@ export default function WorkerModal({ lang = 'pt', worker, workers = [], locatio
                 background: 'var(--inner-bg)',
                 color: 'var(--card-sub)',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
               }}>
               {t.cancel}
             </button>

@@ -63,7 +63,7 @@ function CopyButton({ text, copyTitle }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        transition: 'all 0.2s',
+        transition: 'background 0.2s',
         flexShrink: 0,
       }}>
       <AnimatePresence mode="wait">
@@ -416,7 +416,7 @@ function AddDayModal({ worker, workDays, locations, holidays, onAdd, onClose, t 
                     display: 'flex',
                     alignItems: 'center',
                     gap: 7,
-                    transition: 'all 0.15s',
+                    transition: 'border-color 0.15s, background 0.15s, color 0.15s',
                   }}>
                   <div
                     style={{
@@ -790,7 +790,6 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            transition: 'all 0.2s',
             flexShrink: 0,
           }}>
           <Edit2 size={15} />
@@ -814,7 +813,6 @@ export default function WorkerProfile({ lang = 'pt', worker, workDays, locations
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              transition: 'all 0.2s',
               flexShrink: 0,
             }}>
             <Trash2 size={15} />

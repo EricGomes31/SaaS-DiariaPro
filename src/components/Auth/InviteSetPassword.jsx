@@ -459,7 +459,7 @@ export default function InviteSetPassword({ onDone, currentUser }) {
                       color: '#f1f5f9',
                       outline: 'none',
                       boxShadow: focusedField === 'name' ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
-                      transition: 'all 0.2s ease',
+                      transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
                     }}
                   />
                 </div>
@@ -502,7 +502,7 @@ export default function InviteSetPassword({ onDone, currentUser }) {
                       color: '#f1f5f9',
                       outline: 'none',
                       boxShadow: focusedField === 'pwd' ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
-                      transition: 'all 0.2s ease',
+                      transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
                     }}
                   />
                   <button
@@ -565,7 +565,7 @@ export default function InviteSetPassword({ onDone, currentUser }) {
                     color: '#f1f5f9',
                     outline: 'none',
                     boxShadow: focusedField === 'confirm' ? '0 0 0 3px rgba(99,102,241,0.15)' : 'none',
-                    transition: 'all 0.2s ease',
+                    transition: 'background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
                   }}
                 />
               </motion.div>

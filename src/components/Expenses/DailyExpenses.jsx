@@ -756,7 +756,7 @@ export default function DailyExpenses({ lang = 'pt', workers = [], workDays = []
                   color: chartView === tab.id ? '#818cf8' : 'var(--card-sub)',
                   fontSize: 13,
                   fontWeight: 600,
-                  transition: 'all 0.2s',
+                  transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                 }}>
                 <tab.icon size={13} />
                 {tab.label}
@@ -1332,7 +1332,7 @@ export default function DailyExpenses({ lang = 'pt', workers = [], workDays = []
                   overflow: 'hidden',
                   border: isSelected ? '1.5px solid rgba(99,102,241,0.5)' : todayDay ? '1.5px solid rgba(99,102,241,0.2)' : '1px solid var(--inner-border)',
                   background: isSelected ? 'rgba(99,102,241,0.12)' : hasExpense ? (row.custom ? 'rgba(245,158,11,0.06)' : 'rgba(16,185,129,0.05)') : isWeekendDay ? 'var(--inner-bg)' : 'transparent',
-                  transition: 'all 0.15s',
+                  transition: 'border-color 0.15s, background 0.15s',
                 }}>
                 {todayDay && !isSelected && (
                   <div

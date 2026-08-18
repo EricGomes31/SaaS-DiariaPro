@@ -308,7 +308,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                   border: 'none',
                   cursor: 'pointer',
                   background: isActive ? 'linear-gradient(135deg, rgba(99,102,241,0.2) 0%, rgba(139,92,246,0.15) 100%)' : 'transparent',
-                  transition: 'all 0.2s ease',
+                  transition: 'background 0.2s ease',
                   position: 'relative',
                   overflow: 'hidden',
                 }}>
@@ -378,7 +378,6 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 border: '1px solid rgba(139,92,246,0.3)',
                 cursor: 'pointer',
                 background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
-                transition: 'all 0.2s',
               }}>
               <div
                 style={{
@@ -437,7 +436,6 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              transition: 'all 0.2s',
             }}>
             <div style={{ position: 'relative' }}>
               <Bell size={18} color={showNotifications ? '#818cf8' : sb.navIcon} />
@@ -500,7 +498,6 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
               border: 'none',
               cursor: 'pointer',
               background: 'transparent',
-              transition: 'all 0.2s',
             }}>
             <Settings size={18} color={showSettings ? '#818cf8' : sb.navIcon} />
             <span
@@ -652,7 +649,7 @@ export default function Sidebar({ activePage, setActivePage, onLogout, theme, se
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'background 0.2s',
               }}>
               <LogOut size={15} color={confirmLogout ? '#f43f5e' : sb.logoutIcon} />
             </motion.button>
