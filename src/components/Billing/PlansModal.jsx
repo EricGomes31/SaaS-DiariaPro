@@ -291,7 +291,7 @@ function PlanCard({ plan, cycle, t, lang, sp, isMobile, isCurrent, onSelect }) {
           background: isCurrent ? sp.currentBtnBg : highlight ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : sp.ctaBg,
           color: isCurrent ? sp.cardSub : highlight ? 'white' : sp.ctaColor,
           boxShadow: highlight && !isCurrent ? '0 6px 20px rgba(99,102,241,0.4)' : 'none',
-          transition: 'all 0.2s',
+          transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
         }}>
         {isCurrent ? (
           t.currentPlan
@@ -489,7 +489,7 @@ export default function PlansModal({
                       color: active ? 'white' : sp.toggleInactive,
                       fontSize: 13,
                       fontWeight: 700,
-                      transition: 'all 0.2s',
+                      transition: 'background 0.2s, color 0.2s, box-shadow 0.2s',
                       boxShadow: active ? '0 4px 14px rgba(99,102,241,0.35)' : 'none',
                     }}>
                     {c === 'monthly' ? t.monthly : t.annual}

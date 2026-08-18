@@ -236,7 +236,6 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                transition: 'all 0.2s',
               }}>
               <CheckCheck size={13} />
               Marcar todas como lidas
@@ -285,7 +284,7 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
                       background: n.read ? np.itemReadBg : np.itemUnreadBg,
                       border: `1px solid ${n.read ? np.itemReadBorder : np.itemUnreadBorder}`,
                       cursor: n.read ? 'default' : 'pointer',
-                      transition: 'all 0.2s',
+                      transition: 'background 0.2s, border-color 0.2s',
                     }}>
                     {/* Unread dot */}
                     {!n.read && (
@@ -383,7 +382,6 @@ export default function NotificationsPanel({ onClose, theme, notes, onMarkRead, 
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
                       }}>
                       <Trash2 size={12} color={np.deleteIcon} />
                     </motion.button>

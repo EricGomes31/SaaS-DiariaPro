@@ -747,7 +747,7 @@ export default function DataImport({ lang = 'pt', locations = [], workers = [], 
                 color: sel ? '#818cf8' : 'var(--card-sub)',
                 fontSize: 14,
                 fontWeight: sel ? 700 : 500,
-                transition: 'all 0.15s',
+                transition: 'border-color 0.15s, background 0.15s, color 0.15s',
               }}>
               <tab.icon size={16} /> {tab.label}
             </motion.button>
@@ -951,7 +951,7 @@ export default function DataImport({ lang = 'pt', locations = [], workers = [], 
                 padding: '48px 24px',
                 textAlign: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'border-color 0.2s, background 0.2s',
               }}>
               <div
                 style={{

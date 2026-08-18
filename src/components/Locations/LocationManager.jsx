@@ -190,7 +190,7 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                     padding: '18px 20px',
                     cursor: isConfirming ? 'default' : 'pointer',
                     background: isConfirming ? 'rgba(244,63,94,0.05)' : selected?.id === loc.id ? `${loc.color}12` : 'var(--card-bg)',
-                    transition: 'all 0.2s',
+                    transition: 'background 0.2s',
                     position: 'relative',
                   }}>
                   {selected?.id === loc.id && !isConfirming && (
@@ -273,7 +273,7 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
+                        transition: 'background 0.2s',
                       }}>
                       <Trash2 size={14} color={isConfirming ? '#f43f5e' : 'var(--card-muted)'} />
                     </motion.button>
@@ -623,7 +623,6 @@ export default function LocationManager({ lang = 'pt', locations, setLocations, 
                       fontSize: 13,
                       fontWeight: 600,
                       flexShrink: 0,
-                      transition: 'all 0.2s',
                       width: isMobile ? 36 : 'auto',
                       height: isMobile ? 36 : 'auto',
                       justifyContent: 'center',

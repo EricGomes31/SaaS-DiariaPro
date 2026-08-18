@@ -522,7 +522,6 @@ export default function Dashboard({ lang = 'pt', onNavigate, workers, workDays, 
                     padding: '10px 12px',
                     borderRadius: 12,
                     cursor: 'pointer',
-                    transition: 'all 0.2s',
                   }}>
                   <div
                     style={{

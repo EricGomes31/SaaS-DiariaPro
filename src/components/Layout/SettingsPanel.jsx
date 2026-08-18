@@ -540,7 +540,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                     border: 'none',
                     cursor: 'pointer',
                     background: active ? sp.tabActiveBg : 'transparent',
-                    transition: 'all 0.18s',
+                    transition: 'background 0.18s',
                     flexShrink: 0,
                   }}>
                   <tabItem.icon size={15} color={active ? '#818cf8' : sp.tabIcon} />
@@ -675,7 +675,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                                 background: sel ? 'rgba(99,102,241,0.15)' : 'transparent',
                                 color: sel ? '#818cf8' : (sp.rowLabel ?? 'rgba(255,255,255,0.5)'),
                                 fontWeight: sel ? 700 : 400,
-                                transition: 'all 0.15s',
+                                transition: 'border-color 0.15s, background 0.15s, color 0.15s',
                               }}>
                               {o.label}
                             </motion.button>
@@ -699,7 +699,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                               background: fmt === 'DD/MM/AAAA' ? 'rgba(99,102,241,0.15)' : 'transparent',
                               color: fmt === 'DD/MM/AAAA' ? '#818cf8' : (sp.rowLabel ?? 'rgba(255,255,255,0.5)'),
                               fontWeight: fmt === 'DD/MM/AAAA' ? 700 : 400,
-                              transition: 'all 0.15s',
+                              transition: 'border-color 0.15s, background 0.15s, color 0.15s',
                             }}>
                             {fmt}
                           </motion.button>
@@ -719,7 +719,7 @@ export default function SettingsPanel({ onClose, theme = 'dark', setTheme, lang 
                           cursor: 'pointer',
                           background: draftTheme === 'light' ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)',
                           border: `1px solid ${draftTheme === 'light' ? 'rgba(245,158,11,0.3)' : 'rgba(99,102,241,0.25)'}`,
-                          transition: 'all 0.25s',
+                          transition: 'background 0.25s, border-color 0.25s',
                         }}>
                         <AnimatePresence mode="wait">
                           {draftTheme === 'dark' ? (

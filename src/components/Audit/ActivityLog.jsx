@@ -289,7 +289,7 @@ export default function ActivityLog({ theme }) {
               fontWeight: 600,
               background: filter === f.id ? '#6366f1' : c.filterBg,
               color: filter === f.id ? 'white' : c.sub,
-              transition: 'all 0.18s',
+              transition: 'background 0.18s, color 0.18s',
             }}>
             {f.label}
           </motion.button>

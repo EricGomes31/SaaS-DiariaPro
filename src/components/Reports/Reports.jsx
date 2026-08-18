@@ -282,7 +282,7 @@ function MiniDatePicker({ value, onChange, label }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          transition: 'all 0.2s',
+          transition: 'border-color 0.2s, background 0.2s, color 0.2s',
         }}>
         <span>{selected ? format(selected, 'dd/MM/yyyy') : 'dd/mm/aaaa'}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -684,7 +684,7 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
                     color: groupBy === g.id ? '#818cf8' : 'var(--card-muted)',
                     fontSize: 12,
                     fontWeight: 700,
-                    transition: 'all 0.2s',
+                    transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -783,7 +783,7 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
                       background: active ? `${fmt.color}10` : 'var(--inner-bg)',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      transition: 'all 0.2s',
+                      transition: 'border-color 0.2s, background 0.2s',
                     }}>
                     <div
                       style={{
@@ -795,7 +795,7 @@ function ExportModal({ onClose, exportData, workers, workDays, locations, t }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        transition: 'all 0.2s',
+                        transition: 'border-color 0.2s',
                       }}>
                       {active && (
                         <motion.div
@@ -1259,7 +1259,7 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                       fontWeight: 600,
                       border: 'none',
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      transition: 'background 0.2s, color 0.2s',
                       background: period === p ? 'rgba(99,102,241,0.2)' : 'transparent',
                       color: period === p ? '#818cf8' : 'var(--card-muted)',
                     }}>
@@ -1283,7 +1283,6 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  transition: 'all 0.2s',
                 }}>
                 <Download size={15} />
                 {t.exportBtn}
@@ -1326,7 +1325,7 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                 cursor: 'pointer',
                 fontSize: 13,
                 fontWeight: 700,
-                transition: 'all 0.2s',
+                transition: 'background 0.2s, color 0.2s',
                 background: mainTab === tab.id ? 'rgba(99,102,241,0.18)' : 'transparent',
                 color: mainTab === tab.id ? '#818cf8' : 'var(--card-muted)',
               }}>
@@ -1381,7 +1380,7 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                   display: 'flex',
                   alignItems: 'center',
                   gap: 7,
-                  transition: 'all 0.2s',
+                  transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                 }}>
                 <tab.icon size={14} />
                 {tab.label}
@@ -1761,7 +1760,7 @@ export default function Reports({ lang = 'pt', workers, workDays, locations, dai
                   display: 'flex',
                   alignItems: 'center',
                   gap: 7,
-                  transition: 'all 0.2s',
+                  transition: 'border-color 0.2s, background 0.2s, color 0.2s',
                 }}>
                 <tab.icon size={14} />
                 {tab.label}
