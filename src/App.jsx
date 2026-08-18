@@ -10,6 +10,7 @@ import Dashboard from './components/Dashboard/Dashboard'
 import Sidebar from './components/Layout/Sidebar'
 import LoadingScreen from './components/UI/LoadingScreen'
 import { useToast } from './components/UI/Toast'
+import { getStaleWorkerIds } from './data/mockData'
 import { useIdleTimeout } from './hooks/useIdleTimeout'
 import { useIsMobile } from './hooks/useIsMobile'
 import { useUpdateCheck } from './hooks/useUpdateCheck'
@@ -438,6 +439,20 @@ export default function App() {
       })
     }
   }, [workDays])
+
+  // ── Auto-inatividade: diarista ativo sem dia de trabalho há 30+ dias ─────
+  // Roda com um pequeno atraso pra sempre executar depois que `syncing.current`
+  // liga (ver loadData), senão a mudança de status é perdida na carga inicial.
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const timer = setTimeout(() => {
+      if (!syncing.current || fromRealtime.current) return
+      const staleIds = getStaleWorkerIds(workers, workDays)
+      if (staleIds.length === 0) return
+      setWorkers(prev => prev.map(w => (staleIds.includes(w.id) ? { ...w, status: 'inactive' } : w)))
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [workers, workDays, isAuthenticated])
 
   useEffect(() => {
     if (!syncing.current || fromRealtime.current) {
